@@ -133,6 +133,29 @@ class Browser {
     return parsed;
   }
 
+  // Waits until the board has stopped moving: nothing in hand, nothing in
+  // flight.
+  //
+  // Both halves were learned the hard way on a machine with no GPU. Phaser
+  // processes queued input in its game loop, so a release can sit unprocessed
+  // for the best part of a second, and a press arriving while the board still
+  // thinks a card is in hand is ignored - correctly, and fatally for a test
+  // that sleeps 200ms and assumes the best.
+  //
+  // The tweens matter for a stranger reason. A card turns over by being
+  // squashed to nothing and back out, as two tweens end to end, so for one
+  // frame in the middle it is exactly zero wide - and a zero-wide card cannot
+  // be hit, because the hit test divides by that scale. One frame is nothing
+  // at sixty of them a second and a full second here, which made every
+  // gesture aimed at a freshly turned card a coin toss.
+  async settle(scene) {
+    await this.until(
+      `!${scene}.drag && ${scene}.tweens.getTweens().length === 0`,
+      'the board to come to rest',
+      30000,
+    );
+  }
+
   async until(expression, what, timeout = 20000) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
@@ -159,7 +182,7 @@ class Browser {
   // moves matter: the board only treats a press as a drag once it has
   // travelled, so a press-and-release at a distance is read as a tap on the
   // card it started on and tests the wrong path entirely.
-  async drag(from, to) {
+  async drag(from, to, scene) {
     await this.send('Input.dispatchMouseEvent', {
       type: 'mousePressed', x: from.x, y: from.y, button: 'left', clickCount: 1, buttons: 1,
     });
@@ -177,6 +200,7 @@ class Browser {
     await this.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased', x: to.x, y: to.y, button: 'left', clickCount: 1, buttons: 0,
     });
+    await this.settle(scene);
     await sleep(200);
   }
 
@@ -193,7 +217,53 @@ class Browser {
     await this.send('Input.dispatchMouseEvent', {
       type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1, buttons: 0,
     });
-    await sleep(120);
+    await this.settle(scene);
+    return held;
+  }
+
+  // A throw, stamped rather than raced.
+  //
+  // Each event carries an explicit timestamp `gap` milliseconds after the
+  // last, because the board decides what a flick is from the times on the
+  // events - and on a machine with no GPU, a round trip through the
+  // debugging protocol into a renderer drawing one frame a second takes the
+  // best part of a second per event. Dispatching as fast as this script can
+  // manage produced a gesture the board correctly judged to be very slow.
+  //
+  // So the speed here is stated rather than achieved, which is the honest
+  // thing for a test to do with a quantity the test cannot produce: what is
+  // being checked is that the board reads a gesture of a given speed the way
+  // it should, not that Chrome can be made to move a mouse quickly.
+  async flick(from, to, scene, gap = 12) {
+    const start = Date.now() / 1000;
+    const at = (i) => start + (i * gap) / 1000;
+    await this.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: from.x, y: from.y, button: 'left', clickCount: 1, buttons: 1,
+      timestamp: at(0),
+    });
+    // What the press picked up, before the throw moves it anywhere. Half the
+    // ways a flick can fail are really the press failing, and the two look
+    // identical from the state afterwards.
+    const held = await this.until(`!!${scene}.drag`, 'the flicked card to be picked up', 15000)
+      ? await this.evaluate(`${scene}.drag.sprites[0].card.id + ' x' + ${scene}.drag.count`)
+      : 'nothing';
+    const steps = 4;
+    for (let i = 1; i <= steps; i++) {
+      await this.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: from.x + ((to.x - from.x) * i) / steps,
+        y: from.y + ((to.y - from.y) * i) / steps,
+        button: 'left',
+        buttons: 1,
+        timestamp: at(i),
+      });
+    }
+    await this.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: to.x, y: to.y, button: 'left', clickCount: 1, buttons: 0,
+      timestamp: at(steps + 1),
+    });
+    await this.settle(scene);
+    await sleep(300);
     return held;
   }
 
@@ -324,7 +394,7 @@ async function main() {
   const stock = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
   const before = await browser.evaluate(`${STATE}.waste.length`);
   await browser.tap(stock.x, stock.y);
-  await sleep(400);
+  await browser.settle(SCENE);
   const after = await browser.evaluate(`${STATE}.waste.length`);
   check(after > before, `tapping the stock turns a card (${before} -> ${after})`);
 
@@ -354,7 +424,7 @@ async function main() {
     state.waste = [];
     state.stock = all.filter((c) => !run.includes(c)).map((c) => ((c.faceUp = false), c));
   `));
-  await sleep(400);
+  await browser.settle(SCENE);
 
   const runAt = await browser.evaluate(`${STATE}.tableau[0].map((c) => {
     const sprite = ${SCENE}.sprites.get(c.id);
@@ -409,15 +479,101 @@ async function main() {
     state.stock = all.filter((c) => c !== king && c !== queen).map((c) => ((c.faceUp = false), c));
     return { king: king.id, queen: queen.id };
   `));
-  await sleep(400);
+  await browser.settle(SCENE);
   check(!!dragSetup.queen, 'a position with one obvious drag in it');
 
   const wasteAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'waste', index: 0 })`));
   const kingAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'tableau', index: 0 })`));
-  await browser.drag(wasteAt, kingAt);
+  await browser.drag(wasteAt, kingAt, SCENE);
   const landed = await browser.evaluate(`${STATE}.tableau[0].map((c) => c.id).join(',')`);
   check(landed === `${dragSetup.king},${dragSetup.queen}`, `the dragged card lands on the king (${landed})`);
   check(await browser.evaluate(`${STATE}.waste.length`) === 0, 'and leaves the waste behind it');
+
+  // A card thrown at the foundations from halfway down the board, and let go
+  // nowhere near them.
+  //
+  // Releasing short of the foundation row is the whole point of the check: if
+  // the ace still gets home, it got there because the gesture said so rather
+  // than because the card was dropped on the right pile.
+  const flickSetup = await browser.evaluate(rig(`
+    const ace = pick('A', 'spades');
+    const five = pick('5', 'hearts');
+    ace.faceUp = true;
+    five.faceUp = true;
+    state.foundations = [[], [], [], []];
+    state.tableau = [[five], [], [], [ace], [], [], []];
+    state.waste = [];
+    state.stock = all.filter((c) => c !== ace && c !== five).map((c) => ((c.faceUp = false), c));
+    return { ace: ace.id };
+  `));
+  await browser.settle(SCENE);
+
+  const aceAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'tableau', index: 3 })`));
+  const thrown = await browser.flick(aceAt, { x: aceAt.x, y: aceAt.y - 150 }, SCENE);
+  const home = await browser.evaluate(`${STATE}.foundations[0].map((c) => c.id).join(',')`);
+  check(
+    home === flickSetup.ace,
+    `a flick sends the ace home from mid-board (held ${thrown}, foundation has ${home || 'nothing'})`,
+  );
+
+  // The same throw with nowhere to land. A flick that the foundations will
+  // not take has to behave like any other release - which here means the
+  // card goes back where it came from, not somewhere near the top of the
+  // screen.
+  const stayed = await browser.evaluate(rig(`
+    const five = pick('5', 'hearts');
+    five.faceUp = true;
+    state.foundations = [[], [], [], []];
+    state.tableau = [[five], [], [], [], [], [], []];
+    // Every card goes back somewhere. An earlier rig left the ace on a
+    // foundation that this one wiped, so the deck quietly lost a card - and
+    // the position the win check builds later came out with a king already
+    // home and a duplicate of it on the table, which cannot be finished and
+    // took a minute to say so.
+    state.waste = [];
+    state.stock = all.filter((c) => c !== five).map((c) => ((c.faceUp = false), c));
+    return { five: five.id };
+  `));
+  await browser.settle(SCENE);
+  const fiveAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'tableau', index: 0 })`));
+  await browser.flick(fiveAt, { x: fiveAt.x, y: fiveAt.y - 150 }, SCENE);
+  check(
+    await browser.evaluate(`${STATE}.tableau[0].map((c) => c.id).join(',')`) === stayed.five,
+    'a flick with no home leaves the card where it was',
+  );
+  check(
+    await browser.evaluate(`Math.round(${SCENE}.sprites.get('${stayed.five}').y)`)
+      === await browser.evaluate(`Math.round(${SCENE}.pileBase({ kind: 'tableau', index: 0 }).y)`),
+    'and puts the card back on its pile rather than leaving it in the air',
+  );
+
+  // The empty stock, pressed.
+  //
+  // Turning the waste back into a deck is the one move on this board made on
+  // a pile with nothing in it, and for a while it could not be made at all:
+  // presses were handled by card sprites, an empty pile has none, and the
+  // slot with the recycle arrow printed on it was doing nothing but
+  // promising.
+  await browser.evaluate(rig(`
+    const waste = all.slice(0, 5).map((c) => ((c.faceUp = true), c));
+    state.stock = [];
+    state.waste = waste;
+    state.foundations = [[], [], [], []];
+    state.tableau = [all.slice(5).map((c) => ((c.faceUp = false), c)), [], [], [], [], [], []];
+  `));
+  await browser.settle(SCENE);
+  const stockAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
+  await browser.tap(stockAt.x, stockAt.y);
+  await browser.settle(SCENE);
+  const recycled = await browser.evaluate(`({
+    stock: ${STATE}.stock.length,
+    waste: ${STATE}.waste.length,
+    passes: ${STATE}.passes,
+  })`);
+  check(
+    recycled.stock === 5 && recycled.waste === 0 && recycled.passes === 1,
+    `pressing an empty stock turns the waste back over (${JSON.stringify(recycled)})`,
+  );
 
   await browser.screenshot(shot);
   console.log(`  --   board written to ${shot}`);

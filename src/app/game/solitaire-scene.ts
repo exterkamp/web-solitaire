@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
 import {
+  BOARD_DROP_STEP,
+  BOARD_FLOOR,
   CARD_HEIGHT,
   CARD_WIDTH,
   COLUMN_PITCH,
+  MAX_BOARD_DROP,
   FIRST_FOUNDATION_COLUMN,
   FOUNDATION_COUNT,
   GAME_HEIGHT,
@@ -33,9 +36,11 @@ import {
   autoFinishMove,
   autoTarget,
   canDrop,
+  foundationIndexOf,
   liftable,
   timeBonus,
 } from './klondike';
+import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { Solitaire } from './session';
 import { drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface } from './table';
 
@@ -111,6 +116,16 @@ const FINISH_STEP_MS = 90;
 const GRAVITY = 0.34;
 const BOUNCE_DAMPING = 0.8;
 
+// Enough pointer history to cover the flick window at any sane event rate,
+// and no more: this is trimmed on every move event of every drag.
+const SAMPLE_LIMIT = 8;
+
+// The pop a flicked card makes as it lands, and how far it swells. Small -
+// what sells a throw is that the card left your hand before it arrived, and
+// this is only the full stop on the end of it.
+const LAND_POP_MS = 150;
+const LAND_POP_SCALE = 1.07;
+
 // A press that travels less than this and is over quickly is a tap, and taps
 // mean "send this somewhere sensible". Generous, because a thumb on glass
 // never holds still.
@@ -136,6 +151,10 @@ interface DragState {
   startY: number;
   startTime: number;
   moved: boolean;
+  // The last few pointer positions, for telling a throw from a carry. See
+  // gesture.ts - only the tail of the gesture is measured, so only the tail
+  // is kept.
+  samples: PointerSample[];
 }
 
 // One card falling out of a won game.
@@ -178,6 +197,14 @@ export class SolitaireScene extends Phaser.Scene {
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
   private sprites = new Map<string, CardSprite>();
   private slotHighlights = new Map<string, Phaser.GameObjects.Graphics>();
+  // The stock's slot as a thing that can be pressed, rather than as printing
+  // on the felt. See printLayout.
+  private stockZone!: Phaser.GameObjects.Zone;
+
+  // How far below its highest position the whole layout is currently sitting.
+  // See MAX_BOARD_DROP in config.ts: the board lives at the bottom of the
+  // room it is using, so the cards are where a thumb is.
+  private drop = MAX_BOARD_DROP;
 
   private drag?: DragState;
   // Set while the board is animating something the player must not interrupt
@@ -267,7 +294,11 @@ export class SolitaireScene extends Phaser.Scene {
     };
   }
 
-  private pileBase(ref: PileRef): { x: number; y: number } {
+  // Where a pile is printed on the felt, in the layout's own coordinates -
+  // which is what the printing itself is drawn in. The markings container
+  // carries the drop, so everything inside it moves together and none of it
+  // has to know how far down the board is sitting.
+  private slotPosition(ref: PileRef): { x: number; y: number } {
     const columns = this.topColumns();
     switch (ref.kind) {
       case 'stock':
@@ -281,6 +312,52 @@ export class SolitaireScene extends Phaser.Scene {
     }
   }
 
+  // And where it actually is. Cards are not in the markings container - they
+  // are moved one at a time and have to be told where to go - so everything
+  // outside the printing goes through this.
+  private pileBase(ref: PileRef): { x: number; y: number } {
+    const at = this.slotPosition(ref);
+    return { x: at.x, y: at.y + this.drop };
+  }
+
+  // The gaps down a fanned pile, before any squeezing. A face-down card shows
+  // a sliver and a face-up one shows its index, so the step depends on the
+  // card *above* the gap rather than on a fixed pitch.
+  private fanSteps(pile: readonly Card[]): number[] {
+    return pile.map((card, i) =>
+      i === 0 ? 0 : pile[i - 1].faceUp ? CARD_PEEK_HEIGHT : CARD_BACK_PEEK_HEIGHT,
+    );
+  }
+
+  private fanDepth(pile: readonly Card[]): number {
+    return this.fanSteps(pile).reduce((sum, step) => sum + step, 0);
+  }
+
+  /**
+   * Slides the whole layout to sit on the bottom of the room the tableau is
+   * actually using, and lifts it when a pile grows long enough to want that
+   * room back.
+   *
+   * Called before anything is placed, so the cards and the felt's printing
+   * agree about where the board is - the printing rides on the markings
+   * container and is tweened here; the cards get their new positions from
+   * pileBase a moment later, in the same render.
+   */
+  private updateDrop(animate: boolean): void {
+    const deepest = Math.max(0, ...this.session.state.tableau.map((pile) => this.fanDepth(pile)));
+    const slack = BOARD_FLOOR - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
+    const stepped = Math.floor(Math.max(0, slack) / BOARD_DROP_STEP) * BOARD_DROP_STEP;
+    const next = Math.min(stepped, MAX_BOARD_DROP);
+    if (next === this.drop) return;
+
+    this.drop = next;
+    if (animate) {
+      this.tweens.add({ targets: this.markings, y: next, duration: MOVE_MS, ease: 'Cubic.easeOut' });
+    } else {
+      this.markings.setY(next);
+    }
+  }
+
   // How far down the column each card of a tableau pile sits.
   //
   // A face-down card shows a sliver and a face-up one shows its index, so the
@@ -290,9 +367,13 @@ export class SolitaireScene extends Phaser.Scene {
   // but "cannot quite" is not a reason to draw a card where it cannot be
   // reached.
   private tableauOffsets(pile: readonly Card[]): number[] {
-    const steps = pile.map((card, i) => (i === 0 ? 0 : pile[i - 1].faceUp ? CARD_PEEK_HEIGHT : CARD_BACK_PEEK_HEIGHT));
+    const steps = this.fanSteps(pile);
     const total = steps.reduce((sum, step) => sum + step, 0);
-    const room = GAME_HEIGHT - 24 - TABLEAU_TOP_Y - CARD_HEIGHT;
+    // What is left between the pile's first card and the floor. With the
+    // board sliding to fit (see updateDrop), this is only ever short for the
+    // deepest pile Klondike can deal - which is what the squeeze below is
+    // for, and why it now almost never happens.
+    const room = BOARD_FLOOR - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
     const squeeze = total > room ? room / total : 1;
 
     const offsets: number[] = [];
@@ -332,11 +413,30 @@ export class SolitaireScene extends Phaser.Scene {
     // The stock's slot, with the turn-it-over arrow inside it. Drawn whether
     // or not there are cards on it: the arrow is what says an empty stock is
     // a button rather than a gap.
-    const stock = this.pileBase({ kind: 'stock', index: 0 });
+    const stock = this.slotPosition({ kind: 'stock', index: 0 });
     put([drawSlot(this, stock.x, stock.y, CARD_WIDTH, CARD_HEIGHT)]);
     put([drawRecycleMark(this, stock.x, stock.y, 15)]);
 
-    const waste = this.pileBase({ kind: 'waste', index: 0 });
+    // The stock takes presses whether or not there is a card on it.
+    //
+    // This was the top card's job alone, which works right up until the stock
+    // runs out - and then the one press that matters, the one that turns the
+    // waste back into a deck, has nothing left to land on. The arrow was
+    // drawn there promising exactly that and the slot underneath it was felt.
+    //
+    // In the markings layer, so it sits below the cards: while there is a
+    // stock to turn, the top card is what gets pressed, and they both mean
+    // the same thing anyway.
+    this.stockZone = this.add
+      .zone(stock.x, stock.y, CARD_WIDTH, CARD_HEIGHT)
+      .setInteractive(
+        new Phaser.Geom.Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT),
+        Phaser.Geom.Rectangle.Contains,
+      );
+    this.markings.add(this.stockZone);
+    this.markings.setY(this.drop);
+
+    const waste = this.slotPosition({ kind: 'waste', index: 0 });
     put([drawSlot(this, waste.x, waste.y, CARD_WIDTH, CARD_HEIGHT)]);
 
     // Each foundation carries a ghost of the suit it is reserved for. That
@@ -344,7 +444,7 @@ export class SolitaireScene extends Phaser.Scene {
     // that happens to be empty - so the board has to say which is which
     // before there is a card on it to say it for them.
     SUITS.forEach((suit, i) => {
-      const at = this.pileBase({ kind: 'foundation', index: i });
+      const at = this.slotPosition({ kind: 'foundation', index: i });
       put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
       const ghost = this.add
         .image(at.x, at.y, ghostSuitKey(this, suit))
@@ -354,7 +454,7 @@ export class SolitaireScene extends Phaser.Scene {
     });
 
     for (let i = 0; i < TABLEAU_COUNT; i++) {
-      const at = this.pileBase({ kind: 'tableau', index: i });
+      const at = this.slotPosition({ kind: 'tableau', index: i });
       put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
     }
 
@@ -367,7 +467,7 @@ export class SolitaireScene extends Phaser.Scene {
     // over it. Made once rather than per drag: a Graphics object built in the
     // middle of a gesture is a stutter in the middle of a gesture.
     const highlight = (ref: PileRef) => {
-      const at = this.pileBase(ref);
+      const at = this.slotPosition(ref);
       const g = this.add.graphics();
       g.lineStyle(2.5, HIGHLIGHT_COLOR, 0.95);
       g.strokeRoundedRect(at.x - CARD_WIDTH / 2, at.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 6);
@@ -390,6 +490,7 @@ export class SolitaireScene extends Phaser.Scene {
 
     this.drawCount = drawCount;
     this.session = new Solitaire(drawCount);
+    this.updateDrop(false);
     this.busy = true;
 
     // Every card starts on the stock, face down, and is dealt from there.
@@ -472,6 +573,7 @@ export class SolitaireScene extends Phaser.Scene {
    */
   private renderBoard(animate = true): void {
     const state = this.session.state;
+    this.updateDrop(animate);
     const place = (ref: PileRef, pile: readonly Card[]) => {
       pile.forEach((card, index) => {
         const sprite = this.sprites.get(card.id);
@@ -553,6 +655,13 @@ export class SolitaireScene extends Phaser.Scene {
 
   private onCardDown(pointer: Phaser.Input.Pointer, object: Phaser.GameObjects.GameObject): void {
     if (this.locked || this.drag) return;
+    // The empty stock, which is a slot rather than a card. Turning the waste
+    // back over is the only move on this board that can be made on a pile
+    // with nothing in it.
+    if (object === this.stockZone) {
+      this.draw();
+      return;
+    }
     const sprite = object as CardSprite;
     if (!(sprite instanceof CardSprite)) return;
 
@@ -585,6 +694,7 @@ export class SolitaireScene extends Phaser.Scene {
       startY: board.y,
       startTime: this.time.now,
       moved: false,
+      samples: [{ x: board.x, y: board.y, t: pointer.downTime }],
     };
     for (const s of sprites) this.cardLayer.bringToTop(s);
   }
@@ -599,6 +709,9 @@ export class SolitaireScene extends Phaser.Scene {
     ) {
       drag.moved = true;
     }
+
+    drag.samples.push({ x: board.x, y: board.y, t: pointer.moveTime });
+    if (drag.samples.length > SAMPLE_LIMIT) drag.samples.shift();
 
     const head = { x: board.x + drag.offsetX, y: board.y + drag.offsetY };
     drag.sprites.forEach((sprite, i) => {
@@ -616,16 +729,23 @@ export class SolitaireScene extends Phaser.Scene {
     const board = this.toBoard(pointer);
     const quick = this.time.now - drag.startTime < TAP_MS;
     const head = { x: board.x + drag.offsetX, y: board.y + drag.offsetY };
-    // A press that went nowhere is a tap, and a tap asks the rules where the
-    // card belongs instead of naming a destination itself.
-    const to = !drag.moved && quick
-      ? autoTarget(this.session.state, drag.from, drag.count)
-      : this.dropTarget(head);
+    // Three ways to say where a card goes, in order of how deliberate they
+    // are. A throw at the foundations is the most specific thing a gesture
+    // can mean here, so it is asked first and is allowed to ignore where the
+    // card happened to be let go of. A press that went nowhere is a tap, and
+    // asks the rules where the card belongs. Anything else is a carry, and
+    // lands where it was put down.
+    const flick = this.flickTarget(drag, pointer, board);
+    const to = flick
+      ?? (!drag.moved && quick
+        ? autoTarget(this.session.state, drag.from, drag.count)
+        : this.dropTarget(head));
 
     this.drag = undefined;
     const played = to
       ? this.play({ kind: 'play', from: drag.from, to, count: drag.count })
       : false;
+    if (played && flick) this.landHard(drag.sprites[0]);
     // A refused drop puts the run back where it came from rather than leaving
     // it where the thumb let go. Snapping back is also the only feedback a
     // wrong move gets, and it is enough: nothing was lost, so nothing needs
@@ -642,6 +762,48 @@ export class SolitaireScene extends Phaser.Scene {
       });
       this.restack();
     }
+  }
+
+  /**
+   * The foundation a card was thrown at, if it was thrown at all.
+   *
+   * Foundations only, and single cards only - a foundation takes one card at
+   * a time, so there is nothing a flicked run could mean. Where the throw is
+   * refused, this answers nothing and the release goes on to be treated as an
+   * ordinary drop: a flick that finds no home should cost no more than a drag
+   * to the same place would have.
+   */
+  private flickTarget(
+    drag: DragState, pointer: Phaser.Input.Pointer, board: { x: number; y: number },
+  ): PileRef | undefined {
+    if (drag.count !== 1 || !drag.moved) return undefined;
+    const velocity = pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime });
+    if (!isUpwardFlick(velocity)) return undefined;
+
+    const cards = liftable(this.session.state, drag.from, 1);
+    if (!cards) return undefined;
+    const home: PileRef = { kind: 'foundation', index: foundationIndexOf(cards[0].suit) };
+    return canDrop(this.session.state, cards, home) ? home : undefined;
+  }
+
+  // A card that arrived under its own steam, rather than being set down.
+  // Rides on top of the flight the render started - one tween owns the
+  // position and this one owns the scale, so neither has to know about the
+  // other.
+  private landHard(sprite: CardSprite): void {
+    this.tweens.add({
+      targets: sprite,
+      scaleX: LAND_POP_SCALE,
+      scaleY: LAND_POP_SCALE,
+      duration: LAND_POP_MS / 2,
+      delay: MOVE_MS * 0.8,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      // Set rather than tweened back, because a flip can start on this sprite
+      // while the pop is running and the two would fight over scaleX. The
+      // flip wins; this only has to leave the card the size it found it.
+      onComplete: () => sprite.setScale(1),
+    });
   }
 
   private releaseDrag(): void {
@@ -862,7 +1024,7 @@ export class SolitaireScene extends Phaser.Scene {
     const zones: { ref: PileRef; rect: Phaser.Geom.Rectangle }[] = [];
 
     for (let i = 0; i < FOUNDATION_COUNT; i++) {
-      const at = this.pileBase({ kind: 'foundation', index: i });
+      const at = this.slotPosition({ kind: 'foundation', index: i });
       zones.push({
         ref: { kind: 'foundation', index: i },
         rect: new Phaser.Geom.Rectangle(at.x - CARD_WIDTH / 2, at.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT),

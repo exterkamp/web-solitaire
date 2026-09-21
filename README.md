@@ -39,6 +39,10 @@ perhaps one hand in ten.
   it by accident is how it gets wasted.
 * **Drag** a card, or a run of cards, to say exactly where it goes. The pile
   under it lights up only where the move is legal; a refused drop snaps back.
+* **Flick** a card up the board and it goes to its foundation, wherever you
+  let go of it. One card at a time, since that is all a foundation takes, and
+  a throw the foundations will not accept costs nothing — it lands as an
+  ordinary drop would have.
 * **Undo** as far back as you like, including past a win. Undoing costs
   nothing: a score is a measure of the game you played, and an undone move is
   a game that did not happen.
@@ -51,8 +55,9 @@ perhaps one hand in ten.
   bounce off the bottom of the screen, which is the oldest piece of
   choreography in computer games and the only reason anybody finishes a hand
   they have already won.
-* Unlimited passes through the deck, with the usual price: see the scoring
-  below.
+* The **stock** turns a card whether you press the top of it or the empty
+  slot it leaves behind — the second of those is how the waste goes back to
+  being a deck. Unlimited passes, with the usual price: see the scoring below.
 
 ### Scoring
 
@@ -128,6 +133,15 @@ coordinate in the game stays in the original units. 720 rather than a phone's
 own proportions because seven columns of cards decide the width, the width
 decides how big a card is, and any height beyond the longest possible fan is
 felt nobody plays on — bought by making every card smaller.
+
+**Within those units, the layout slides down to meet your thumbs.** Those 720
+units reserve room for the deepest pile Klondike can deal, and a game spends
+almost none of its time near it — so the whole layout, printing included, sits
+at the bottom of the room the tableau is actually using and rises only when a
+pile grows long enough to want that room back. It moves in steps of about one
+card index rather than following the deepest pile exactly, because a table
+that shifted on most moves would be worse than one sitting too high. See
+`MAX_BOARD_DROP` in `config.ts`.
 
 **Phaser owns the cards and nothing else.** The score, the clock, the buttons
 and the win panel are DOM laid over the canvas, because they are text and

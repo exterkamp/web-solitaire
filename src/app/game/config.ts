@@ -53,12 +53,40 @@ export const FIRST_FOUNDATION_COLUMN = 3;
 // finish before it reaches the first foundation.
 export const WASTE_FAN_X = 15;
 
-// Where the tableau begins, measured to the top edge of the first card. Far
-// enough below the top row that a long pile doesn't read as continuing it,
-// and close enough that the longest one still finishes above the rail. The
-// band between the two is where the layout's lettering is printed - it is the
-// only strip of felt on this board that no card ever covers.
+// Where the tableau begins, measured to the top edge of the first card, with
+// the board pushed as far up as it ever goes. Far enough below the top row
+// that a long pile doesn't read as continuing it, and close enough that the
+// longest one still finishes above the rail. The band between the two is
+// where the layout's lettering is printed - it is the only strip of felt on
+// this board that no card ever covers.
 export const TABLEAU_TOP_Y = 162;
+
+// The lowest a card's bottom edge may reach, clear of the rail.
+export const BOARD_FLOOR = 700;
+
+// How far down the whole layout slides when the tableau is not using its full
+// height, and in what steps.
+//
+// The measurements above reserve room for the deepest pile Klondike can
+// produce - a king-to-ace run on top of six face-down cards - and a game
+// spends almost none of its time anywhere near that. The rest of the time
+// that reserved room is empty felt at the bottom of the screen, with every
+// card up at the top where a thumb holding a phone cannot comfortably reach
+// them. So the board sits at the bottom of the space it is actually using,
+// and rises only when a pile grows long enough to need the room back.
+//
+// Stepped rather than continuous, and this is the important part: a layout
+// that followed the deepest pile exactly would shift the whole table by the
+// height of one index every time that pile gained or lost a card, which is
+// most moves. In steps of a step-and-a-bit, the board moves a handful of
+// times a game, far enough to be read as deliberate.
+//
+// The cap is four of those steps, which on a phone is most of the way from
+// the middle of the screen to the bottom of it. What it costs is a band of
+// bare felt above the foundations, which is no loss: a table is allowed to
+// have table on it, and nothing was ever played up there.
+export const MAX_BOARD_DROP = 260;
+export const BOARD_DROP_STEP = 65;
 
 // The four natural suits, and nothing else - this is a plain deck. They are
 // in the order the foundations sit in, left to right.
