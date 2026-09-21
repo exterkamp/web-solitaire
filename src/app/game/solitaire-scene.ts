@@ -194,10 +194,13 @@ export class SolitaireScene extends Phaser.Scene {
     super('solitaire');
   }
 
-  // Whether the board is animating something the player should not be able
-  // to interrupt.
+  // Whether the board is animating something the player should not be able to
+  // interrupt: the deal, the automatic finish, or the cards falling out of a
+  // won game. The last one matters more than it looks - the state still says
+  // those cards are on their foundations, so a tap on one would be a legal
+  // move on a card that is currently bouncing off the bottom of the screen.
   private get locked(): boolean {
-    return this.busy || this.finishing;
+    return this.busy || this.finishing || !!this.cascade;
   }
 
   init(data: BoardInit): void {
@@ -674,9 +677,16 @@ export class SolitaireScene extends Phaser.Scene {
     return this.session?.elapsed() ?? 0;
   }
 
-  /** Steps back one move. */
+  /**
+   * Steps back one move.
+   *
+   * The one thing that is allowed during a cascade, because undoing a win is
+   * a reasonable thing to want - somebody who finishes a hand and then wants
+   * to keep playing the deal has no other way back. It stops the cascade
+   * rather than waiting for it.
+   */
   undo(): void {
-    if (this.locked) return;
+    if (this.busy || this.finishing) return;
     if (!this.session.undo()) return;
     this.stopCascade();
     this.renderBoard(true);
