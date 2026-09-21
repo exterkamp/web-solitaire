@@ -440,8 +440,20 @@ export class SolitaireScene extends Phaser.Scene {
 
   private makeSprite(card: Card, x: number, y: number): CardSprite {
     const sprite = new CardSprite(this, x, y, { ...card });
+    // The hit area is in texture space - 0,0 at the card's top-left corner -
+    // and not centred on the sprite, however much a container that draws
+    // itself around its own origin suggests otherwise.
+    //
+    // Phaser normalises a press by *adding* the display origin to the local
+    // point before testing it, so for a container, whose origin is always its
+    // middle, a rectangle of (-w/2, -h/2, w, h) is tested against a point
+    // that has already had (w/2, h/2) added to it. The effect is a hit box
+    // half a card up and half a card to the left of the card it belongs to:
+    // every press landed on the card above the one aimed at, the right half
+    // of every card was dead, and the only part of a pile that could be
+    // picked up was the top edge.
     sprite.setInteractive(
-      new Phaser.Geom.Rectangle(-CARD_WIDTH / 2, -CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT),
+      new Phaser.Geom.Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT),
       Phaser.Geom.Rectangle.Contains,
     );
     this.cardLayer.add(sprite);

@@ -150,8 +150,13 @@ npm run smoke -- --host=http://localhost:4380
 
 It drives a real headless Chrome over the debugging protocol: deals a hand,
 checks the deal behind the board, taps the stock at the coordinates the board
-says it is at, drags a queen onto a king, rigs a position one move from won,
-presses Finish, and waits for the win panel and the record book. It catches
+says it is at, presses all four corners of a card and the exposed index of two
+buried ones to check that a hit area is where its card is, drags a queen onto
+a king, rigs a position one move from won, presses Finish, and waits for the
+win panel and the record book. `--dpr=2` runs the lot at a doubled pixel
+ratio, which is worth doing after anything touching input or layout: the scene
+scales its root container by that number, so a hit area can be right at 1 and
+wrong at 2. It catches
 the class of fault a unit test cannot see at all — a scene that throws on
 start, art that 404s, a tap that lands on nothing, a win that never reaches the
 page — and it writes a screenshot to `/tmp/solitaire-smoke.png`, which is the

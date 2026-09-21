@@ -27,6 +27,12 @@ const flag = (name, fallback) => {
 };
 const host = flag('host', 'http://localhost:4380');
 const shot = flag('shot', '/tmp/solitaire-smoke.png');
+// The screen's pixel ratio, which is not cosmetic here: the scene scales its
+// root container by it, so every coordinate the board works in is multiplied
+// by this number on the way to the canvas and divided by it on the way back.
+// A hit area that is right at 1 and wrong at 2 is a board that works on a
+// laptop and not on a phone, so it is worth being able to ask for both.
+const dpr = flag('dpr', '1');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const problems = [];
@@ -46,6 +52,7 @@ class Browser {
     this.logs = [];
     this.process = spawn('google-chrome', [
       '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
+      `--force-device-scale-factor=${dpr}`,
       '--window-size=480,900', `--remote-debugging-port=${port}`,
       `--user-data-dir=${mkdtempSync(join(tmpdir(), 'solitaire-smoke-'))}`,
       'about:blank',
@@ -173,6 +180,23 @@ class Browser {
     await sleep(200);
   }
 
+  // Presses, asks the board what it picked up, and lets go without moving.
+  // The answer is the whole of what a hit area is for.
+  async grab(point, scene) {
+    await this.send('Input.dispatchMouseEvent', {
+      type: 'mousePressed', x: point.x, y: point.y, button: 'left', clickCount: 1, buttons: 1,
+    });
+    await sleep(60);
+    const held = await this.evaluate(
+      `${scene}.drag ? ${scene}.drag.sprites[0].card.id + ' x' + ${scene}.drag.count : 'nothing'`,
+    );
+    await this.send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1, buttons: 0,
+    });
+    await sleep(120);
+    return held;
+  }
+
   async screenshot(path) {
     const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(path, Buffer.from(data, 'base64'));
@@ -208,7 +232,35 @@ const onPage = (expression) => `(() => {
   return { x: box.left + at.x * ratio * scale, y: box.top + at.y * ratio * scale };
 })()`;
 
+// A position dealt by hand.
+//
+// `body` is JavaScript run in the page with `state` in scope; it rearranges
+// the cards, and this takes care of the rest.
+//
+// The killAll matters and is not tidiness. A press that picks a card up and
+// finds nowhere to put it tweens the card back where it came from, and that
+// tween outlives the press by a couple of hundred milliseconds. Rearranging
+// the state underneath it means the tween then finishes by dragging the
+// sprite back to where the card used to be - so the next press lands on an
+// empty patch of felt and the board looks broken when it is only out of date.
+// A player cannot produce this, because every snap-back returns a card to the
+// place it still belongs; only a test that moves cards without telling the
+// board can.
+const rig = (body) => `(() => {
+  ${SCENE}.tweens.killAll();
+  const state = ${STATE};
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const suits = ['spades','hearts','diamonds','clubs'];
+  const all = [...state.stock, ...state.waste, ...state.foundations.flat(), ...state.tableau.flat()];
+  const pick = (rank, suit) => all.find((c) => c.rank === rank && c.suit === suit);
+  const answer = (() => { ${body} })();
+  ${SCENE}.renderBoard(false);
+  ${SCENE}.publish();
+  return answer ?? true;
+})()`;
+
 async function main() {
+  console.log(`  --   device pixel ratio ${dpr}`);
   // A port nobody else is on. A fixed one looked fine and was not: a Chrome
   // left over from an earlier run still answers on it, and the test then
   // drives *that* browser - with the last run's localStorage in it, which is
@@ -285,6 +337,60 @@ async function main() {
     'the move counter follows the board',
   );
 
+  // What a press picks up, all over a card and all down a pile.
+  //
+  // This is the check that a hit area is where its card is, and it is here
+  // because it once was not: Phaser adds a container's display origin to the
+  // local point before testing it, so a hit box written as a rectangle around
+  // the sprite's middle sits half a card up and half a card left of the card
+  // it belongs to. The board still worked well enough for a test that only
+  // ever pressed the middle of a lone card - which is exactly what the drag
+  // below was doing - and was unplayable for anybody actually holding it.
+  await browser.evaluate(rig(`
+    const run = [pick('K', 'spades'), pick('Q', 'hearts'), pick('J', 'spades')];
+    for (const card of run) card.faceUp = true;
+    state.foundations = [[], [], [], []];
+    state.tableau = [run, [], [], [], [], [], []];
+    state.waste = [];
+    state.stock = all.filter((c) => !run.includes(c)).map((c) => ((c.faceUp = false), c));
+  `));
+  await sleep(400);
+
+  const runAt = await browser.evaluate(`${STATE}.tableau[0].map((c) => {
+    const sprite = ${SCENE}.sprites.get(c.id);
+    return { id: c.id, x: sprite.x, y: sprite.y };
+  })`);
+
+  // The top card of the pile is the one that is fully visible, so a press
+  // anywhere on it - all four quadrants, not just the middle - is a press on
+  // that card and nothing else.
+  const top = runAt[2];
+  for (const [label, dx, dy] of [
+    ['middle', 0, 0],
+    ['upper left', -22, -32],
+    ['lower right', 22, 32],
+    ['lower left', -22, 32],
+  ]) {
+    const held = await browser.grab(
+      await browser.evaluate(onPage(`({ x: ${top.x + dx}, y: ${top.y + dy} })`)),
+      SCENE,
+    );
+    check(held === `${top.id} x1`, `a press on the ${label} of a card picks up that card (${held})`);
+  }
+
+  // And a press on the sliver of a buried card picks up that card and
+  // everything on top of it - which is how a run gets moved at all.
+  for (const [label, card, expect] of [
+    ['the king', runAt[0], 3],
+    ['the queen', runAt[1], 2],
+  ]) {
+    const held = await browser.grab(
+      await browser.evaluate(onPage(`({ x: ${card.x}, y: ${card.y - 30} })`)),
+      SCENE,
+    );
+    check(held === `${card.id} x${expect}`, `a press on ${label}'s index lifts the run (${held})`);
+  }
+
   // A card dragged out of the waste onto the pile that will take it.
   //
   // Rigged rather than waited for: a dealt game may not offer a drag for
@@ -292,23 +398,18 @@ async function main() {
   // sometimes doesn't. What is being checked is the gesture, not the deal -
   // the pick-up, the pointer following, the drop landing on the right pile
   // and the rules agreeing.
-  const dragSetup = await browser.evaluate(`(() => {
-    const state = ${STATE};
-    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    const all = [...state.stock, ...state.waste, ...state.foundations.flat(), ...state.tableau.flat()];
-    const king = all.find((c) => c.rank === 'K' && c.suit === 'spades');
-    const queen = all.find((c) => c.rank === 'Q' && c.suit === 'hearts');
-    const rest = all.filter((c) => c !== king && c !== queen);
+  const dragSetup = await browser.evaluate(rig(`
+    const king = pick('K', 'spades');
+    const queen = pick('Q', 'hearts');
     king.faceUp = true;
     queen.faceUp = true;
     state.foundations = [[], [], [], []];
     state.tableau = [[king], [], [], [], [], [], []];
     state.waste = [queen];
-    state.stock = rest.map((c) => ({ ...c, faceUp: false }));
-    ${SCENE}.renderBoard(false);
-    ${SCENE}.publish();
+    state.stock = all.filter((c) => c !== king && c !== queen).map((c) => ((c.faceUp = false), c));
     return { king: king.id, queen: queen.id };
-  })()`);
+  `));
+  await sleep(400);
   check(!!dragSetup.queen, 'a position with one obvious drag in it');
 
   const wasteAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'waste', index: 0 })`));
@@ -324,22 +425,18 @@ async function main() {
   // A game rigged one card short of won, then finished and watched. This is
   // the end of the game - the finish, the cascade, the win panel, the record
   // book - and none of it is reachable in a smoke test any other way.
-  await browser.evaluate(`(() => {
-    const state = ${STATE};
-    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    const suits = ['spades','hearts','diamonds','clubs'];
-    const all = [...state.stock, ...state.waste, ...state.foundations.flat(), ...state.tableau.flat()];
+  await browser.evaluate(rig(`
     for (const card of all) card.faceUp = true;
     state.stock = [];
     state.waste = [];
     state.foundations = suits.map((suit) =>
-      all.filter((c) => c.suit === suit).sort((a, b) => ranks.indexOf(a.rank) - ranks.indexOf(b.rank)).slice(0, 12));
-    state.tableau = suits.map((suit) => all.filter((c) => c.suit === suit && c.rank === 'K'))
+      all.filter((c) => c.suit === suit)
+        .sort((a, b) => ranks.indexOf(a.rank) - ranks.indexOf(b.rank))
+        .slice(0, 12));
+    state.tableau = suits
+      .map((suit) => all.filter((c) => c.suit === suit && c.rank === 'K'))
       .concat([[], [], []]);
-    ${SCENE}.renderBoard(false);
-    ${SCENE}.publish();
-    return true;
-  })()`);
+  `));
   await sleep(300);
   check(await browser.evaluate(`${SCENE}.session.canFinish`), 'the finish is offered once nothing is hidden');
 
@@ -356,7 +453,11 @@ async function main() {
   }
   check(true, 'the game finishes itself');
 
-  if (!await browser.until(`!!document.querySelector('.win')`, 'the win panel', 30000)) {
+  // Generous, because this one waits on the board's own clock: the win panel
+  // is held back 1.4 seconds so the cascade gets a moment to itself, and a
+  // second of board time is a long time on a machine drawing one frame of
+  // fifty-two falling cards a second.
+  if (!await browser.until(`!!document.querySelector('.win')`, 'the win panel', 90000)) {
     return finish(browser);
   }
   const won = await browser.evaluate(`({
