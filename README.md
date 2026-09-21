@@ -26,6 +26,40 @@ open http://localhost:8083
 production and development, 8082 is exterkamp.codes, and 8085 is the chiptune
 studio. `SOLITAIRE_PORT` overrides it.
 
+## Published
+
+`solitaire.exterkamp.codes`, by the same path Nertz takes:
+
+```
+browser -> Cloudflare -> cloudflared (the personal site's stack)
+        -> traefik:443 (wildcard cert, chain-tunnel)
+        -> solitaire-web:80 on the `proxyhosts` network
+```
+
+Three pieces, in three places:
+
+1. **The container joins `proxyhosts`**, Traefik's shared network, and answers
+   there to `solitaire-web`. That is in this repo's `docker-compose.yml`. The
+   published 8083 is unrelated to the public path and exists so the game can
+   be played on the machine itself.
+2. **A router**, in `~/code/traefik/dynamic/routers.yml`: `solitaire` ->
+   `svc-solitaire` -> `http://solitaire-web:80`, behind `chain-tunnel@file` -
+   crowdsec, security headers and rate limits keyed on `CF-Connecting-IP`, and
+   deliberately no forward auth, because a login wall on a game of solitaire
+   would be an odd thing to build.
+3. **A DNS record and a public hostname on the tunnel.** The record is a
+   proxied CNAME to `f3629069-….cfargotunnel.com`, the tunnel the personal
+   site's stack runs. The hostname also has to be listed on that tunnel, in
+   Cloudflare's Zero Trust dashboard, pointing at `https://traefik:443` -
+   the tunnel is remotely managed, so its ingress rules live at Cloudflare
+   rather than in any file here. Without that entry the name resolves, reaches
+   cloudflared, and gets a bare 404 with none of Traefik's headers on it,
+   which is the quickest way to tell this step is missing.
+
+Because the tunnel belongs to the personal site's stack, this route goes down
+whenever that stack is restarted, and the symptom will not point at solitaire.
+Nertz has the same caveat, recorded in the same words next to its own router.
+
 ## The game
 
 Klondike, drawing one card or three. Both are offered from the menu and are

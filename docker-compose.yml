@@ -15,6 +15,22 @@ services:
     restart: unless-stopped
     ports:
       - "${SOLITAIRE_PORT:-8083}:80"
+    # Two networks, for two ways in.
+    #
+    # `default` is this stack's own, and the published port above is the one
+    # to play on while sitting next to the machine. `proxyhosts` is Traefik's,
+    # shared and created outside this stack, and is how the game is reached
+    # from the internet: Traefik resolves `solitaire-web` on it by name and
+    # terminates TLS with the wildcard certificate, and the name arrives
+    # through a Cloudflare tunnel. See dynamic/routers.yml in ~/code/traefik.
+    #
+    # Nothing on proxyhosts needs a published port - Nertz's public container
+    # has none - but this one keeps 8083 anyway, because a solitaire game that
+    # can only be reached through the internet is a silly thing to have on
+    # your own laptop.
+    networks:
+      - default
+      - proxyhosts
     healthcheck:
       # The index page is the whole application, so if it answers, the game is
       # up. There is nothing else to check - no database to reach, no server
@@ -23,3 +39,13 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+networks:
+  default:
+  # Traefik's shared network. Created outside this stack, by whoever brought
+  # Traefik up - which is why `external` is not optional here: if compose were
+  # allowed to create it, a `docker compose down` could take the whole
+  # household's routing with it.
+  proxyhosts:
+    external: true
+    name: proxyhosts
