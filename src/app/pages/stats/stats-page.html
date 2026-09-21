@@ -1,0 +1,46 @@
+<div class="menu">
+  <h1>Record</h1>
+  <p class="record__note">
+    Kept in this browser and nowhere else. No account, no server - which also
+    means clearing your browser's storage clears this.
+  </p>
+
+  <table class="record">
+    <thead>
+      <tr>
+        <th scope="col"><span class="record__corner">Draw</span></th>
+        @for (draw of draws; track draw) {
+          <th scope="col">{{ draw === 1 ? 'One' : 'Three' }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows; track row.label) {
+        <tr>
+          <th scope="row">{{ row.label }}</th>
+          @for (draw of draws; track draw) {
+            <td>{{ row.value(mode(draw)) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (confirming()) {
+    <p class="record__note record__note--warn">
+      This cannot be undone. Nothing else goes with it - your deck and your
+      settings stay as they are.
+    </p>
+    <button type="button" class="button button--danger" (click)="clear()">
+      Yes, clear the record
+    </button>
+    <button type="button" class="button button--quiet" (click)="confirming.set(false)">
+      Keep it
+    </button>
+  } @else {
+    <a class="button" routerLink="/">Back</a>
+    <button type="button" class="button button--quiet" (click)="confirming.set(true)">
+      Clear record
+    </button>
+  }
+</div>

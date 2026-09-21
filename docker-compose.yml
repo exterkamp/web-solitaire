@@ -1,0 +1,24 @@
+# The game, served.
+#
+#   docker compose up -d --build
+#   open http://localhost:8082
+#
+# 8082 because 8080 and 8081 are Nertz - production and development - and 8085
+# is the chiptune studio. Override with SOLITAIRE_PORT if that ever collides
+# with something.
+services:
+  solitaire-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${SOLITAIRE_PORT:-8082}:80"
+    healthcheck:
+      # The index page is the whole application, so if it answers, the game is
+      # up. There is nothing else to check - no database to reach, no server
+      # to be healthy on the game's behalf.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

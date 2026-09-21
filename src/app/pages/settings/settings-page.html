@@ -1,0 +1,94 @@
+<div class="menu">
+  <h1>Settings</h1>
+
+  <div class="setting">
+    <span class="setting__label">Deck</span>
+    <p class="setting__note">
+      The court cards and the pattern on the back. Seven of them, all the same
+      twelve figures in a different hand.
+    </p>
+    <div class="setting__decks">
+      @for (theme of themes; track theme) {
+        <button
+          type="button"
+          class="deck"
+          [class.deck--active]="settings.deckTheme() === theme"
+          (click)="settings.deckTheme.set(theme)"
+        >
+          <span
+            class="deck__back"
+            [style.background-image]="backImage(theme)"
+            [style.background-color]="css(settings.backColor())"
+          ></span>
+          <span class="deck__label">{{ labels[theme] }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="setting">
+    <span class="setting__label">Back colour</span>
+    <p class="setting__note">
+      What the pattern is printed over. In Nertz this is how you tell four
+      players apart; here it is simply yours.
+    </p>
+    <div class="setting__colors">
+      @for (color of colors; track color) {
+        <button
+          type="button"
+          class="swatch"
+          [class.swatch--active]="settings.backColor() === color"
+          [style.background-color]="css(color)"
+          [attr.aria-label]="'Card back colour ' + css(color)"
+          (click)="settings.backColor.set(color)"
+        ></button>
+      }
+    </div>
+  </div>
+
+  <div class="setting">
+    <span class="setting__label">Cards per draw</span>
+    <p class="setting__note">
+      One is the version most people have played. Three is the game as it
+      comes off a real deck, and is much the harder of the two.
+    </p>
+    <div class="setting__options">
+      @for (draw of draws; track draw) {
+        <button
+          type="button"
+          class="pill"
+          [class.pill--active]="settings.drawCount() === draw"
+          (click)="settings.drawCount.set(draw)"
+        >
+          <span class="pill__label">{{ draw === 1 ? 'One' : 'Three' }}</span>
+          <span class="pill__hint">
+            {{ draw === 1 ? 'Every card reachable' : 'Two free passes' }}
+          </span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="setting">
+    <span class="setting__label">Handedness</span>
+    <p class="setting__note">
+      Which end of the top row the stock sits at. It is tapped more than
+      everything else on the board put together, so it belongs under a thumb.
+    </p>
+    <div class="setting__options">
+      @for (hand of hands; track hand.value) {
+        <button
+          type="button"
+          class="pill"
+          [class.pill--active]="settings.handedness() === hand.value"
+          (click)="settings.handedness.set(hand.value)"
+        >
+          <span class="pill__label">{{ hand.label }}</span>
+          <span class="pill__hint">{{ hand.hint }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
+  <a class="button" routerLink="/">Back</a>
+</div>

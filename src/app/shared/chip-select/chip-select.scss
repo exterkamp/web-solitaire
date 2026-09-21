@@ -1,0 +1,67 @@
+@use 'type' as *;
+
+// The row itself is the host, so a page spaces it like any other element.
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+// Greyed rather than hidden: the setting still says what the board will be,
+// it just cannot be argued with while hyper is selected.
+:host(.chip-select--off) {
+  opacity: 0.4;
+}
+
+.chip-select__label {
+  @include display-type;
+  font-size: 0.9rem;
+  color: #cfead0;
+}
+
+.chip-select__options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+// Round, and big enough to hit with a thumb: 44px is the smallest target that
+// reliably takes a tap, and all of these are pressed on a phone.
+.chip {
+  width: 44px;
+  height: 44px;
+  @include numeric-type;
+  font-size: 1.1rem;
+  color: #fdfdfd;
+  background: transparent;
+  border: 2px solid #fdfdfd;
+  border-radius: 50%;
+  cursor: pointer;
+
+  // A word rather than a digit, so it takes the width it needs and its ends
+  // stay as round as the circles beside it.
+  &--wide {
+    width: auto;
+    padding: 0 1rem;
+    border-radius: 22px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(253, 253, 253, 0.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 3px;
+  }
+
+  &--active {
+    background: #17594a;
+    border-color: #ffd166;
+    color: #ffd166;
+  }
+}

@@ -1,0 +1,34 @@
+@use 'type' as *;
+@use 'page' as *;
+
+.menu {
+  @include page-fits($gap: 1rem, $padding: 1.5rem 1rem);
+}
+
+h1 {
+  @include display-type;
+  font-size: clamp(2.6rem, 13vw, 4.5rem);
+  color: #fdfdfd;
+  margin: 0;
+}
+
+// The variant, under the name. Klondike is what almost everyone means by
+// "solitaire", so this is a label rather than a choice - but it is the kind
+// of label that saves an argument.
+.menu__sub {
+  @include display-type;
+  font-size: 0.95rem;
+  color: #9fc4a4;
+  margin: -0.75rem 0 0.5rem;
+}
+
+.menu__note {
+  @include numeric-type;
+  font-size: 0.82rem;
+  color: #9fc4a4;
+  margin: -0.5rem 0 0.25rem;
+}
+
+app-chip-select {
+  margin-bottom: 0.5rem;
+}

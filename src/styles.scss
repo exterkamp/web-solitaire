@@ -1,0 +1,259 @@
+@use 'type' as *;
+
+/* You can add global styles to this file, and also import other style files */
+
+/* Both faces are variable and both are the latin subset, so one file each
+   covers every weight the app asks for - see public/fonts/ATTRIBUTION.md.
+
+   font-display: block, not swap. These are 87kB served from the same origin
+   as everything else, so the wait is short; and a swap means the menus draw
+   in the fallback and then visibly re-set themselves a moment later, which
+   on a title screen is the first thing anybody sees. */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/fonts/cinzel-latin.woff2') format('woff2-variations'),
+       url('/fonts/cinzel-latin.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Jost';
+  src: url('/fonts/jost-latin.woff2') format('woff2-variations'),
+       url('/fonts/jost-latin.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* What the record book is written in. Apache 2.0 rather than OFL like the
+   rest - see public/fonts/APACHE-2.0.txt and the attribution beside it.
+
+   swap, not block, unlike the three above. This one is not on screen until
+   the stats page is opened, so it is the one face that could still be
+   arriving when it is first needed, and `block` renders text *invisible*
+   while it waits. It is also asked for up front in fonts.ts, so in practice
+   the swap never happens. */
+@font-face {
+  font-family: 'Schoolbell';
+  src: url('/fonts/schoolbell-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The card index only, and only on the canvas - see src/app/game/fonts.ts.
+   It is here rather than in fonts.ts because a @font-face rule is the only
+   way to get a file loaded at all; nothing in the DOM uses this family. */
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-latin.woff2') format('woff2-variations'),
+       url('/fonts/archivo-latin.woff2') format('woff2');
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* The two names the rest of the app uses. Nothing else should be naming a
+   typeface: changing the deck's voice ought to be two lines here. */
+:root {
+  /* Set in caps, always. Cinzel has lowercase but is drawn from Roman
+     inscriptions and looks like a mistake in mixed case. */
+  --font-display: 'Cinzel', Georgia, serif;
+  /* Jost is geometric and deco - Futura's shapes beside Cinzel's Roman
+     ones - and it is a sans deliberately, so a rule you have to read is not
+     competing with the lettering above it. */
+  --font-body: 'Jost', 'Helvetica Neue', Arial, sans-serif;
+  /* Cinzel at its normal weight is thin on a dark table - the strokes that
+     read as engraved on paper read as faint on felt. */
+  --weight-display: 700;
+  /* The rank in a card's corner, and nothing else. Named again in
+     src/app/game/fonts.ts, because Phaser cannot read a custom property.
+     Change one and change the other. */
+  --font-card-index: 'Archivo', Helvetica, Arial, sans-serif;
+  /* What is written on the record book, as opposed to what is printed on
+     it. The column headings stay in the body face; only the entries are in a
+     hand. */
+  --font-score: 'Schoolbell', 'Comic Sans MS', cursive;
+}
+
+// The page colour goes on the root and nowhere else.
+//
+// It was on `html, body` together, which looks like belt and braces and is
+// actually the reason the menu backdrop drew nothing for an afternoon. With a
+// background on the root, body's is no longer propagated to the canvas - it
+// paints as an ordinary box background instead, and ordinary backgrounds come
+// *after* negative z-index children in CSS paint order. So the backdrop was
+// being drawn perfectly, every frame, underneath an opaque body.
+html {
+  background: #07241f;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  // The default for anything that doesn't say otherwise. Display text opts
+  // in through the `display-type` mixin in src/_type.scss; body text is the
+  // larger half of the app and shouldn't have to ask.
+  font-family: var(--font-body);
+  // min-height, not height. At `height: 100%` a page taller than the
+  // viewport overflows a fixed-height body, which several menus do.
+  min-height: 100%;
+  overscroll-behavior: none;
+  // No touch-action here. It was set to `none` on the document to stop a
+  // flick near a screen edge reaching Chrome as swipe-to-navigate, but
+  // touch-action doesn't inherit, so it never reached the canvas anyway -
+  // the rule that actually does that job is on .play-screen, .game-container
+  // and canvas. All it did here was disable touch scrolling on every
+  // scrolling page in the app, which cut the Dev Round list off at whatever
+  // fitted on screen with no way to reach the rest.
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+app-root {
+  display: block;
+  min-height: 100%;
+}
+
+/* Headings default to the display face rather than each stylesheet having to
+   remember. Without this a page whose h1 carries no font-family of its own -
+   the shop debug screen was one - quietly inherits the body face and ends up
+   the only title in the app set in the body face. Component rules are
+   scoped, which makes them more specific, so anything that wants to differ
+   still can. */
+h1,
+h2,
+h3 {
+  @include display-type;
+}
+
+/* Phaser builds its canvas at runtime, so it carries none of Angular's
+   component scoping attributes and a component-scoped rule never matches
+   it. touch-action doesn't inherit either, so it has to be set here, on the
+   element that actually receives the touch - otherwise a flick started near
+   a screen edge reaches Chrome as swipe-to-navigate and backs out of the
+   game mid-throw. */
+canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+// The house button, once.
+//
+// Global rather than per page, which in Angular is not a style preference but
+// a requirement: component styles are scoped to that component, so a button
+// rendered by the play screen's overlay can only be reached from here. A
+// component-scoped rule still wins where one exists, because Angular gives it
+// an extra attribute selector - so a page that wants a smaller button says
+// only `font-size`, and says it next to the screen it belongs to.
+.button {
+  display: inline-block;
+  width: min(260px, 80vw);
+  padding: 0.9rem 0;
+  text-align: center;
+  @include display-type;
+  font-size: 1.375rem;
+  color: #fdfdfd;
+  background: #17594a;
+  border: 2px solid #fdfdfd;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    background: #1d6d5b;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 3px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+// The quieter one: a way out rather than the thing to do.
+.button--quiet {
+  font-size: 1.1rem;
+  padding: 0.6rem 0;
+  color: #cfead0;
+  background: transparent;
+  border-color: rgba(207, 234, 208, 0.45);
+
+  &:hover {
+    background: rgba(253, 253, 253, 0.08);
+  }
+}
+
+// Beside a field rather than under it, so it takes the width it needs
+// instead of the column's.
+.button--small {
+  width: auto;
+  padding: 0.55rem 1rem;
+  font-size: 1rem;
+}
+
+// One of a few answers, shown as words rather than digits.
+//
+// The chip row next door is the same idea for numbers; this is what it looks
+// like when the options need reading - Left or Right handed, One or Three
+// cards a draw.
+.pill {
+  @include display-type;
+  padding: 0.5rem 0.9rem;
+  font-size: 1rem;
+  color: #fdfdfd;
+  background: transparent;
+  border: 2px solid #fdfdfd;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    background: rgba(253, 253, 253, 0.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 3px;
+  }
+}
+
+// Gold, and the same gold as an active chip: across the game, this is what
+// "this is the one you picked" looks like.
+.pill--active {
+  background: #17594a;
+  border-color: #ffd166;
+  color: #ffd166;
+}
+
+// Anything typed into. Nothing in this game is, yet - there is no name to
+// give and nobody to give it to - but the record book's reset confirmation is
+// a form, and a form with a browser-default control in it looks broken next
+// to the rest.
+.field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.8rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: #fdfdfd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+
+  &::placeholder {
+    color: rgba(207, 234, 208, 0.6);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #ffd166;
+  }
+}

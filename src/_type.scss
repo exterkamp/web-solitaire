@@ -1,0 +1,30 @@
+// The display face, in one place.
+//
+// Cinzel is cut from Roman inscriptional capitals, so it is drawn to be set
+// in caps and looks wrong in a mixed-case sentence - which is why the caps
+// and the tracking that caps need travel with the family rather than being
+// left to each call site to remember. Anything that reads as a sentence
+// should use var(--font-body) directly instead; see public/fonts/ATTRIBUTION.md.
+//
+// Resolved through stylePreprocessorOptions.includePaths in angular.json, so
+// component stylesheets say `@use 'type' as *;` regardless of how deep they sit.
+@mixin display-type($tracking: 0.055em) {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  letter-spacing: $tracking;
+  text-transform: uppercase;
+}
+
+// Numbers go in the body face even where the surrounding chrome is display.
+//
+// Cinzel's figures are drawn to sit inside inscriptional capitals rather than
+// to be read on their own, so a price, a count or a game code set in it is
+// handsome and slower to read - and every number in this game is something
+// you read at speed while the round is running.
+//
+// tabular-nums comes along because most of these count up and down in place:
+// proportional figures make a score twitch sideways every time a 1 goes by.
+@mixin numeric-type {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}

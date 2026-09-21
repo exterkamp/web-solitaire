@@ -1,0 +1,198 @@
+@use 'type' as *;
+
+// A column: the bar, the felt, the buttons. The board takes whatever is left
+// between the two, which is what lets the same layout work on a tall phone
+// and a short laptop window without either bar being pushed off.
+.play {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  // The canvas takes its own touches; without this a flick near a screen edge
+  // reaches Chrome as swipe-to-navigate and backs out of the game mid-drag.
+  touch-action: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  flex: 0 0 auto;
+}
+
+.hud--actions {
+  justify-content: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.hud__exit {
+  @include display-type;
+  font-size: 0.85rem;
+  color: #cfead0;
+  text-decoration: none;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(207, 234, 208, 0.4);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(253, 253, 253, 0.08);
+  }
+}
+
+.hud__stats {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.hud__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+
+.hud__label {
+  @include display-type;
+  font-size: 0.62rem;
+  color: #9fc4a4;
+}
+
+.hud__value {
+  @include numeric-type;
+  font-size: 1.05rem;
+  color: #fdfdfd;
+}
+
+// The board's box. Phaser measures this element and fits the 480x900 canvas
+// inside it, so it needs to be allowed to shrink - `min-height: 0` is what
+// stops a flex child refusing to go below its content's height, which for a
+// canvas is the full 900.
+.board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action {
+  @include display-type;
+  font-size: 0.95rem;
+  padding: 0.55rem 0.9rem;
+  color: #fdfdfd;
+  background: transparent;
+  border: 2px solid rgba(253, 253, 253, 0.75);
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: rgba(253, 253, 253, 0.12);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 3px;
+  }
+
+  // Dimmed rather than removed: a button that disappears when there is
+  // nothing to undo takes the other buttons with it as the row re-centres,
+  // and a row that moves under a thumb is a row that gets mis-tapped.
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+// The one button that appears and disappears, because what it offers is not
+// available until the game is already won.
+.action--go {
+  color: #ffd166;
+  border-color: #ffd166;
+}
+
+.play__note {
+  position: absolute;
+  left: 50%;
+  bottom: 4.25rem;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: #ffd166;
+  background: rgba(7, 36, 31, 0.88);
+  border: 1px solid rgba(255, 209, 102, 0.5);
+  border-radius: 6px;
+  text-align: center;
+}
+
+// Low on the screen on purpose: the cascade starts at the foundations and
+// falls, so the top of the board is where there is something to see.
+.win {
+  position: absolute;
+  left: 50%;
+  bottom: 5.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(300px, 86vw);
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(7, 36, 31, 0.93);
+  border: 2px solid #ffd166;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.win__title {
+  @include display-type;
+  font-size: 2rem;
+  color: #ffd166;
+  margin: 0;
+}
+
+.win__lines {
+  width: 100%;
+  margin: 0;
+}
+
+.win__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.15rem 0;
+
+  dt {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: #cfead0;
+  }
+
+  dd {
+    @include numeric-type;
+    font-size: 0.95rem;
+    color: #fdfdfd;
+    margin: 0;
+  }
+}
+
+.win__line--total {
+  margin-top: 0.2rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 209, 102, 0.35);
+
+  dd {
+    color: #ffd166;
+    font-size: 1.1rem;
+  }
+}

@@ -1,0 +1,91 @@
+@use 'type' as *;
+@use 'page' as *;
+
+// Nine rows and two columns is taller than a phone, so the page scrolls and
+// centres with auto margins. See _page.scss.
+.menu {
+  @include page-scrolls($gap: 1rem, $padding: 1rem);
+}
+
+h1 {
+  @include display-type;
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  color: #fdfdfd;
+  margin: 0 0 0.25rem;
+}
+
+.record__note {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #cfead0;
+  text-align: center;
+  max-width: min(340px, 86vw);
+  margin: 0 0 0.5rem;
+}
+
+.record__note--warn {
+  color: #ffd166;
+}
+
+// A printed scorepad: the headings set in the body face, the entries written
+// on it by hand. The two faces are what makes it read as a record of games
+// rather than as a table of numbers.
+.record {
+  width: min(340px, 90vw);
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+
+  th,
+  td {
+    padding: 0.45rem 0.7rem;
+    text-align: right;
+  }
+
+  thead th {
+    @include display-type;
+    font-size: 0.72rem;
+    color: #ffd166;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  tbody th {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #cfead0;
+    text-align: left;
+  }
+
+  tbody td {
+    font-family: var(--font-score);
+    font-size: 1.05rem;
+    color: #fdfdfd;
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
+
+// The heading over the row labels, which names what the columns are rather
+// than what the rows are - so it is a label for the header row, not for the
+// column under it.
+.record__corner {
+  color: #9fc4a4;
+}
+
+// Destructive, and dressed as such. Only ever reached through a confirmation,
+// so it does not have to be frightening - just clearly not the Back button.
+.button--danger {
+  color: #ffd7d7;
+  background: #6d2129;
+  border-color: #e08b8b;
+
+  &:hover {
+    background: #83282f;
+  }
+}

@@ -1,0 +1,76 @@
+<div class="play">
+  <!-- The bar above the felt. Three numbers and the way out, which is every
+       piece of state a solitaire player actually watches. -->
+  <header class="hud">
+    <a class="hud__exit" routerLink="/" aria-label="Back to the menu">Menu</a>
+    <div class="hud__stats">
+      <div class="hud__stat">
+        <span class="hud__label">Score</span>
+        <span class="hud__value">{{ view().score }}</span>
+      </div>
+      <div class="hud__stat">
+        <span class="hud__label">Time</span>
+        <span class="hud__value">{{ asTime(elapsed()) }}</span>
+      </div>
+      <div class="hud__stat">
+        <span class="hud__label">Moves</span>
+        <span class="hud__value">{{ view().moves }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Phaser builds its canvas into this and scales it to fit, so the element
+       needs a size of its own before the board exists. See play.scss. -->
+  <div class="board" #board></div>
+
+  @if (view().stuck && !win()) {
+    <p class="play__note">
+      Nothing left that can be played. Undo, or deal a new game.
+    </p>
+  }
+
+  <footer class="hud hud--actions">
+    <button type="button" class="action" [disabled]="!view().canUndo" (click)="undo()">
+      Undo
+    </button>
+    <button type="button" class="action" (click)="hint()">Hint</button>
+    @if (view().canFinish) {
+      <!-- Only once the game is already decided: every card face up, nothing
+           hidden, and the rest of it a formality. -->
+      <button type="button" class="action action--go" (click)="finish()">Finish</button>
+    }
+    <button type="button" class="action" (click)="newGame()">Deal</button>
+  </footer>
+
+  @if (win(); as summary) {
+    <!-- Over the board rather than instead of it: the cards are still falling
+         behind this, and that is the part worth watching. -->
+    <div class="win" role="dialog" aria-label="Game won">
+      <h2 class="win__title">Out</h2>
+      <dl class="win__lines">
+        <div class="win__line">
+          <dt>Score</dt>
+          <dd>{{ summary.score.toLocaleString() }}</dd>
+        </div>
+        <div class="win__line">
+          <dt>Time bonus</dt>
+          <dd>{{ summary.bonus.toLocaleString() }}</dd>
+        </div>
+        <div class="win__line win__line--total">
+          <dt>Total</dt>
+          <dd>{{ summary.total.toLocaleString() }}</dd>
+        </div>
+        <div class="win__line">
+          <dt>Time</dt>
+          <dd>{{ asTime(summary.seconds) }}</dd>
+        </div>
+        <div class="win__line">
+          <dt>Moves</dt>
+          <dd>{{ summary.moves }}</dd>
+        </div>
+      </dl>
+      <button type="button" class="button" (click)="newGame()">Deal again</button>
+      <a class="button button--quiet" routerLink="/stats">Record</a>
+    </div>
+  }
+</div>

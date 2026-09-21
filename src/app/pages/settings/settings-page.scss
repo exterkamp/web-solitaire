@@ -1,0 +1,137 @@
+@use 'type' as *;
+@use 'page' as *;
+
+// This page is long by design - the deck picker makes it taller than a
+// phone - so it scrolls and centres with auto margins. See _page.scss.
+.menu {
+  @include page-scrolls($gap: 1rem, $padding: 1rem);
+}
+
+h1 {
+  @include display-type;
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  font-weight: bold;
+  color: #fdfdfd;
+  margin: 0 0 1rem;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  max-width: min(360px, 88vw);
+}
+
+.setting__label {
+  @include display-type;
+  font-size: 1.15rem;
+  color: #fdfdfd;
+}
+
+.setting__note {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #cfead0;
+  text-align: center;
+  margin: 0 0 0.5rem;
+}
+
+.setting__options {
+  display: flex;
+  gap: 0.75rem;
+}
+
+// Two lines rather than one - these carry a hint under the label - so this
+// one is a column and wide enough to set a short sentence in.
+.pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 150px;
+  padding: 0.7rem 0.5rem;
+}
+
+.pill__label {
+  font-size: 1.2rem;
+}
+
+.pill__hint {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  opacity: 0.85;
+}
+
+.setting__decks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  max-width: 340px;
+}
+
+.deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.3rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &--active {
+    border-color: #ffd166;
+    background: rgba(255, 209, 102, 0.12);
+  }
+
+}
+
+// The back's own artwork, drawn over the colour it is printed on. Both come
+// from the settings above, so this preview is the card the board will deal.
+.deck__back {
+  width: 54px;
+  height: 76px;
+  display: block;
+  border-radius: 5px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+}
+
+.deck__label {
+  @include display-type;
+  font-size: 0.78rem;
+  color: #cfead0;
+}
+
+.setting__colors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+// Big enough to hit with a thumb, and round, so a row of them does not read
+// as a row of cards.
+.swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(253, 253, 253, 0.5);
+  cursor: pointer;
+
+  &--active {
+    border-color: #ffd166;
+    border-width: 3px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 3px;
+  }
+}

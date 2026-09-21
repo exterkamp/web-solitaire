@@ -1,0 +1,81 @@
+// The page shape, in one place.
+//
+// Almost every screen in this game is the same thing: a centred column of
+// things to read and press, filling the viewport. Seven of them had written
+// that out by hand under five different class names - `.menu` three times,
+// plus `.lobby`, `.dev`, `.dbg` and `.welcome` - which is why welcome.scss
+// used to carry a comment pointing at settings-page.scss for the explanation
+// of its own centring. A cross-file reference like that is a shared thing
+// without a home.
+//
+// Three mixins rather than one, because the pages differ in a way that
+// matters: whether the column is short enough to centre, and if it is not,
+// which of the two scrolls - the document, or the column itself.
+//
+// Resolved through stylePreprocessorOptions.includePaths in angular.json, so
+// a page says `@use 'page' as *;` regardless of how deep it sits. Same
+// arrangement as src/_type.scss.
+
+// What all of them share. Not used directly; go through one of the three
+// below, which settle the question of height.
+@mixin page-column($gap: 1rem, $padding: 1.5rem 1rem) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $gap;
+  padding: $padding;
+  box-sizing: border-box;
+}
+
+// Short enough to centre: the column fills a tall screen and grows on a
+// short one instead of centring its contents and letting the ends overflow
+// where they cannot be scrolled to. `min-height` is what makes that true.
+@mixin page-fits($gap: 1rem, $padding: 1.5rem 1rem) {
+  @include page-column($gap, $padding);
+  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  justify-content: center;
+}
+
+// Long by design, and top-aligned: the document scrolls. The workshop pages
+// use this - they are lists that are read from the top rather than screens
+// arranged around a decision, so there is nothing to centre.
+@mixin page-grows($gap: 0.75rem, $padding: 1.5rem 1rem) {
+  @include page-column($gap, $padding);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+// Long by design, and centred anyway: the column scrolls inside a viewport
+// -sized box.
+//
+// Centred by auto margins rather than by justify-content, which cannot do it
+// safely here. A centred flex column that overflows pushes its content out of
+// *both* ends, and scrollTop cannot go below zero - so whatever went off the
+// top is unreachable, behind a scrollbar that looks like it should reach it.
+// On the settings page that was the title: 121px of it, once the deck preview
+// made the page tall enough to overflow at all.
+//
+// `justify-content: safe center` is the keyword for exactly this and is not
+// used, because Chrome will tell you it supports it - CSS.supports returns
+// true and getComputedStyle reads it back - and then centre the content
+// anyway. Auto margins have no such gap between saying and doing: they absorb
+// free space when there is some and collapse to zero when there isn't, which
+// is the whole of the behaviour wanted.
+@mixin page-scrolls($gap: 1rem, $padding: 1rem) {
+  @include page-column($gap, $padding);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+
+  // Only the two ends need it; the gap spaces everything between them.
+  > :first-child {
+    margin-top: auto;
+  }
+
+  > :last-child {
+    margin-bottom: auto;
+  }
+}

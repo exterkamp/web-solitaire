@@ -1,0 +1,24 @@
+<div class="menu">
+  <h1>Solitaire</h1>
+  <p class="menu__sub">Klondike</p>
+
+  <!-- The one decision worth making before a deal. Everything else about the
+       game is a standing preference and lives in Settings. -->
+  <app-chip-select
+    label="Cards per draw"
+    wide
+    [options]="drawCounts"
+    [value]="settings.drawCount()"
+    [display]="drawLabel"
+    (picked)="settings.drawCount.set($event)"
+  />
+
+  <a class="button" routerLink="/play">Deal</a>
+
+  @if (record(); as line) {
+    <p class="menu__note">{{ line }}</p>
+  }
+
+  <a class="button button--quiet" routerLink="/stats">Record</a>
+  <a class="button button--quiet" routerLink="/settings">Settings</a>
+</div>
