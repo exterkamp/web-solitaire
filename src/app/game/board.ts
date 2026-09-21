@@ -26,7 +26,11 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
     backgroundColor: FELT_CLEAR_COLOR,
     scale: {
       mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      // Centred by the page, not by Phaser. autoCenter sets a margin on the
+      // canvas equal to half the room left over in its parent - which, in a
+      // parent that is already centring its child, is added to the centring
+      // the page has done and puts the board half a gap off to the right.
+      autoCenter: Phaser.Scale.NO_CENTER,
     },
     // Let Phaser preventDefault the touches it handles, so a fast flick isn't
     // also delivered to the browser as a navigation gesture. windowEvents

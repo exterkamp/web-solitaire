@@ -19,11 +19,12 @@ Or serve the built game the way it is meant to be served:
 
 ```bash
 docker compose up -d --build
-open http://localhost:8082
+open http://localhost:8083
 ```
 
-8082 because 8080 and 8081 are Nertz, production and development, and 8085 is
-the chiptune studio. `SOLITAIRE_PORT` overrides it.
+8083 because the neighbours got there first: 8080 and 8081 are Nertz,
+production and development, 8082 is exterkamp.codes, and 8085 is the chiptune
+studio. `SOLITAIRE_PORT` overrides it.
 
 ## The game
 
