@@ -502,6 +502,37 @@ async function main() {
   check(landed === `${dragSetup.king},${dragSetup.queen}`, `the dragged card lands on the king (${landed})`);
   check(await browser.evaluate(`${STATE}.waste.length`) === 0, 'and leaves the waste behind it');
 
+  // A card *dragged* to the foundations, onto the wrong slot on purpose.
+  //
+  // The drag and the flick are two separate paths to the same place and only
+  // one of them was tested, which is how the drag came to be broken for a
+  // while without anything noticing: the foundations' drop zones were being
+  // computed from the layout's own coordinates while the board was sitting
+  // 260 units lower, so a card could be carried onto a foundation and was
+  // always refused, while a flick at the same pile worked - because a flick
+  // never asks where the zones are.
+  //
+  // Onto the wrong slot, because which slot is hit should not matter: a card
+  // has one home and the row is wide, so the drop is routed by suit.
+  const dragHome = await browser.evaluate(rig(`
+    const ace = pick('A', 'spades');
+    ace.faceUp = true;
+    state.foundations = [[], [], [], []];
+    state.tableau = [[ace], [], [], [], [], [], []];
+    state.waste = [];
+    state.stock = all.filter((c) => c !== ace).map((c) => ((c.faceUp = false), c));
+    return { ace: ace.id };
+  `));
+  await browser.settle(SCENE);
+  await browser.drag(
+    await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'tableau', index: 0 })`)),
+    // The far end of the row from the one reserved for spades.
+    await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'foundation', index: 3 })`)),
+    SCENE,
+  );
+  const carried = await browser.evaluate(`${STATE}.foundations[0].map((c) => c.id).join(',')`);
+  check(carried === dragHome.ace, `a card dragged to the wrong slot still goes home (${carried || 'nothing'})`);
+
   // A card thrown at the foundations from halfway down the board, and let go
   // nowhere near them.
   //

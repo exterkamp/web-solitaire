@@ -739,7 +739,9 @@ export class SolitaireScene extends Phaser.Scene {
       const lift = drag.origins[i].y - drag.origins[0].y;
       sprite.setPosition(head.x, head.y + lift);
     });
-    this.showHighlight(drag.moved ? this.dropTarget(head) : undefined);
+    this.showHighlight(
+      drag.moved ? this.dropTarget(head, drag.sprites.map((sprite) => sprite.card)) : undefined,
+    );
   }
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
@@ -756,17 +758,31 @@ export class SolitaireScene extends Phaser.Scene {
     // card happened to be let go of. A press that went nowhere is a tap, and
     // asks the rules where the card belongs. Anything else is a carry, and
     // lands where it was put down.
-    const flick = this.flickTarget(drag, pointer, board);
-    const to = flick
-      ?? (!drag.moved && quick
-        ? autoTarget(this.session.state, drag.from, drag.count)
-        : this.dropTarget(head));
+    const cards = liftable(this.session.state, drag.from, drag.count) ?? [];
+
+    // Where the cards were put down comes first, and only counts if that pile
+    // will actually take them. Letting go of a card on a pile that accepts it
+    // is the least ambiguous thing this gesture can be, so it wins even when
+    // the hand was still moving quickly - which it often is, and which used
+    // to make a brisk carry up the board read as a throw and go home instead
+    // of where it was aimed.
+    //
+    // Then a throw at the foundations, for a gesture that ended over nothing
+    // in particular: not having to arrive anywhere is the whole point of a
+    // flick. Then a tap, which is a press that went nowhere at all and asks
+    // the rules where the card belongs.
+    const landed = this.dropTarget(head, cards);
+    const thrown = landed ? undefined : this.flickTarget(drag, pointer, board);
+    const tapped = landed || thrown || drag.moved || !quick
+      ? undefined
+      : autoTarget(this.session.state, drag.from, drag.count);
+    const to = landed ?? thrown ?? tapped;
 
     this.drag = undefined;
     const played = to
       ? this.play({ kind: 'play', from: drag.from, to, count: drag.count })
       : false;
-    if (played && flick) this.landHard(drag.sprites[0]);
+    if (played && thrown) this.landHard(drag.sprites[0]);
     // A refused drop puts the run back where it came from rather than leaving
     // it where the thumb let go. Snapping back is also the only feedback a
     // wrong move gets, and it is enough: nothing was lost, so nothing needs
@@ -1026,7 +1042,10 @@ export class SolitaireScene extends Phaser.Scene {
    * table does and is not what "the pointer is inside this rectangle" gives
    * you.
    */
-  private dropTarget(head: { x: number; y: number }): PileRef | undefined {
+  private dropTarget(
+    head: { x: number; y: number }, cards: readonly Card[],
+  ): PileRef | undefined {
+    if (!cards.length) return undefined;
     const card = new Phaser.Geom.Rectangle(
       head.x - CARD_WIDTH / 2, head.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT,
     );
@@ -1037,7 +1056,21 @@ export class SolitaireScene extends Phaser.Scene {
       if (area <= 0) continue;
       if (!best || area > best.area) best = { ref, area };
     }
-    return best?.ref;
+    if (!best) return undefined;
+
+    // A card let go anywhere along the foundation row goes to its own suit's
+    // pile rather than to the slot it happened to land on. The slots are
+    // sixty units wide and printed in an order that mirrors with handedness,
+    // and a card has exactly one home - so asking the player to hit the right
+    // one is asking them to aim at something the rules already know.
+    const to: PileRef = best.ref.kind === 'foundation'
+      ? { kind: 'foundation', index: foundationIndexOf(cards[0].suit) }
+      : best.ref;
+
+    // Legality is settled here rather than left to the move, because this
+    // answer is also what the highlight draws: a pile lit up under a card has
+    // to mean "this will work", or it is an invitation to a mistake.
+    return canDrop(this.session.state, cards, to) ? to : undefined;
   }
 
   private dropZones(): { ref: PileRef; rect: Phaser.Geom.Rectangle }[] {
@@ -1045,10 +1078,23 @@ export class SolitaireScene extends Phaser.Scene {
     const zones: { ref: PileRef; rect: Phaser.Geom.Rectangle }[] = [];
 
     for (let i = 0; i < FOUNDATION_COUNT; i++) {
-      const at = this.slotPosition({ kind: 'foundation', index: i });
+      // pileBase, not slotPosition: where the foundation *is*, not where it
+      // would be if the board were not sitting low. These zones were reading
+      // the layout's own coordinates while the tableau's read the dropped
+      // ones, which put the foundations' drop zones 260 units above the
+      // foundations - so a card could be dragged onto one and would always be
+      // refused, while a flick at the same pile worked, because a flick never
+      // asks this question.
+      const at = this.pileBase({ kind: 'foundation', index: i });
+      // A column wide, like the tableau's. Which slot is hit hardly matters -
+      // see dropTarget, where a card dropped on this row is routed to its own
+      // suit - but hitting *nothing* does, and a 5.7-unit gutter between four
+      // small targets is easy to find with a thumb.
       zones.push({
         ref: { kind: 'foundation', index: i },
-        rect: new Phaser.Geom.Rectangle(at.x - CARD_WIDTH / 2, at.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT),
+        rect: new Phaser.Geom.Rectangle(
+          at.x - COLUMN_PITCH / 2, at.y - CARD_HEIGHT / 2, COLUMN_PITCH, CARD_HEIGHT,
+        ),
       });
     }
 
@@ -1077,11 +1123,10 @@ export class SolitaireScene extends Phaser.Scene {
   // move would actually be allowed. A highlight that appears over a pile that
   // will refuse the card is worse than none: it is an invitation to a mistake.
   private showHighlight(ref: PileRef | undefined): void {
-    let key: string | undefined;
-    if (ref && this.drag) {
-      const lifted = liftable(this.session.state, this.drag.from, this.drag.count);
-      if (lifted && canDrop(this.session.state, lifted, ref)) key = pileKey(ref);
-    }
+    // Whatever dropTarget answered, which is only ever a pile that will take
+    // the cards - so this no longer has to re-ask, and cannot disagree with
+    // what the release is about to do.
+    const key = ref ? pileKey(ref) : undefined;
     for (const [at, graphics] of this.slotHighlights) graphics.setVisible(at === key);
   }
 
