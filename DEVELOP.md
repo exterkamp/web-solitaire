@@ -227,6 +227,36 @@ and the win panel are DOM laid over the canvas, because they are text and
 buttons, and a browser draws those better than a canvas can — with focus rings
 and screen-reader labels that come for free.
 
+### Leaving the board
+
+The back gesture is the only way to lose a hand by accident, and it cannot be
+prevented: Android draws it from outside the page and Chrome's edge swipe is
+the browser's own, so neither `preventDefault` nor `touch-action` reaches
+either. What it can be made to do is nothing much. `Play` pushes an extra
+history entry on the way in, so the gesture pops that rather than leaving, and
+the popstate handler turns it into the pause menu. A second back - now that
+the player is looking at a menu that says Exit - disarms the guard and lets
+the browser carry on.
+
+Two details that are load-bearing:
+
+- **The pushed entry keeps the current URL.** Angular's router sees a popstate
+  for the route it is already on and does nothing. Push a different URL and
+  the router re-navigates, which tears the board down - the exact thing the
+  guard exists to prevent.
+- **Never call the router from inside the popstate handler.** Both it and the
+  router's own listener run for the same event; one navigation gets cancelled
+  and the URL is restored, which lands the player back in the game they were
+  trying to leave. `history.back()` in a `setTimeout` is the way out, which is
+  the same shape Nertz's guard has for the same reason.
+
+Pausing stops two clocks and one scene: `GameSession.setPaused` keeps the paused
+interval off the elapsed time (a pause menu that ran the clock is a pause menu
+nobody can afford to open, since best time is in the record book), and the
+scene is paused so no tween finishes behind the menu. The overlay is
+full-bleed rather than a panel on the felt - while it is up, nothing a thumb
+lands on should reach a card.
+
 ### Three things this codebase keeps relearning
 
 `Scene` already has members called `game` and `events`, and a field of your own

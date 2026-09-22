@@ -152,9 +152,18 @@ one hand in twenty.
 * The **stock** turns a card whether you press the top of it or the empty slot
   it leaves behind — the second of those is how the waste goes back to being a
   deck.
+* **Menu**, and the phone's own back gesture, open a pause menu rather than
+  leaving. A hand in progress lives only on that page — there is no server
+  holding it and nothing written down until it ends — so walking off the board
+  is the one thing here that cannot be undone, and it takes two deliberate
+  presses. The clock stops while the menu is up.
 
 The whole layout sits low, within reach of a thumb, and rises only when a pile
 grows long enough to need the room.
+
+<p align="center">
+<img src="docs/screenshots/pause.webp" width="42%" alt="The pause menu: Resume, New deal, Exit to menu">
+</p>
 
 ## Scoring
 

@@ -241,3 +241,50 @@
     font-size: 1.1rem;
   }
 }
+
+// The pause menu, and the only way off this page.
+//
+// Full-bleed rather than a panel over the felt, which the other two overlays
+// here are. Those are the board saying something about the position and want
+// it visible behind them; this one is the board stopping, and while it is up
+// a press anywhere should reach the menu rather than a card.
+.pause {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 24, 20, 0.82);
+  // Behind a menu is not where the deal should be read, and the blur says the
+  // board is not listening at the same time as the dimming says it is covered.
+  backdrop-filter: blur(3px);
+}
+
+.pause__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  width: min(300px, 86vw);
+  padding: 1.5rem 1.25rem;
+  background: rgba(7, 36, 31, 0.96);
+  border: 2px solid rgba(207, 234, 208, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.pause__title {
+  @include display-type;
+  font-size: 1.6rem;
+  color: #fdfdfd;
+  margin: 0;
+}
+
+.pause__note {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #9fc4a4;
+  margin: -0.4rem 0 0.4rem;
+}

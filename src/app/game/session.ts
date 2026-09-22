@@ -24,6 +24,14 @@ export class GameSession<S> {
   private startedAt: number | undefined;
   private stoppedAt: number | undefined;
 
+  // Time spent with the game paused, which the clock does not count.
+  //
+  // A pause menu that ran the clock would be a pause menu nobody could
+  // afford to open: best time is in the record book, and putting the phone
+  // down to answer the door is not part of how long a hand took.
+  private pausedAt: number | undefined;
+  private pausedFor = 0;
+
   // Counted for the record book. Not penalised: a score is a measure of the
   // game you played, and an undo means that game did not happen.
   undos = 0;
@@ -66,10 +74,35 @@ export class GameSession<S> {
     return this.game.isDeadEnd(this.current);
   }
 
-  /** Seconds since the first move, frozen once the game is won. */
+  /**
+   * Stops and starts the clock, for the pause menu.
+   *
+   * Idempotent in both directions: the board can say "paused" twice - the
+   * back gesture and the Menu button both arrive here - without the second
+   * one moving the mark.
+   */
+  setPaused(paused: boolean): void {
+    if (paused) {
+      if (this.pausedAt === undefined) this.pausedAt = this.now();
+      return;
+    }
+    if (this.pausedAt === undefined) return;
+    this.pausedFor += this.now() - this.pausedAt;
+    this.pausedAt = undefined;
+  }
+
+  /**
+   * Seconds since the first move, frozen once the game is won - and frozen
+   * again, without stopping, while the game is paused.
+   *
+   * Three readings in one expression: a won game reads to the moment it was
+   * won, a paused game to the moment it was paused, and a game in progress to
+   * now. Whichever it is, the time spent in earlier pauses comes off.
+   */
   elapsed(): number {
     if (this.startedAt === undefined) return 0;
-    return Math.max(0, Math.round(((this.stoppedAt ?? this.now()) - this.startedAt) / 1000));
+    const until = this.stoppedAt ?? this.pausedAt ?? this.now();
+    return Math.max(0, Math.round((until - this.startedAt - this.pausedFor) / 1000));
   }
 
   /**

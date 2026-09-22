@@ -145,6 +145,11 @@ async function shoot(name) {
   console.log(`  ${name}.webp`);
 }
 
+// `name` is the picture to write; pass null to set a board up without
+// photographing it, which is how the pause menu gets a hand behind it. Null
+// rather than undefined, because passing undefined to a defaulted parameter
+// is the same as passing nothing - it took the default and photographed the
+// board twice.
 async function board(game, rounds, name = game) {
   await send('Page.navigate', { url: `${host}/play/${game}` });
   if (!await until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, game)) return;
@@ -159,7 +164,7 @@ async function board(game, rounds, name = game) {
   // Long enough for the last frame to be on the canvas rather than merely
   // scheduled - headless Chrome draws this board about once a second.
   await sleep(1500);
-  await shoot(name);
+  if (name) await shoot(name);
 }
 
 console.log(`shooting ${host} at ${WIDTH}x${HEIGHT} @${DPR}x`);
@@ -169,6 +174,17 @@ if (wanted('menu')) {
   await until("!!document.querySelector('.menu h1')", 'the menu');
   await sleep(800);
   await shoot('menu');
+}
+
+// The pause menu, over a board with a hand on it - which is the only way it
+// is ever seen.
+if (wanted('pause')) {
+  await board('klondike', 4, null);
+  await evaluate(
+    "[...document.querySelectorAll('.hud__button')].find(b => b.textContent.trim() === 'Menu').click()",
+  );
+  await sleep(600);
+  await shoot('pause');
 }
 
 if (wanted('setup-klondike')) {

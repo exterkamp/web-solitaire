@@ -2,13 +2,14 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  HostListener,
   OnDestroy,
   computed,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
@@ -46,6 +47,7 @@ import { Stats, variantOf } from '../../stats';
 export class Play implements AfterViewInit, OnDestroy {
   private readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
+  private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
 
   private game?: Phaser.Game;
@@ -65,6 +67,16 @@ export class Play implements AfterViewInit, OnDestroy {
 
   protected readonly elapsed = signal(0);
   protected readonly win = signal<WinSummary | undefined>(undefined);
+
+  // The pause menu, which is also the only way off this page.
+  //
+  // A hand in progress lives entirely in this component - there is no server
+  // holding it and nothing written down until it ends - so leaving the board
+  // is the one irreversible thing on it. It should take two deliberate acts,
+  // and now it does.
+  protected readonly paused = signal(false);
+  // Whether the extra history entry is still in place. See armBackGuard.
+  private backGuarded = false;
 
   // The move count at which the player waved away the "no moves" panel.
   //
@@ -106,10 +118,12 @@ export class Play implements AfterViewInit, OnDestroy {
     // Which means a tab left in the background comes back with the right
     // answer instead of one that stopped ticking when the timers did.
     this.clock = setInterval(() => this.elapsed.set(this.scene()?.elapsed() ?? 0), 500);
+    this.armBackGuard();
   }
 
   ngOnDestroy(): void {
     if (this.clock) clearInterval(this.clock);
+    window.removeEventListener('popstate', this.onPopState);
     // A game walked away from mid-hand is a game lost, for the same reason it
     // is in every other solitaire: otherwise the win rate is a measure of how
     // often you finished the ones you were winning.
@@ -119,6 +133,80 @@ export class Play implements AfterViewInit, OnDestroy {
 
   private scene(): SolitaireScene | undefined {
     return this.game?.scene.getScene(BOARD_SCENE) as SolitaireScene | undefined;
+  }
+
+  // --- leaving, and not leaving by accident -------------------------------
+
+  /**
+   * Turns the back gesture into a pause.
+   *
+   * Android's back is drawn by the system from outside the page and Chrome's
+   * edge swipe is drawn by the browser, so nothing in here can stop either
+   * one firing - preventDefault and touch-action do not reach them. What can
+   * be done is to make it harmless: an extra history entry is pushed on the
+   * way in, so the gesture pops that instead of leaving the board, and this
+   * turns it into the pause menu. A thumb that strays to the edge of the
+   * screen mid-drag then costs a menu rather than the hand.
+   *
+   * The pushed entry keeps the current URL, so Angular's router sees a
+   * popstate for the route it is already on and does nothing with it.
+   * Changing the URL here would make the router re-navigate and tear the
+   * board down, which is the thing being prevented.
+   */
+  private armBackGuard(): void {
+    history.pushState({ solitaireGuard: true }, '');
+    this.backGuarded = true;
+    window.addEventListener('popstate', this.onPopState);
+  }
+
+  // An arrow property, so removeEventListener is handed the same reference.
+  private readonly onPopState = (): void => {
+    if (!this.backGuarded) return;
+
+    // Already paused, or the hand is over and recorded: the player means it.
+    // Stop guarding and let the browser carry on back to wherever it was
+    // going. Navigating with the router here instead would fight the router's
+    // own popstate handling - both run for the same event, one navigation is
+    // cancelled, and the URL is put back, leaving you in the game you were
+    // trying to leave.
+    if (this.paused() || this.view().won) {
+      this.backGuarded = false;
+      setTimeout(() => history.back(), 0);
+      return;
+    }
+
+    history.pushState({ solitaireGuard: true }, '');
+    this.setPaused(true);
+  };
+
+  // Escape does what the back gesture does, for anybody playing with a
+  // keyboard: a pause rather than an exit.
+  @HostListener('window:keydown.escape')
+  protected togglePause(): void {
+    this.setPaused(!this.paused());
+  }
+
+  protected resume(): void {
+    this.setPaused(false);
+  }
+
+  private setPaused(paused: boolean): void {
+    this.paused.set(paused);
+    this.scene()?.setPaused(paused);
+    // The clock is read every half second and the page may have been paused
+    // in between, so read it now rather than showing a stale second for the
+    // length of a tick.
+    this.elapsed.set(this.scene()?.elapsed() ?? 0);
+  }
+
+  /**
+   * The deliberate way out. Records the hand as abandoned on the way, which
+   * ngOnDestroy would do anyway - this only makes sure it happens before the
+   * router takes the component down.
+   */
+  protected exitToMenu(): void {
+    this.backGuarded = false;
+    this.router.navigateByUrl('/');
   }
 
   protected undo(): void {
@@ -134,6 +222,9 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 
   protected newGame(): void {
+    // A new deal from the pause menu is still a new deal, and the board
+    // behind the menu has to be running to be dealt onto.
+    if (this.paused()) this.setPaused(false);
     this.recordAbandoned();
     this.win.set(undefined);
     this.waved.set(undefined);

@@ -835,6 +835,24 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   /**
+   * Stops the board, for the pause menu.
+   *
+   * Two things, and they are separate on purpose. The clock stops because a
+   * paused hand should not cost a best time; the scene stops because a tween
+   * still running behind a menu is a card that moved while nobody was
+   * looking, and a finish playing itself out behind one is worse.
+   *
+   * The page still puts its own overlay over the canvas - that is what stops
+   * a thumb reaching a card - so this is not a substitute for that. It is
+   * what makes the board the same board when you come back.
+   */
+  setPaused(paused: boolean): void {
+    this.session?.setPaused(paused);
+    if (paused) this.scene.pause();
+    else this.scene.resume();
+  }
+
+  /**
    * Steps back one move.
    *
    * The one thing that is allowed during a cascade, because undoing a win is

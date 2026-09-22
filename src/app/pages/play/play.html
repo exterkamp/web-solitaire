@@ -3,7 +3,11 @@
        piece of state a solitaire player actually watches. -->
   <header class="hud">
     <div class="hud__controls">
-      <a class="hud__button" routerLink="/" aria-label="Back to the menu">Menu</a>
+      <!-- Opens the pause menu rather than leaving. The way out is one more
+           press from there, which is the point: a hand in progress lives
+           only on this page, so walking off it is the one thing here that
+           cannot be undone. -->
+      <button type="button" class="hud__button" (click)="togglePause()">Menu</button>
       <!-- Up here rather than down beside Undo, which is where it was and is
            one thumb-slip from throwing away a game in progress. Dealing is
            something you do between games; Undo and Finish are things you do
@@ -88,6 +92,20 @@
   <!-- Phaser builds its canvas into this and scales it to fit, so the element
        needs a size of its own before the board exists. See play.scss. -->
   <div class="board" #board></div>
+
+  @if (paused()) {
+    <!-- Over the whole screen rather than only the board: while this is up,
+         nothing a thumb lands on should reach a card. -->
+    <div class="pause" role="dialog" aria-label="Paused">
+      <div class="pause__panel">
+        <h2 class="pause__title">Paused</h2>
+        <p class="pause__note">The clock is stopped.</p>
+        <button type="button" class="button" (click)="resume()">Resume</button>
+        <button type="button" class="button button--quiet" (click)="newGame()">New deal</button>
+        <button type="button" class="button button--quiet" (click)="exitToMenu()">Exit to menu</button>
+      </div>
+    </div>
+  }
 
   @if (showStuck()) {
     <!-- High on the board, in the band of felt nothing is ever dealt onto, so
