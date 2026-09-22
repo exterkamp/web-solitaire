@@ -1,7 +1,7 @@
 import { ApplicationConfig, isDevMode, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
-import { from, race, timer } from 'rxjs';
+import { from, of, race, timer } from 'rxjs';
 import { firstBoard } from './game/first-board';
 import { routes } from './app.routes';
 
@@ -20,20 +20,24 @@ export const appConfig: ApplicationConfig = {
     // Off in development, where a worker serving yesterday's bundle from a
     // cache is a debugging session spent on the wrong question.
     //
-    // Registered after the first board has loaded rather than on any of the
-    // strategies Angular offers by name. A new worker answers nothing until
-    // it has finished prefetching, so registering it while the first game is
-    // still asking for its cards means the game waits for the cache instead
-    // of the other way round - see first-board.ts, where that cost half a
-    // minute of empty felt. Afterwards the same files come out of the
-    // browser's own cache and the copy is nearly free.
+    // Two cases, and they want opposite things.
     //
-    // Whichever comes first, because plenty of people will install this from
-    // the menu without dealing a hand at all, and they should get an offline
-    // copy too.
+    // A first visit has no worker yet, and a new one answers no request until
+    // it has finished prefetching - so registering while the first game is
+    // still asking for its cards makes the game wait on the cache instead of
+    // the other way round. That cost half a minute of empty felt, and is why
+    // registration waits for the first board (or twenty seconds, for somebody
+    // who installs from the menu without dealing a hand).
+    //
+    // A return visit already has a worker, running from the moment the page
+    // opens. There is nothing to wait for and everything to lose by waiting:
+    // registration is what starts Angular looking for a new version, so
+    // delaying it delays the update - which is how somebody could open the
+    // app, see yesterday's menu, and be gone again before it noticed.
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
-      registrationStrategy: () => race(from(firstBoard), timer(20000)),
+      registrationStrategy: () =>
+        navigator.serviceWorker?.controller ? of(0) : race(from(firstBoard), timer(20000)),
     }),
   ],
 };

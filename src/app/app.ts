@@ -23,6 +23,12 @@ export class App {
     const updates = inject(SwUpdate);
     if (!updates.isEnabled) return;
 
+    // Ask straight away rather than waiting for the worker to get round to
+    // it. Installed, this game is opened and closed rather than reloaded, and
+    // the moment it opens is the one moment somebody is looking at a menu
+    // that might be out of date.
+    updates.checkForUpdate().catch(() => undefined);
+
     // Installed, this game can go months without being closed, and a service
     // worker will happily serve the version it has for all of that time. So
     // the app takes a new one as soon as it is safe to.

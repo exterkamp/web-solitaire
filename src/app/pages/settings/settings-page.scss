@@ -109,6 +109,15 @@ h1 {
   color: #cfead0;
 }
 
+// Quiet, at the foot of the page: it is for the one afternoon a year when it
+// matters, not for reading every time.
+.setting__build {
+  @include numeric-type;
+  font-size: 0.72rem;
+  color: rgba(159, 196, 164, 0.7);
+  margin: 0.5rem 0 0;
+}
+
 .setting__colors {
   display: flex;
   flex-wrap: wrap;

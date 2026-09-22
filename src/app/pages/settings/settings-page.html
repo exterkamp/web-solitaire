@@ -91,4 +91,9 @@
   </div>
 
   <a class="button" routerLink="/">Back</a>
+
+  <!-- The app updates itself in the background, so this is the answer to "am
+       I on the new one?" - and the thing to read out when something looks
+       wrong on one device and right on another. -->
+  <p class="setting__build">Build {{ build }}</p>
 </div>
