@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
-import { CARD_WIDTH, CARD_HEIGHT, RED_SUITS, Rank, Suit, SUITS } from './config';
+import {
+  CARD_WIDTH,
+  CARD_HEIGHT,
+  CORNER_INK_HALF_HEIGHT,
+  CORNER_INK_TOP_MARGIN,
+  RED_SUITS,
+  Rank,
+  Suit,
+  SUITS,
+} from './config';
 import { Card } from './deck';
 import {
   DeckTheme,
@@ -28,38 +37,12 @@ const CARD_FONT = CARD_INDEX_FONT;
 
 // 27, measured rather than picked: Archivo at 27px puts down the same 19px
 // of ink that Helvetica at 28 did, which is the proportion the corner was
-// laid out against and what CORNER_INK_HALF_HEIGHT below was measured from.
-// Every rank spans that same 19 except Q, whose tail drops 3 below the
+// laid out against and what CORNER_INK_HALF_HEIGHT in config.ts was measured
+// from. Every rank spans that same 19 except Q, whose tail drops 3 below the
 // baseline and is decorative rather than distinguishing.
 const CORNER_FONT_SIZE = 27;
 
-// Half-height of the corner index's actual *ink* at CORNER_FONT_SIZE,
-// measured off a rendered card rather than taken from the Text object's
-// height. A font box is substantially taller than the glyphs inside it -
-// all the leading above the cap and below the baseline is empty - and
-// sizing the fan off the box is what used to leave a band of blank card
-// under every index in a stack.
-const CORNER_INK_HALF_HEIGHT = 9.7;
-// Gap from the card's top edge to the top of that ink. Small, but not
-// smaller than the corner radius, or the first glyph starts to poke into
-// the rounded corner.
-const CORNER_INK_TOP_MARGIN = 6;
-// Matching gap under the ink, which is all the fan needs to leave below an
-// index for it to read as deliberate rather than clipped.
-const CORNER_INK_BOTTOM_MARGIN = 4;
-
 const CORNER_CENTER_Y = CARD_HEIGHT / 2 - (CORNER_INK_TOP_MARGIN + CORNER_INK_HALF_HEIGHT);
-
-// How much of a card a fanned tableau pile reveals of the card below it:
-// the index and its two margins, and nothing else.
-export const CARD_PEEK_HEIGHT =
-  CORNER_INK_TOP_MARGIN + 2 * CORNER_INK_HALF_HEIGHT + CORNER_INK_BOTTOM_MARGIN;
-
-// What a face-down card in a tableau pile shows of itself. There is nothing
-// to read on the back, so it only has to be visibly a card: enough to see
-// its edge and its shadow, and no more, because every unit spent here is a
-// unit the face-up cards below it do not get on a 900-unit screen.
-export const CARD_BACK_PEEK_HEIGHT = 11;
 
 // The center of a 2-10 card is one big suit glyph, not an accurate pip
 // count - a real pip layout for a 10 needs 5 rows of tiny glyphs to fit,

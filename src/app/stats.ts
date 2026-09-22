@@ -1,5 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { DrawCount } from './game/klondike';
+import { GameId } from './game/table-game';
 import { WinSummary } from './game/solitaire-scene';
 
 // The record book.
@@ -10,12 +11,35 @@ import { WinSummary } from './game/solitaire-scene';
 // design. A solitaire record is a private thing, and the cost of making it
 // portable is an account, a password and somewhere for both to live.
 //
-// Draw-one and draw-three are kept apart because they are not the same game:
-// draw-one is won perhaps four times in five with care and draw-three perhaps
-// one in ten, so a single win rate across both would say more about which one
-// you felt like playing than about how you played it.
+// Kept per *variant* rather than per game, because a variant is the unit
+// somebody actually compares themselves against. Draw-one Klondike is won
+// perhaps four times in five with care and draw-three perhaps one in ten; a
+// single rate across both would say more about which one you felt like
+// playing than about how you played it. FreeCell is a third thing again:
+// almost every deal is winnable, so a loss there is a loss rather than a bad
+// hand.
 
-const STORAGE_KEY = 'solitaire.stats.v1';
+export type Variant = 'klondike-1' | 'klondike-3' | 'freecell';
+
+export function variantOf(game: GameId, drawCount: DrawCount): Variant {
+  if (game === 'freecell') return 'freecell';
+  return drawCount === 3 ? 'klondike-3' : 'klondike-1';
+}
+
+export const VARIANT_LABELS: Record<Variant, string> = {
+  'klondike-1': 'Draw one',
+  'klondike-3': 'Draw three',
+  freecell: 'FreeCell',
+};
+
+const VARIANTS: Variant[] = ['klondike-1', 'klondike-3', 'freecell'];
+
+// v2 because the shape changed when the second game arrived: what used to be
+// keyed by how many cards a draw turned is now keyed by which game was being
+// played. A v1 record is read once and carried over - see load() - because
+// somebody's win streak is not worth losing to a refactor.
+const STORAGE_KEY = 'solitaire.stats.v2';
+const LEGACY_KEY = 'solitaire.stats.v1';
 
 export interface ModeRecord {
   played: number;
@@ -32,7 +56,7 @@ export interface ModeRecord {
 }
 
 export interface StatsRecord {
-  byDraw: Record<DrawCount, ModeRecord>;
+  byVariant: Record<Variant, ModeRecord>;
 }
 
 function emptyMode(): ModeRecord {
@@ -49,7 +73,13 @@ function emptyMode(): ModeRecord {
 }
 
 function emptyStats(): StatsRecord {
-  return { byDraw: { 1: emptyMode(), 3: emptyMode() } };
+  return {
+    byVariant: {
+      'klondike-1': emptyMode(),
+      'klondike-3': emptyMode(),
+      freecell: emptyMode(),
+    },
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -58,51 +88,31 @@ export class Stats {
 
   readonly all = this.record.asReadonly();
 
-  readonly totals = computed<ModeRecord & { winRate: number }>(() => {
-    const modes = Object.values(this.record().byDraw);
-    const sum = modes.reduce(
-      (acc, mode) => ({
-        played: acc.played + mode.played,
-        won: acc.won + mode.won,
-        // A best across two games that are scored the same way is still a
-        // best; a streak across them is not, so it is not offered here.
-        bestScore: Math.max(acc.bestScore, mode.bestScore),
-        bestSeconds: bestTime(acc.bestSeconds, mode.bestSeconds),
-        fewestMoves: bestTime(acc.fewestMoves, mode.fewestMoves),
-        totalSeconds: acc.totalSeconds + mode.totalSeconds,
-        currentStreak: 0,
-        bestStreak: Math.max(acc.bestStreak, mode.bestStreak),
-      }),
-      emptyMode(),
-    );
-    return { ...sum, winRate: sum.played ? sum.won / sum.played : 0 };
-  });
-
-  mode(draw: DrawCount): ModeRecord {
-    return this.record().byDraw[draw];
+  mode(variant: Variant): ModeRecord {
+    return this.record().byVariant[variant];
   }
 
-  winRate(draw: DrawCount): number {
-    const mode = this.mode(draw);
+  winRate(variant: Variant): number {
+    const mode = this.mode(variant);
     return mode.played ? mode.won / mode.played : 0;
   }
 
   /** The average length of a won game, in seconds. Zero if there are none. */
-  averageSeconds(draw: DrawCount): number {
-    const mode = this.mode(draw);
+  averageSeconds(variant: Variant): number {
+    const mode = this.mode(variant);
     return mode.won ? Math.round(mode.totalSeconds / mode.won) : 0;
   }
 
-  recordWin(summary: WinSummary): void {
-    this.update(summary.drawCount, (mode) => {
+  recordWin(variant: Variant, summary: WinSummary): void {
+    this.update(variant, (mode) => {
       const streak = mode.currentStreak + 1;
       return {
         ...mode,
         played: mode.played + 1,
         won: mode.won + 1,
         bestScore: Math.max(mode.bestScore, summary.total),
-        bestSeconds: bestTime(mode.bestSeconds, summary.seconds),
-        fewestMoves: bestTime(mode.fewestMoves, summary.moves),
+        bestSeconds: bestOf(mode.bestSeconds, summary.seconds),
+        fewestMoves: bestOf(mode.fewestMoves, summary.moves),
         totalSeconds: mode.totalSeconds + summary.seconds,
         currentStreak: streak,
         bestStreak: Math.max(mode.bestStreak, streak),
@@ -117,8 +127,8 @@ export class Stats {
    * game dealt, looked at and abandoned without a move is not a loss, because
    * counting it as one would make the record book punish curiosity.
    */
-  recordLoss(draw: DrawCount): void {
-    this.update(draw, (mode) => ({
+  recordLoss(variant: Variant): void {
+    this.update(variant, (mode) => ({
       ...mode,
       played: mode.played + 1,
       currentStreak: 0,
@@ -131,10 +141,10 @@ export class Stats {
     save(this.record());
   }
 
-  private update(draw: DrawCount, change: (mode: ModeRecord) => ModeRecord): void {
+  private update(variant: Variant, change: (mode: ModeRecord) => ModeRecord): void {
     const next = this.record();
     const updated: StatsRecord = {
-      byDraw: { ...next.byDraw, [draw]: change(next.byDraw[draw]) },
+      byVariant: { ...next.byVariant, [variant]: change(next.byVariant[variant]) },
     };
     this.record.set(updated);
     save(updated);
@@ -143,26 +153,34 @@ export class Stats {
 
 // Zero means "never", so it loses to any real answer. Without this the first
 // win sets a best time of zero seconds and nothing ever beats it.
-function bestTime(current: number, candidate: number): number {
+function bestOf(current: number, candidate: number): number {
   if (!candidate) return current;
   return current ? Math.min(current, candidate) : candidate;
 }
 
 function load(): StatsRecord {
+  const stats = emptyStats();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyStats();
-    const parsed = JSON.parse(raw) as Partial<StatsRecord>;
-    // Field by field rather than trusting the shape. This is a file the user
-    // can edit, a file an older version of this game wrote, and a file that
-    // survives every rename in here - so a missing mode or a string where a
-    // number should be is ordinary, not exceptional.
-    return {
-      byDraw: {
-        1: mergeMode(parsed.byDraw?.[1]),
-        3: mergeMode(parsed.byDraw?.[3]),
-      },
-    };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<StatsRecord>;
+      for (const variant of VARIANTS) {
+        stats.byVariant[variant] = mergeMode(parsed.byVariant?.[variant]);
+      }
+      return stats;
+    }
+
+    // Nothing under v2, so this may be somebody who played before FreeCell
+    // arrived. Their draw-one and draw-three records are the same games under
+    // different names and come across as they are.
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy) as { byDraw?: Record<string, Partial<ModeRecord>> };
+      stats.byVariant['klondike-1'] = mergeMode(old.byDraw?.['1']);
+      stats.byVariant['klondike-3'] = mergeMode(old.byDraw?.['3']);
+      save(stats);
+    }
+    return stats;
   } catch {
     return emptyStats();
   }
@@ -171,6 +189,10 @@ function load(): StatsRecord {
 function mergeMode(stored: Partial<ModeRecord> | undefined): ModeRecord {
   const base = emptyMode();
   if (!stored) return base;
+  // Field by field rather than trusting the shape. This is a file the user
+  // can edit, a file an older version of this game wrote, and a file that
+  // survives every rename in here - so a missing mode or a string where a
+  // number should be is ordinary, not exceptional.
   const numbers = Object.keys(base) as (keyof ModeRecord)[];
   for (const key of numbers) {
     const value = stored[key];

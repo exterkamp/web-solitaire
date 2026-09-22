@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from './config';
+import { GAME_HEIGHT } from './config';
 import { FELT_CLEAR_COLOR } from './table';
 import { BoardInit, SolitaireScene } from './solitaire-scene';
 
@@ -17,11 +17,15 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
   // coordinates - every card position in the game - stay in the original
   // 480x900 unit system untouched; only pixel density goes up.
   const pixelRatio = window.devicePixelRatio || 1;
+  // As wide as the game being dealt. Seven columns fit in 480 units and eight
+  // do not, so FreeCell brings a wider table rather than smaller cards - see
+  // freecell-table.ts.
+  const width = init.table.width;
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    width: GAME_WIDTH * pixelRatio,
+    width: width * pixelRatio,
     height: GAME_HEIGHT * pixelRatio,
     backgroundColor: FELT_CLEAR_COLOR,
     scale: {

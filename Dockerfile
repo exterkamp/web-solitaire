@@ -6,6 +6,13 @@
 FROM node:24-alpine AS build
 WORKDIR /build
 
+# Node sizes its heap from the machine's total memory, which on a host that is
+# already running a dozen containers is the wrong number: an Angular build left
+# to its own judgement took enough memory to stop the Docker daemon, and every
+# container on the host went down with it. Two gigabytes is comfortably more
+# than this build needs and comfortably less than the host can spare.
+ENV NODE_OPTIONS=--max-old-space-size=2048
+
 COPY package.json package-lock.json ./
 RUN npm ci
 

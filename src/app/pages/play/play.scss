@@ -34,17 +34,34 @@
   padding-bottom: 0.75rem;
 }
 
-.hud__exit {
+.hud__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+// Menu and New deal, which are the same kind of thing: a way out of the game
+// in front of you rather than a move in it. One is a link and one is a
+// button, so this has to undo the browser's idea of what a button looks like
+// as well as set what these look like.
+.hud__button {
   @include display-type;
   font-size: 0.85rem;
   color: #cfead0;
   text-decoration: none;
   padding: 0.35rem 0.6rem;
+  background: transparent;
   border: 1px solid rgba(207, 234, 208, 0.4);
   border-radius: 4px;
+  cursor: pointer;
 
   &:hover {
     background: rgba(253, 253, 253, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 2px;
   }
 }
 
@@ -119,28 +136,12 @@
   border-color: #ffd166;
 }
 
-.play__note {
+// Something the board has to say, over the board. Two of these: one for a
+// game won and one for a game over, which are the same box and nothing else
+// alike - so the shape is shared here and the rest is said separately.
+@mixin over-the-board($edge) {
   position: absolute;
   left: 50%;
-  bottom: 4.25rem;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0.45rem 0.8rem;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  color: #ffd166;
-  background: rgba(7, 36, 31, 0.88);
-  border: 1px solid rgba(255, 209, 102, 0.5);
-  border-radius: 6px;
-  text-align: center;
-}
-
-// Low on the screen on purpose: the cascade starts at the foundations and
-// falls, so the top of the board is where there is something to see.
-.win {
-  position: absolute;
-  left: 50%;
-  bottom: 5.5rem;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -149,9 +150,47 @@
   width: min(300px, 86vw);
   padding: 1rem 1.25rem 1.25rem;
   background: rgba(7, 36, 31, 0.93);
-  border: 2px solid #ffd166;
+  border: 2px solid $edge;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+// Low on the screen on purpose: the cascade starts at the foundations and
+// falls, so the top of the board is where there is something to see.
+.win {
+  @include over-the-board(#ffd166);
+  bottom: 5.5rem;
+}
+
+// High on the screen, for the opposite reason: this one is talking about the
+// position, so the position has to stay visible. It sits in the band of felt
+// above the foundations that the layout never deals onto - see
+// MAX_BOARD_DROP in config.ts, which is what makes that band exist.
+//
+// Quiet rather than gold. A game with no moves left is not an achievement,
+// and it is also not quite an ending: taking a card back off a foundation is
+// still legal, which is what Keep looking is for.
+.stuck {
+  @include over-the-board(rgba(207, 234, 208, 0.45));
+  // Below the bar rather than over it: the score and the way out stay
+  // readable, and the panel sits on felt instead of on the chrome.
+  top: 4.5rem;
+}
+
+.stuck__title {
+  @include display-type;
+  font-size: 1.5rem;
+  color: #fdfdfd;
+  margin: 0;
+}
+
+.stuck__note {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #cfead0;
+  text-align: center;
+  margin: 0 0 0.3rem;
 }
 
 .win__title {

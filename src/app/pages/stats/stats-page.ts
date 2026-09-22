@@ -1,12 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DrawCount } from '../../game/klondike';
 import { formatBest, formatBestTime, formatPercent } from '../../format';
-import { ModeRecord, Stats } from '../../stats';
+import { ModeRecord, Stats, VARIANT_LABELS, Variant } from '../../stats';
 
-// One row of the book. The label is the question, and each mode answers it in
-// its own column - which is the whole reason this is a table rather than two
-// stacked lists: a best time is only interesting next to the other one.
+// One row of the book. The label is the question, and each variant answers it
+// in its own column - which is the whole reason this is a table rather than a
+// stack of lists: a best time is only interesting next to another one.
 interface Row {
   label: string;
   value: (mode: ModeRecord) => string;
@@ -20,14 +19,22 @@ interface Row {
 })
 export class StatsPage {
   protected readonly stats = inject(Stats);
-  protected readonly draws: DrawCount[] = [1, 3];
   protected readonly confirming = signal(false);
 
-  protected readonly rows: Row[] = [
+  // Two tables rather than three columns of one. Klondike's two variants
+  // belong beside each other; FreeCell is a different game and comparing its
+  // win rate with theirs would be comparing a puzzle with a gamble.
+  protected readonly klondike: Variant[] = ['klondike-1', 'klondike-3'];
+  protected readonly freecell: Variant[] = ['freecell'];
+  protected readonly labels = VARIANT_LABELS;
+
+  private readonly common: Row[] = [
     { label: 'Played', value: (m) => String(m.played) },
     { label: 'Won', value: (m) => String(m.won) },
     { label: 'Win rate', value: (m) => (m.played ? formatPercent(m.won / m.played) : '—') },
-    { label: 'Best score', value: (m) => formatBest(m.bestScore) },
+  ];
+
+  private readonly tail: Row[] = [
     { label: 'Best time', value: (m) => formatBestTime(m.bestSeconds) },
     { label: 'Fewest moves', value: (m) => formatBest(m.fewestMoves) },
     {
@@ -38,8 +45,17 @@ export class StatsPage {
     { label: 'Best streak', value: (m) => String(m.bestStreak) },
   ];
 
-  protected mode(draw: DrawCount): ModeRecord {
-    return this.stats.mode(draw);
+  // Klondike keeps a score; FreeCell has never had one, so that row would be
+  // a column of dashes rather than a fact about the game.
+  protected readonly klondikeRows: Row[] = [
+    ...this.common,
+    { label: 'Best score', value: (m) => formatBest(m.bestScore) },
+    ...this.tail,
+  ];
+  protected readonly freecellRows: Row[] = [...this.common, ...this.tail];
+
+  protected mode(variant: Variant): ModeRecord {
+    return this.stats.mode(variant);
   }
 
   protected clear(): void {

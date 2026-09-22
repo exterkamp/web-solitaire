@@ -9,7 +9,7 @@ import {
   deckThemePath,
 } from '../../game/deck-theme';
 import { DrawCount } from '../../game/klondike';
-import { Handedness } from '../../game/solitaire-scene';
+import { Handedness } from '../../game/settings-types';
 import { Settings } from '../../settings';
 
 @Component({

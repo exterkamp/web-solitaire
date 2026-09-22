@@ -2,66 +2,52 @@ import Phaser from 'phaser';
 import {
   BOARD_DROP_STEP,
   BOARD_FLOOR,
+  BOARD_MARGIN,
   CARD_HEIGHT,
   CARD_WIDTH,
-  COLUMN_PITCH,
+  GAME_HEIGHT,
   MAX_BOARD_DROP,
   MIN_BOARD_DROP,
-  FIRST_FOUNDATION_COLUMN,
-  FOUNDATION_COUNT,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-  STOCK_COLUMN,
-  SUITS,
-  TABLEAU_COUNT,
   TABLEAU_TOP_Y,
   TOP_ROW_Y,
-  WASTE_COLUMN,
-  columnX,
 } from './config';
 import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
-import {
-  CARD_BACK_PEEK_HEIGHT,
-  CARD_PEEK_HEIGHT,
-  CardSprite,
-  ghostSuitKey,
-  preloadCardArt,
-  setDeck,
-} from './card-sprite';
-import {
-  DrawCount,
-  Move,
-  PileRef,
-  autoFinishMove,
-  autoTarget,
-  canDrop,
-  foundationIndexOf,
-  liftable,
-  timeBonus,
-} from './klondike';
+import { CardSprite, ghostSuitKey, preloadCardArt, setDeck } from './card-sprite';
+import { Move, PileRef, pileKey } from './piles';
+import { PileSlot, TableGame } from './table-game';
+import { Handedness } from './settings-types';
+import { timeBonus } from './klondike';
 import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
-import { Solitaire } from './session';
+import { GameSession } from './session';
 import { firstBoardDealt } from './first-board';
 import { drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface } from './table';
 
 // The board: everything you can see and everything you can do to it.
 //
-// The rules are in klondike.ts and are not repeated here. This scene asks
-// that module whether a move is legal and animates the answer; where the two
-// could disagree - what a tap means, which pile a dropped card is nearest -
-// the question is decided here, because those are facts about a screen and a
-// thumb rather than about Klondike.
+// No rules live here, and no game either. The scene is handed a TableGame -
+// Klondike or FreeCell - and asks it whether a move is legal, which piles
+// exist and where they are printed. What the scene owns is everything about a
+// screen and a thumb: picking a run up, following it, deciding what a release
+// meant, moving a card from one place to another, and the fifty-two cards
+// that fall out of a won game. None of that differs between the two games,
+// and the day it is written twice is the day it starts to differ by accident.
 
-/** Which hand the phone is in. The stock is what it moves. */
-export type Handedness = 'left' | 'right';
+// The scene holds a game whose state type it never inspects - every state
+// goes straight back to the game that made it - so `any` here is the honest
+// description rather than a shortcut. Naming it says so once.
+type AnyGame = TableGame<any>;
 
 /** What the page's heads-up display reads, refreshed after every move. */
 export interface BoardView {
-  score: number;
   moves: number;
-  stock: number;
-  waste: number;
+  // Whatever this game keeps score of, if anything: Klondike has a score and
+  // a stock, FreeCell has neither and counts its free cells instead. See
+  // TableGame.view.
+  score?: number;
+  stock?: number;
+  waste?: number;
+  free?: number;
   canUndo: boolean;
   canFinish: boolean;
   // Nothing legal left to do. Not the same as lost - the game is still there
@@ -79,7 +65,6 @@ export interface WinSummary {
   seconds: number;
   moves: number;
   undos: number;
-  drawCount: DrawCount;
 }
 
 export interface BoardEvents {
@@ -88,9 +73,9 @@ export interface BoardEvents {
 }
 
 export interface BoardInit {
+  table: AnyGame;
   theme: DeckTheme;
   backColor: number;
-  drawCount: DrawCount;
   handedness: Handedness;
   events: BoardEvents;
 }
@@ -110,23 +95,6 @@ const FLIP_MS = 110;
 // because this one is a thing to watch rather than a thing you did.
 const FINISH_STEP_MS = 90;
 
-// How far apart the cards of a draw-three waste sit, and in which direction.
-//
-// Downward, and by exactly the amount that reveals an index - the same step a
-// tableau pile fans by, and for the same reason. This was a sideways fan of
-// fifteen units, which looked like a fan and told you nothing: a card is
-// indexed in its top-left corner only, and a pile fanned to the left shows
-// you the right-hand edges of the cards underneath, which carry no ink at
-// all. You could see that two cards were there and not what either of them
-// was.
-//
-// The newest card stays in the slot and the older two stand above it, rather
-// than the other way round, for two reasons. The card you can actually play
-// is then always in the same place, lined up with the stock beside it; and
-// each card is covered by the one *below* it, which is what leaves its top
-// edge - and therefore its index - in view.
-const WASTE_FAN_Y = CARD_PEEK_HEIGHT;
-
 // The cascade's physics, in board units per 60th of a second. Gravity is
 // tuned by eye against a 900-unit screen rather than derived from anything:
 // what matters is that a card crosses the board in a second or two, and that
@@ -144,11 +112,9 @@ const SAMPLE_LIMIT = 8;
 const LAND_POP_MS = 150;
 const LAND_POP_SCALE = 1.07;
 
-// A press that travels less than this and is over quickly is a tap, and taps
-// mean "send this somewhere sensible". Generous, because a thumb on glass
-// never holds still.
+// A press that travels less than this is a tap, and taps mean "send this
+// somewhere sensible". Generous, because a thumb on glass never holds still.
 const TAP_SLOP = 10;
-const TAP_MS = 300;
 
 // How far the felt is printed around a slot, and the gold it lights up in
 // when a dragged run is over it.
@@ -167,7 +133,6 @@ interface DragState {
   offsetY: number;
   startX: number;
   startY: number;
-  startTime: number;
   moved: boolean;
   // The last few pointer positions, for telling a throw from a carry. See
   // gesture.ts - only the tail of the gesture is measured, so only the tail
@@ -183,10 +148,16 @@ interface Faller {
 }
 
 export class SolitaireScene extends Phaser.Scene {
+  // `table`, not `game`: Phaser.Scene already has a `game` and it is the
+  // engine itself. Third time this file has learned that lesson - see the
+  // notes on `session` and `report` below.
+  private table!: AnyGame;
   private theme!: DeckTheme;
   private backColor!: number;
-  private drawCount: DrawCount = 1;
   private handedness: Handedness = 'right';
+  // Where every pile of this game is printed, worked out once from the game's
+  // own description of its table.
+  private slotMap = new Map<string, { slot: PileSlot; x: number; y: number }>();
   // `report`, not `events`, for the same reason the session is not called
   // `game`: Phaser.Scene already has an `events`, and it is the scene's own
   // emitter.
@@ -195,7 +166,7 @@ export class SolitaireScene extends Phaser.Scene {
   // `session`, not `game`: a Phaser.Scene already has a `game`, which is the
   // engine itself, and shadowing it with a different private type is how this
   // file came to be full of errors about a property that was never mentioned.
-  private session!: Solitaire;
+  private session!: GameSession<any>;
   private pixelRatio = 1;
 
   // Every game object is parented into this container instead of being added
@@ -215,7 +186,9 @@ export class SolitaireScene extends Phaser.Scene {
   private slotHighlights = new Map<string, Phaser.GameObjects.Graphics>();
   // The stock's slot as a thing that can be pressed, rather than as printing
   // on the felt. See printLayout.
-  private stockZone!: Phaser.GameObjects.Zone;
+  // The stock's slot as a thing that can be pressed rather than as printing
+  // on the felt. Only games that have a stock get one. See printLayout.
+  private stockZone?: Phaser.GameObjects.Zone;
 
   // How far below its highest position the whole layout is currently sitting.
   // See MAX_BOARD_DROP in config.ts: the board lives at the bottom of the
@@ -247,11 +220,19 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   init(data: BoardInit): void {
+    this.table = data.table;
     this.theme = data.theme;
     this.backColor = data.backColor;
-    this.drawCount = data.drawCount;
     this.handedness = data.handedness;
     this.report = data.events;
+    this.slotMap.clear();
+    for (const slot of this.table.slots(this.handedness)) {
+      this.slotMap.set(pileKey(slot.ref), {
+        slot,
+        x: this.columnX(slot.column),
+        y: slot.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2,
+      });
+    }
   }
 
   preload(): void {
@@ -288,26 +269,20 @@ export class SolitaireScene extends Phaser.Scene {
 
   // --- where everything sits ---------------------------------------------
 
-  // Which column each of the top-row piles is printed in.
-  //
-  // The stock is tapped more than anything else on the board - a draw-three
-  // game is mostly taps on it - so it goes under the thumb of whichever hand
-  // is holding the phone, and the foundations take the other end. The waste
-  // sits inboard of the stock and fans toward the middle, which leaves its
-  // three cards room without them ever running into a foundation.
-  private topColumns(): { stock: number; waste: number; foundations: number[] } {
-    if (this.handedness === 'right') {
-      return {
-        stock: TABLEAU_COUNT - 1 - STOCK_COLUMN,
-        waste: TABLEAU_COUNT - 1 - WASTE_COLUMN,
-        foundations: Array.from({ length: FOUNDATION_COUNT }, (_, i) => FOUNDATION_COUNT - 1 - i),
-      };
-    }
-    return {
-      stock: STOCK_COLUMN,
-      waste: WASTE_COLUMN,
-      foundations: Array.from({ length: FOUNDATION_COUNT }, (_, i) => FIRST_FOUNDATION_COLUMN + i),
-    };
+  // The board is as wide as its game needs. Seven columns of cards fit in
+  // 480 units; eight need a wider table rather than smaller cards, so the
+  // pitch comes out the same in both games and every card is drawn from the
+  // same textures. See freecell-table.ts.
+  private get width(): number {
+    return this.table.width;
+  }
+
+  private get columnPitch(): number {
+    return (this.width - 2 * BOARD_MARGIN) / this.table.columns;
+  }
+
+  private columnX(column: number): number {
+    return BOARD_MARGIN + this.columnPitch / 2 + column * this.columnPitch;
   }
 
   // Where a pile is printed on the felt, in the layout's own coordinates -
@@ -315,17 +290,10 @@ export class SolitaireScene extends Phaser.Scene {
   // carries the drop, so everything inside it moves together and none of it
   // has to know how far down the board is sitting.
   private slotPosition(ref: PileRef): { x: number; y: number } {
-    const columns = this.topColumns();
-    switch (ref.kind) {
-      case 'stock':
-        return { x: columnX(columns.stock), y: TOP_ROW_Y };
-      case 'waste':
-        return { x: columnX(columns.waste), y: TOP_ROW_Y };
-      case 'foundation':
-        return { x: columnX(columns.foundations[ref.index]), y: TOP_ROW_Y };
-      case 'tableau':
-        return { x: columnX(ref.index), y: TABLEAU_TOP_Y + CARD_HEIGHT / 2 };
-    }
+    const slot = this.slotMap.get(pileKey(ref));
+    // Every pile a game names has a slot; this is only reachable if a game
+    // returns a pile from piles() that it did not put on its table.
+    return slot ? { x: slot.x, y: slot.y } : { x: this.width / 2, y: TOP_ROW_Y };
   }
 
   // And where it actually is. Cards are not in the markings container - they
@@ -336,17 +304,15 @@ export class SolitaireScene extends Phaser.Scene {
     return { x: at.x, y: at.y + this.drop };
   }
 
-  // The gaps down a fanned pile, before any squeezing. A face-down card shows
-  // a sliver and a face-up one shows its index, so the step depends on the
-  // card *above* the gap rather than on a fixed pitch.
-  private fanSteps(pile: readonly Card[]): number[] {
-    return pile.map((card, i) =>
-      i === 0 ? 0 : pile[i - 1].faceUp ? CARD_PEEK_HEIGHT : CARD_BACK_PEEK_HEIGHT,
-    );
+  // The gaps down a fanned pile, before any squeezing. What the steps are is
+  // the game's business: Klondike shows a sliver of a face-down card and an
+  // index of a face-up one, FreeCell has no face-down cards at all.
+  private fanSteps(ref: PileRef, cards: readonly Card[]): number[] {
+    return cards.map((_, i) => this.table.fanStep(ref, cards, i));
   }
 
-  private fanDepth(pile: readonly Card[]): number {
-    return this.fanSteps(pile).reduce((sum, step) => sum + step, 0);
+  private fanDepth(ref: PileRef, cards: readonly Card[]): number {
+    return this.fanSteps(ref, cards).reduce((sum, step) => sum + step, 0);
   }
 
   /**
@@ -360,7 +326,13 @@ export class SolitaireScene extends Phaser.Scene {
    * pileBase a moment later, in the same render.
    */
   private updateDrop(animate: boolean): void {
-    const deepest = Math.max(0, ...this.session.state.tableau.map((pile) => this.fanDepth(pile)));
+    const depths = this.table
+      .piles(this.session.state)
+      // Only the piles that hang downward: a pile that fans up out of its
+      // slot, like a draw-three waste, needs room above rather than below.
+      .filter((pile) => !this.table.fansUp(pile.ref))
+      .map((pile) => this.fanDepth(pile.ref, pile.cards));
+    const deepest = Math.max(0, ...depths);
     const slack = BOARD_FLOOR - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
     const stepped = Math.floor(Math.max(0, slack) / BOARD_DROP_STEP) * BOARD_DROP_STEP;
     const next = Math.min(Math.max(stepped, MIN_BOARD_DROP), MAX_BOARD_DROP);
@@ -374,23 +346,17 @@ export class SolitaireScene extends Phaser.Scene {
     }
   }
 
-  // How far down the column each card of a tableau pile sits.
+  // How far down its pile each card sits, squeezed to fit if the pile is
+  // deeper than the room under it.
   //
-  // A face-down card shows a sliver and a face-up one shows its index, so the
-  // step depends on the card *above* the gap rather than on a fixed pitch.
-  // The whole fan is then squeezed if it would run off the bottom of the
-  // screen - which a legal Klondike pile cannot quite do at these numbers,
-  // but "cannot quite" is not a reason to draw a card where it cannot be
-  // reached.
-  private tableauOffsets(pile: readonly Card[]): number[] {
-    const steps = this.fanSteps(pile);
+  // With the board sliding to fit (see updateDrop), a squeeze is only ever
+  // needed by the deepest pile a game can produce - which is what it was for,
+  // and why it now almost never happens.
+  private fanOffsets(ref: PileRef, cards: readonly Card[]): number[] {
+    const steps = this.fanSteps(ref, cards);
     const total = steps.reduce((sum, step) => sum + step, 0);
-    // What is left between the pile's first card and the floor. With the
-    // board sliding to fit (see updateDrop), this is only ever short for the
-    // deepest pile Klondike can deal - which is what the squeeze below is
-    // for, and why it now almost never happens.
     const room = BOARD_FLOOR - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
-    const squeeze = total > room ? room / total : 1;
+    const squeeze = this.table.fansUp(ref) || total <= room ? 1 : room / total;
 
     const offsets: number[] = [];
     let y = 0;
@@ -401,26 +367,15 @@ export class SolitaireScene extends Phaser.Scene {
     return offsets;
   }
 
-  private cardPosition(ref: PileRef, index: number, pile: readonly Card[]): { x: number; y: number } {
+  private cardPosition(ref: PileRef, index: number, cards: readonly Card[]): { x: number; y: number } {
     const base = this.pileBase(ref);
-    if (ref.kind === 'tableau') {
-      return { x: base.x, y: base.y + this.tableauOffsets(pile)[index] };
-    }
-    if (ref.kind === 'waste') {
-      // Only the last few are fanned, and only in draw-three: in draw-one
-      // there is one card to look at and a fan of one is a card that has
-      // wandered off its slot.
-      const fanned = this.drawCount === 3 ? Math.min(3, pile.length) : 1;
-      // How far back from the newest card this one is. Everything older than
-      // the fan sits under the card at the back of it, where the pile's own
-      // depth is all there is to see anyway.
-      const back = Math.max(0, pile.length - 1 - index);
-      return {
-        x: base.x,
-        y: base.y - Math.min(back, fanned - 1) * WASTE_FAN_Y,
-      };
-    }
-    return base;
+    const offsets = this.fanOffsets(ref, cards);
+    if (!this.table.fansUp(ref)) return { x: base.x, y: base.y + offsets[index] };
+    // Upward, measured from the card at the end of the pile rather than from
+    // the one at the start: the newest card stays in the slot and the older
+    // ones stand above it. See the waste fan in klondike-table.ts.
+    const last = offsets[offsets.length - 1] ?? 0;
+    return { x: base.x, y: base.y - (last - offsets[index]) };
   }
 
   // --- the printing on the felt -------------------------------------------
@@ -428,106 +383,99 @@ export class SolitaireScene extends Phaser.Scene {
   private printLayout(): void {
     const put = (objects: Phaser.GameObjects.GameObject[]) => this.markings.add(objects);
 
-    // The stock's slot, with the turn-it-over arrow inside it. Drawn whether
-    // or not there are cards on it: the arrow is what says an empty stock is
-    // a button rather than a gap.
-    const stock = this.slotPosition({ kind: 'stock', index: 0 });
-    put([drawSlot(this, stock.x, stock.y, CARD_WIDTH, CARD_HEIGHT)]);
-    put([drawRecycleMark(this, stock.x, stock.y, 15)]);
-
-    // The stock takes presses whether or not there is a card on it.
-    //
-    // This was the top card's job alone, which works right up until the stock
-    // runs out - and then the one press that matters, the one that turns the
-    // waste back into a deck, has nothing left to land on. The arrow was
-    // drawn there promising exactly that and the slot underneath it was felt.
-    //
-    // In the markings layer, so it sits below the cards: while there is a
-    // stock to turn, the top card is what gets pressed, and they both mean
-    // the same thing anyway.
-    this.stockZone = this.add
-      .zone(stock.x, stock.y, CARD_WIDTH, CARD_HEIGHT)
-      .setInteractive(
-        new Phaser.Geom.Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT),
-        Phaser.Geom.Rectangle.Contains,
-      );
-    this.markings.add(this.stockZone);
-    this.markings.setY(this.drop);
-
-    const waste = this.slotPosition({ kind: 'waste', index: 0 });
-    put([drawSlot(this, waste.x, waste.y, CARD_WIDTH, CARD_HEIGHT)]);
-
-    // Each foundation carries a ghost of the suit it is reserved for. That
-    // reservation is a real rule here - a spade cannot be sent to the pile
-    // that happens to be empty - so the board has to say which is which
-    // before there is a card on it to say it for them.
-    SUITS.forEach((suit, i) => {
-      const at = this.slotPosition({ kind: 'foundation', index: i });
+    for (const slot of this.table.slots(this.handedness)) {
+      const at = this.slotPosition(slot.ref);
       put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
-      const ghost = this.add
-        .image(at.x, at.y, ghostSuitKey(this, suit))
-        .setDisplaySize(30, 30)
-        .setAlpha(0.16);
-      put([ghost]);
-    });
 
-    for (let i = 0; i < TABLEAU_COUNT; i++) {
-      const at = this.slotPosition({ kind: 'tableau', index: i });
-      put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
+      // A foundation carries a ghost of the suit it is reserved for. That
+      // reservation is a real rule - a spade cannot be sent to whichever pile
+      // happens to be empty - so the board has to say which is which before
+      // there is a card on it to say it for them.
+      if (slot.ghost) {
+        put([this.add.image(at.x, at.y, ghostSuitKey(this, slot.ghost)).setDisplaySize(30, 30).setAlpha(0.16)]);
+      }
+
+      // The arrow on the stock: the one slot whose meaning is not "put a card
+      // here" but "press to turn the deck over", and the one press that has
+      // to keep working when the pile is empty. Presses are otherwise a card
+      // sprite's job, and an empty pile has no sprite.
+      if (slot.recycle) {
+        put([drawRecycleMark(this, at.x, at.y, 15)]);
+        this.stockZone = this.add
+          .zone(at.x, at.y, CARD_WIDTH, CARD_HEIGHT)
+          .setInteractive(
+            new Phaser.Geom.Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT),
+            Phaser.Geom.Rectangle.Contains,
+          );
+        this.markings.add(this.stockZone);
+      }
     }
 
     // The heading, in the lettering a casino layout is printed in. It sits in
     // the band between the top row and the tableau, which is the only strip
     // of felt on this board that no card ever covers.
-    put(drawSectionLabel(this, GAME_WIDTH / 2, TABLEAU_TOP_Y - 23, 'Solitaire', this.pixelRatio));
+    put(drawSectionLabel(this, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label, this.pixelRatio));
 
-    // One highlight per droppable pile, kept hidden until a run is dragged
-    // over it. Made once rather than per drag: a Graphics object built in the
-    // middle of a gesture is a stutter in the middle of a gesture.
-    const highlight = (ref: PileRef) => {
-      const at = this.slotPosition(ref);
+    // One highlight per pile a card can be dropped on, kept hidden until a
+    // run is dragged over it. Made once rather than per drag: a Graphics
+    // object built in the middle of a gesture is a stutter in the middle of a
+    // gesture.
+    for (const slot of this.table.slots(this.handedness)) {
+      if (slot.ref.kind === 'stock' || slot.ref.kind === 'waste') continue;
+      const at = this.slotPosition(slot.ref);
       const g = this.add.graphics();
       g.lineStyle(2.5, HIGHLIGHT_COLOR, 0.95);
       g.strokeRoundedRect(at.x - CARD_WIDTH / 2, at.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 6);
       g.setVisible(false);
       this.markings.add(g);
-      this.slotHighlights.set(pileKey(ref), g);
-    };
-    for (let i = 0; i < FOUNDATION_COUNT; i++) highlight({ kind: 'foundation', index: i });
-    for (let i = 0; i < TABLEAU_COUNT; i++) highlight({ kind: 'tableau', index: i });
+      this.slotHighlights.set(pileKey(slot.ref), g);
+    }
+
+    this.markings.setY(this.drop);
   }
 
   // --- starting and re-starting -------------------------------------------
 
-  /** Deals a new game, optionally changing how many cards a draw turns. */
-  newGame(drawCount: DrawCount = this.drawCount): void {
+  /** Deals a new game of whatever game this board is showing. */
+  newGame(): void {
     this.stopCascade();
     this.releaseDrag();
     for (const sprite of this.sprites.values()) sprite.destroy();
     this.sprites.clear();
 
-    this.drawCount = drawCount;
-    this.session = new Solitaire(drawCount);
+    this.session = new GameSession(this.table);
     this.updateDrop(false);
     this.busy = true;
 
-    // Every card starts on the stock, face down, and is dealt from there.
-    // The state already says where they end up; this is only the journey.
-    const state = this.session.state;
-    const stock = this.pileBase({ kind: 'stock', index: 0 });
+    // Only the tableau is dealt card by card. Everything else is simply there
+    // when the dealing stops, which is what it looks like when somebody deals
+    // a hand in front of you.
+    const origin = this.table.dealOrigin(this.handedness);
+    const from = {
+      x: this.columnX(origin.column),
+      y: (origin.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2) + this.drop,
+    };
     const dealt: { sprite: CardSprite; to: { x: number; y: number }; faceUp: boolean }[] = [];
 
-    state.tableau.forEach((pile, column) => {
-      pile.forEach((card, index) => {
-        const sprite = this.makeSprite({ ...card, faceUp: false }, stock.x, stock.y);
-        dealt.push({
-          sprite,
-          to: this.cardPosition({ kind: 'tableau', index: column }, index, pile),
-          faceUp: card.faceUp,
-        });
+    for (const pile of this.table.piles(this.session.state)) {
+      pile.cards.forEach((card, index) => {
+        const to = this.cardPosition(pile.ref, index, pile.cards);
+        if (pile.ref.kind !== 'tableau') {
+          this.makeSprite(card, to.x, to.y);
+          return;
+        }
+        // Dealt face down and turned over on arrival, in a game that has
+        // anything face down at all. FreeCell does not, and fifty-two cards
+        // each flipping on landing is a lot of turning over for a deal where
+        // nothing was ever hidden.
+        const sprite = this.makeSprite(
+          { ...card, faceUp: this.table.dealsFaceDown ? false : card.faceUp },
+          from.x,
+          from.y,
+        );
+        dealt.push({ sprite, to, faceUp: card.faceUp });
       });
-    });
-    for (const card of state.stock) this.makeSprite(card, stock.x, stock.y);
+    }
     this.restack();
 
     // Row by row across the columns, which is how a person deals: one card to
@@ -544,7 +492,7 @@ export class SolitaireScene extends Phaser.Scene {
         ease: 'Cubic.easeOut',
         onStart: () => this.cardLayer.bringToTop(entry.sprite),
         onComplete: () => {
-          if (entry.faceUp) this.flipSprite(entry.sprite, true);
+          if (entry.faceUp && !entry.sprite.card.faceUp) this.flipSprite(entry.sprite, true);
         },
       });
     });
@@ -590,14 +538,13 @@ export class SolitaireScene extends Phaser.Scene {
    * travels is the thing that was already there.
    */
   private renderBoard(animate = true): void {
-    const state = this.session.state;
     this.updateDrop(animate);
-    const place = (ref: PileRef, pile: readonly Card[]) => {
-      pile.forEach((card, index) => {
+    for (const pile of this.table.piles(this.session.state)) {
+      pile.cards.forEach((card, index) => {
         const sprite = this.sprites.get(card.id);
         if (!sprite) return;
         if (this.drag?.sprites.includes(sprite)) return;
-        const to = this.cardPosition(ref, index, pile);
+        const to = this.cardPosition(pile.ref, index, pile.cards);
         if (sprite.card.faceUp !== card.faceUp) this.flipSprite(sprite, card.faceUp);
         if (animate && (Math.abs(sprite.x - to.x) > 0.5 || Math.abs(sprite.y - to.y) > 0.5)) {
           this.tweens.add({ targets: sprite, x: to.x, y: to.y, duration: MOVE_MS, ease: 'Cubic.easeOut' });
@@ -605,12 +552,7 @@ export class SolitaireScene extends Phaser.Scene {
           sprite.setPosition(to.x, to.y);
         }
       });
-    };
-
-    place({ kind: 'stock', index: 0 }, state.stock);
-    place({ kind: 'waste', index: 0 }, state.waste);
-    state.foundations.forEach((pile, i) => place({ kind: 'foundation', index: i }, pile));
-    state.tableau.forEach((pile, i) => place({ kind: 'tableau', index: i }, pile));
+    }
     this.restack();
   }
 
@@ -619,15 +561,8 @@ export class SolitaireScene extends Phaser.Scene {
   // one thing worse than a card in the wrong place is a card behind the pile
   // it is in.
   private restack(): void {
-    const state = this.session.state;
-    const piles: readonly (readonly Card[])[] = [
-      state.stock,
-      state.waste,
-      ...state.foundations,
-      ...state.tableau,
-    ];
-    for (const pile of piles) {
-      for (const card of pile) {
+    for (const pile of this.table.piles(this.session.state)) {
+      for (const card of pile.cards) {
         const sprite = this.sprites.get(card.id);
         if (sprite) this.cardLayer.bringToTop(sprite);
       }
@@ -656,12 +591,10 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   private publish(): void {
-    const state = this.session.state;
     this.report.changed({
-      score: state.score,
-      moves: state.moves,
-      stock: state.stock.length,
-      waste: state.waste.length,
+      // Whatever this game keeps: a score and a stock, or free cells.
+      ...this.table.view(this.session.state),
+      moves: this.session.moves,
       canUndo: this.session.canUndo,
       canFinish: this.session.canFinish && !this.locked,
       stuck: this.session.stuck,
@@ -694,7 +627,7 @@ export class SolitaireScene extends Phaser.Scene {
     }
 
     const count = found.pile.length - found.index;
-    const cards = liftable(this.session.state, found.ref, count);
+    const cards = this.table.liftable(this.session.state, found.ref, count);
     if (!cards) return;
 
     const sprites = cards
@@ -710,7 +643,6 @@ export class SolitaireScene extends Phaser.Scene {
       offsetY: sprites[0].y - board.y,
       startX: board.x,
       startY: board.y,
-      startTime: this.time.now,
       moved: false,
       samples: [{ x: board.x, y: board.y, t: pointer.downTime }],
     };
@@ -747,7 +679,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.showHighlight(undefined);
 
     const board = this.toBoard(pointer);
-    const quick = this.time.now - drag.startTime < TAP_MS;
+
     const head = { x: board.x + drag.offsetX, y: board.y + drag.offsetY };
     // Three ways to say where a card goes, in order of how deliberate they
     // are. A throw at the foundations is the most specific thing a gesture
@@ -755,7 +687,7 @@ export class SolitaireScene extends Phaser.Scene {
     // card happened to be let go of. A press that went nowhere is a tap, and
     // asks the rules where the card belongs. Anything else is a carry, and
     // lands where it was put down.
-    const cards = liftable(this.session.state, drag.from, drag.count) ?? [];
+    const cards = this.table.liftable(this.session.state, drag.from, drag.count) ?? [];
 
     // Where the cards were put down comes first, and only counts if that pile
     // will actually take them. Letting go of a card on a pile that accepts it
@@ -770,9 +702,18 @@ export class SolitaireScene extends Phaser.Scene {
     // the rules where the card belongs.
     const landed = this.dropTarget(head, cards);
     const thrown = landed ? undefined : this.flickTarget(drag, pointer, board);
-    const tapped = landed || thrown || drag.moved || !quick
+    // A press that never moved is a tap, however long it was held.
+    //
+    // There used to be a time limit on that - a third of a second, the usual
+    // figure - and it was worth nothing and cost something. Nothing, because
+    // a stationary press has no other meaning here: there is no press-and-
+    // hold gesture to be confused with, and holding a card still and putting
+    // it back where it was is not a thing anybody means to do. And something,
+    // because when a device stutters the limit is what decides a tap was a
+    // slow drag, and the answer to a tap that misses its window is silence.
+    const tapped = landed || thrown || drag.moved
       ? undefined
-      : autoTarget(this.session.state, drag.from, drag.count);
+      : this.table.autoTarget(this.session.state, drag.from, drag.count);
     const to = landed ?? thrown ?? tapped;
 
     this.drag = undefined;
@@ -814,10 +755,10 @@ export class SolitaireScene extends Phaser.Scene {
     const velocity = pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime });
     if (!isUpwardFlick(velocity)) return undefined;
 
-    const cards = liftable(this.session.state, drag.from, 1);
+    const cards = this.table.liftable(this.session.state, drag.from, 1);
     if (!cards) return undefined;
-    const home: PileRef = { kind: 'foundation', index: foundationIndexOf(cards[0].suit) };
-    return canDrop(this.session.state, cards, home) ? home : undefined;
+    const home = this.table.homeFor(cards[0]);
+    return this.table.canDrop(this.session.state, cards, home) ? home : undefined;
   }
 
   // A card that arrived under its own steam, rather than being set down.
@@ -849,34 +790,19 @@ export class SolitaireScene extends Phaser.Scene {
     this.restack();
   }
 
-  /** Turns the stock, or turns the waste back into one. */
+  /**
+   * Turns the stock, or turns the waste back into one.
+   *
+   * Both are one gesture on one pile, so they are one move as far as the
+   * rules are concerned, and the render sorts out what it looks like: cards
+   * flying to the waste and turning over, or the whole waste going quietly
+   * back under the stock. A game with no stock never gets here - nothing
+   * presses it, and its rules refuse the move anyway.
+   */
   draw(): void {
-    if (this.busy) return;
-    const result = this.session.play({ kind: 'draw' });
-    if (!result) return;
-
-    if (result.recycled) {
-      // Everything goes back at once, face down. Rendered rather than
-      // animated per card: twenty-four cards flying home in formation is a
-      // second of nothing, every pass.
-      this.renderBoard(true);
-    } else {
-      const state = this.session.state;
-      state.waste.forEach((card, index) => {
-        const sprite = this.sprites.get(card.id);
-        if (!sprite) return;
-        const to = this.cardPosition({ kind: 'waste', index: 0 }, index, state.waste);
-        const isNew = result.drawn?.some((c) => c.id === card.id);
-        if (isNew) {
-          this.cardLayer.bringToTop(sprite);
-          this.flipSprite(sprite, true);
-          this.tweens.add({ targets: sprite, x: to.x, y: to.y, duration: DRAW_MS, ease: 'Cubic.easeOut' });
-        } else {
-          sprite.setPosition(to.x, to.y);
-        }
-      });
-      this.restack();
-    }
+    if (this.locked) return;
+    if (!this.session.play({ kind: 'draw' })) return;
+    this.renderBoard(true);
     this.publish();
   }
 
@@ -922,8 +848,12 @@ export class SolitaireScene extends Phaser.Scene {
 
     const step = () => {
       if (!this.finishing) return;
-      const move = autoFinishMove(this.session.state);
-      const deck = this.session.state.stock.length + this.session.state.waste.length;
+      const move = this.table.autoFinishMove(this.session.state);
+      // How much turning the deck can be doing before it is clear it is
+      // getting nowhere. A game with no deck reports none of either, and this
+      // reduces to "one fruitless move and stop".
+      const view = this.table.view(this.session.state);
+      const deck = (view.stock ?? 0) + (view.waste ?? 0);
       if (!move || this.session.won || sinceProgress > deck + 1) {
         this.finishing = false;
         this.publish();
@@ -955,18 +885,18 @@ export class SolitaireScene extends Phaser.Scene {
     const session = this.session;
     const seconds = session.elapsed();
     const bonus = timeBonus(seconds);
+    const score = this.table.view(session.state).score ?? 0;
     // Let the cards fall for a moment before the page says anything. The
     // cascade *is* the reward; a panel over it half a second in is a
     // congratulation that interrupts itself.
     this.time.delayedCall(1400, () => {
       this.report.won({
-        score: session.state.score,
+        score,
         bonus,
-        total: session.state.score + bonus,
+        total: score + bonus,
         seconds,
-        moves: session.state.moves,
+        moves: session.moves,
         undos: session.undos,
-        drawCount: session.drawCount,
       });
     });
     this.publish();
@@ -979,17 +909,10 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   // Where a card is, in terms the rules understand.
-  private locate(cardId: string): { ref: PileRef; pile: Card[]; index: number } | undefined {
-    const state = this.session.state;
-    const search: [PileRef, Card[]][] = [
-      [{ kind: 'stock', index: 0 }, state.stock],
-      [{ kind: 'waste', index: 0 }, state.waste],
-      ...state.foundations.map((pile, i) => [{ kind: 'foundation', index: i }, pile] as [PileRef, Card[]]),
-      ...state.tableau.map((pile, i) => [{ kind: 'tableau', index: i }, pile] as [PileRef, Card[]]),
-    ];
-    for (const [ref, pile] of search) {
-      const index = pile.findIndex((card) => card.id === cardId);
-      if (index >= 0) return { ref, pile, index };
+  private locate(cardId: string): { ref: PileRef; pile: readonly Card[]; index: number } | undefined {
+    for (const pile of this.table.piles(this.session.state)) {
+      const index = pile.cards.findIndex((card) => card.id === cardId);
+      if (index >= 0) return { ref: pile.ref, pile: pile.cards, index };
     }
     return undefined;
   }
@@ -1024,55 +947,37 @@ export class SolitaireScene extends Phaser.Scene {
     // sixty units wide and printed in an order that mirrors with handedness,
     // and a card has exactly one home - so asking the player to hit the right
     // one is asking them to aim at something the rules already know.
-    const to: PileRef = best.ref.kind === 'foundation'
-      ? { kind: 'foundation', index: foundationIndexOf(cards[0].suit) }
-      : best.ref;
+    const to: PileRef = best.ref.kind === 'foundation' ? this.table.homeFor(cards[0]) : best.ref;
 
     // Legality is settled here rather than left to the move, because this
     // answer is also what the highlight draws: a pile lit up under a card has
     // to mean "this will work", or it is an invitation to a mistake.
-    return canDrop(this.session.state, cards, to) ? to : undefined;
+    return this.table.canDrop(this.session.state, cards, to) ? to : undefined;
   }
 
   private dropZones(): { ref: PileRef; rect: Phaser.Geom.Rectangle }[] {
-    const state = this.session.state;
     const zones: { ref: PileRef; rect: Phaser.Geom.Rectangle }[] = [];
+    const cards = new Map(this.table.piles(this.session.state).map((p) => [pileKey(p.ref), p.cards]));
 
-    for (let i = 0; i < FOUNDATION_COUNT; i++) {
-      // pileBase, not slotPosition: where the foundation *is*, not where it
-      // would be if the board were not sitting low. These zones were reading
-      // the layout's own coordinates while the tableau's read the dropped
-      // ones, which put the foundations' drop zones 260 units above the
-      // foundations - so a card could be dragged onto one and would always be
-      // refused, while a flick at the same pile worked, because a flick never
-      // asks this question.
-      const at = this.pileBase({ kind: 'foundation', index: i });
-      // A column wide, like the tableau's. Which slot is hit hardly matters -
-      // see dropTarget, where a card dropped on this row is routed to its own
-      // suit - but hitting *nothing* does, and a 5.7-unit gutter between four
-      // small targets is easy to find with a thumb.
+    for (const slot of this.table.slots(this.handedness)) {
+      // Neither of these takes a card: the stock is turned, and the waste is
+      // dealt onto rather than played onto.
+      if (slot.ref.kind === 'stock' || slot.ref.kind === 'waste') continue;
+      const at = this.pileBase(slot.ref);
+      const pile = cards.get(pileKey(slot.ref)) ?? [];
+      // A column wide, so the gutters between slots are not dead ground -
+      // which foundation is hit hardly matters, since a card dropped on that
+      // row is routed to its own suit, but hitting nothing does. And as deep
+      // as the pile is long: a run dropped anywhere down a column is meant
+      // for that column, not for the felt beside it.
+      const offsets = this.fanOffsets(slot.ref, pile);
+      const depth = this.table.fansUp(slot.ref) ? 0 : (offsets[offsets.length - 1] ?? 0);
       zones.push({
-        ref: { kind: 'foundation', index: i },
+        ref: slot.ref,
         rect: new Phaser.Geom.Rectangle(
-          at.x - COLUMN_PITCH / 2, at.y - CARD_HEIGHT / 2, COLUMN_PITCH, CARD_HEIGHT,
-        ),
-      });
-    }
-
-    for (let i = 0; i < TABLEAU_COUNT; i++) {
-      const pile = state.tableau[i];
-      const at = this.pileBase({ kind: 'tableau', index: i });
-      // A pile's zone runs from its top card to the bottom of its last one,
-      // and is as wide as the column: a run dropped anywhere down a long pile
-      // is meant for that pile, not for the felt beside it.
-      const offsets = this.tableauOffsets(pile);
-      const depth = offsets.length ? offsets[offsets.length - 1] : 0;
-      zones.push({
-        ref: { kind: 'tableau', index: i },
-        rect: new Phaser.Geom.Rectangle(
-          at.x - COLUMN_PITCH / 2,
+          at.x - this.columnPitch / 2,
           at.y - CARD_HEIGHT / 2,
-          COLUMN_PITCH,
+          this.columnPitch,
           CARD_HEIGHT + depth,
         ),
       });
@@ -1101,20 +1006,23 @@ export class SolitaireScene extends Phaser.Scene {
   // the screen, leaving a trail stamped into a render texture behind it.
   private startCascade(): void {
     const pr = this.pixelRatio;
-    const rt = this.add.renderTexture(0, 0, GAME_WIDTH * pr, GAME_HEIGHT * pr).setOrigin(0, 0);
+    const rt = this.add.renderTexture(0, 0, this.width * pr, GAME_HEIGHT * pr).setOrigin(0, 0);
     // Drawn at canvas resolution and displayed back down to board units, the
     // same bargain the card textures make: the trail is a ghost, but a soft
     // ghost looks like a mistake.
-    rt.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    rt.setDisplaySize(this.width, GAME_HEIGHT);
     this.root.addAt(rt, 1);
     this.cascade = rt;
 
-    const state = this.session.state;
     // Off the top of each foundation in turn, so the four piles come apart
     // together rather than one at a time.
+    const foundations = this.table
+      .piles(this.session.state)
+      .filter((pile) => pile.ref.kind === 'foundation')
+      .map((pile) => pile.cards);
     const queue: Card[] = [];
     for (let depth = 12; depth >= 0; depth--) {
-      for (const pile of state.foundations) if (pile[depth]) queue.push(pile[depth]);
+      for (const pile of foundations) if (pile[depth]) queue.push(pile[depth]);
     }
 
     queue.forEach((card, i) => {
@@ -1127,7 +1035,7 @@ export class SolitaireScene extends Phaser.Scene {
           // Away from the middle, so the two halves of the board throw their
           // cards in opposite directions and the screen fills rather than
           // draining down one side.
-          vx: (sprite.x < GAME_WIDTH / 2 ? -1 : 1) * Phaser.Math.FloatBetween(1.4, 4.2),
+          vx: (sprite.x < this.width / 2 ? -1 : 1) * Phaser.Math.FloatBetween(1.4, 4.2),
           vy: Phaser.Math.FloatBetween(-5, -1),
         });
       });
@@ -1178,13 +1086,9 @@ export class SolitaireScene extends Phaser.Scene {
       this.cascade!.draw(sprite, sprite.x * pr, sprite.y * pr);
       sprite.setScale(1);
 
-      const gone = sprite.x < -CARD_WIDTH || sprite.x > GAME_WIDTH + CARD_WIDTH;
+      const gone = sprite.x < -CARD_WIDTH || sprite.x > this.width + CARD_WIDTH;
       if (gone) sprite.setVisible(false);
       return !gone;
     });
   }
-}
-
-function pileKey(ref: PileRef): string {
-  return `${ref.kind}-${ref.index}`;
 }

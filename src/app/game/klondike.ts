@@ -1,5 +1,20 @@
-import { FOUNDATION_COUNT, SUITS, Suit, TABLEAU_COUNT, rankValue, sameColour } from './config';
+import { FOUNDATION_COUNT, TABLEAU_COUNT, rankValue, sameColour } from './config';
 import { Card, buildDeck, shuffle } from './deck';
+import { PileRef } from './piles';
+import {
+  buildsDown,
+  canPlaceOnFoundation,
+  foundationIndexOf,
+  isRun,
+  topOf,
+} from './card-rules';
+
+// The rules Klondike shares with FreeCell live in card-rules.ts. They are
+// re-exported here because this module was where they used to be, and
+// because a caller reasoning about Klondike should not have to know which of
+// its rules it shares with the game next door.
+export { canPlaceOnFoundation, foundationIndexOf, topOf };
+export type { PileKind, PileRef } from './piles';
 
 // Klondike, as rules rather than as a screen.
 //
@@ -14,15 +29,6 @@ import { Card, buildDeck, shuffle } from './deck';
 // implementation of every move running backwards - which is where undo bugs
 // come from, since the inverse of "move a card and turn over the one under
 // it" is only obvious until you try to write it down.
-
-export type PileKind = 'stock' | 'waste' | 'foundation' | 'tableau';
-
-// Which pile. `index` is the foundation or tableau number, and is ignored -
-// by convention 0 - for the stock and the waste, of which there is one each.
-export interface PileRef {
-  kind: PileKind;
-  index: number;
-}
 
 export type DrawCount = 1 | 3;
 
@@ -77,10 +83,6 @@ export function timeBonus(seconds: number): number {
   return Math.floor(700000 / seconds);
 }
 
-export function foundationIndexOf(suit: Suit): number {
-  return SUITS.indexOf(suit);
-}
-
 // --- dealing --------------------------------------------------------------
 
 /**
@@ -132,23 +134,13 @@ export function cloneState(state: GameState): GameState {
 
 // --- what is allowed ------------------------------------------------------
 
-export function topOf(pile: readonly Card[]): Card | undefined {
-  return pile[pile.length - 1];
-}
-
-/** Aces start a foundation; after that it is the same suit, one higher. */
-export function canPlaceOnFoundation(card: Card, foundation: readonly Card[]): boolean {
-  const top = topOf(foundation);
-  if (!top) return card.rank === 'A';
-  return card.suit === top.suit && rankValue(card.rank) === rankValue(top.rank) + 1;
-}
-
 /** Kings start an empty pile; after that it is the other colour, one lower. */
 export function canPlaceOnTableau(card: Card, pile: readonly Card[]): boolean {
   const top = topOf(pile);
+  // The one place Klondike is stricter than FreeCell, and the reason an
+  // empty column here is worth so much more than a free cell there.
   if (!top) return card.rank === 'K';
-  if (!top.faceUp) return false;
-  return !sameColour(card.suit, top.suit) && rankValue(card.rank) === rankValue(top.rank) - 1;
+  return buildsDown(card, top);
 }
 
 /**
@@ -162,17 +154,7 @@ export function canPlaceOnTableau(card: Card, pile: readonly Card[]): boolean {
  * moves that would have had to make it.
  */
 export function isMovableRun(pile: readonly Card[], index: number): boolean {
-  if (index < 0 || index >= pile.length) return false;
-  for (let i = index; i < pile.length; i++) {
-    if (!pile[i].faceUp) return false;
-    if (i > index) {
-      const above = pile[i - 1];
-      const card = pile[i];
-      if (sameColour(above.suit, card.suit)) return false;
-      if (rankValue(card.rank) !== rankValue(above.rank) - 1) return false;
-    }
-  }
-  return true;
+  return isRun(pile, index);
 }
 
 function pileOf(state: GameState, ref: PileRef): Card[] | undefined {
@@ -185,6 +167,11 @@ function pileOf(state: GameState, ref: PileRef): Card[] | undefined {
       return state.foundations[ref.index];
     case 'tableau':
       return state.tableau[ref.index];
+    default:
+      // A free cell, which this game does not have. Shared pile names mean
+      // each game can be handed a pile that belongs to the other, and the
+      // answer is the same as for any pile it does not know: nothing.
+      return undefined;
   }
 }
 
@@ -444,6 +431,49 @@ export function legalMoves(state: GameState): Move[] {
     }
   }
   return moves;
+}
+
+/**
+ * Whether this game is over: nothing can be played now, and nothing can be
+ * played after any amount of turning the deck over either.
+ *
+ * "No legal move right now" is not the same question and is nearly useless as
+ * an answer, because turning the stock is almost always legal - so a player
+ * can be finished and still be offered a deck to shuffle through for ever.
+ * This walks the deck instead: it looks for a play, turns the stock, looks
+ * again, and keeps going until the stock and waste come back to an
+ * arrangement it has already seen. That terminates because nothing is being
+ * played, so a pass through the deck returns it exactly as it was, and the
+ * number of distinct arrangements is the number of draws in a pass.
+ *
+ * Which also makes the answer exact rather than a guess, including the
+ * draw-three case that catches people out: a card sitting in the middle of a
+ * triple never reaches the top of the waste, and if nothing is played the
+ * grouping never shifts, so it never will.
+ *
+ * Fetching a card back off a foundation is not counted, for the reason
+ * legalMoves gives - it is almost always available, and counting it would
+ * mean no game was ever over. It stays legal, so a player who disagrees with
+ * this verdict can carry on and try exactly that.
+ */
+export function isDeadEnd(state: GameState): boolean {
+  if (hasWon(state)) return false;
+
+  const key = (s: GameState) =>
+    `${s.stock.map((c) => c.id).join()}|${s.waste.map((c) => c.id).join()}`;
+  const seen = new Set<string>();
+  let cursor = state;
+
+  for (;;) {
+    if (legalMoves(cursor).some((move) => move.kind === 'play')) return false;
+    const here = key(cursor);
+    if (seen.has(here)) return true;
+    seen.add(here);
+    const turned = apply(cursor, { kind: 'draw' });
+    // Nothing to play and nothing left to turn.
+    if (!turned) return true;
+    cursor = turned.state;
+  }
 }
 
 /**

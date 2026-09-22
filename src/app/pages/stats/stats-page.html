@@ -5,21 +5,36 @@
     means clearing your browser's storage clears this.
   </p>
 
+  <h2 class="record__game">Klondike</h2>
   <table class="record">
     <thead>
       <tr>
         <th scope="col"><span class="record__corner">Draw</span></th>
-        @for (draw of draws; track draw) {
-          <th scope="col">{{ draw === 1 ? 'One' : 'Three' }}</th>
+        @for (variant of klondike; track variant) {
+          <th scope="col">{{ labels[variant] }}</th>
         }
       </tr>
     </thead>
     <tbody>
-      @for (row of rows; track row.label) {
+      @for (row of klondikeRows; track row.label) {
         <tr>
           <th scope="row">{{ row.label }}</th>
-          @for (draw of draws; track draw) {
-            <td>{{ row.value(mode(draw)) }}</td>
+          @for (variant of klondike; track variant) {
+            <td>{{ row.value(mode(variant)) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <h2 class="record__game">FreeCell</h2>
+  <table class="record">
+    <tbody>
+      @for (row of freecellRows; track row.label) {
+        <tr>
+          <th scope="row">{{ row.label }}</th>
+          @for (variant of freecell; track variant) {
+            <td>{{ row.value(mode(variant)) }}</td>
           }
         </tr>
       }
@@ -28,8 +43,8 @@
 
   @if (confirming()) {
     <p class="record__note record__note--warn">
-      This cannot be undone. Nothing else goes with it - your deck and your
-      settings stay as they are.
+      This cannot be undone, and it clears both games. Nothing else goes with
+      it - your deck and your settings stay as they are.
     </p>
     <button type="button" class="button button--danger" (click)="clear()">
       Yes, clear the record

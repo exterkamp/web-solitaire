@@ -1,17 +1,32 @@
 <div class="menu">
   <h1>Solitaire</h1>
-  <p class="menu__sub">Klondike</p>
 
-  <!-- The one decision worth making before a deal. Everything else about the
-       game is a standing preference and lives in Settings. -->
+  <!-- Two games rather than one variant of one game. Klondike deals two
+       thirds of the deck face down and asks you to be lucky; FreeCell puts
+       all fifty-two on the table and asks you to be right. -->
   <app-chip-select
-    label="Cards per draw"
+    label="Game"
     wide
-    [options]="drawCounts"
-    [value]="settings.drawCount()"
-    [display]="drawLabel"
-    (picked)="settings.drawCount.set($event)"
+    [options]="games"
+    [value]="settings.game()"
+    [display]="gameLabel"
+    (picked)="settings.game.set($event)"
   />
+
+  @if (settings.game() === 'klondike') {
+    <!-- Only Klondike has a deck to turn, so this is the only game with a
+         question about how many it turns at a time. -->
+    <app-chip-select
+      label="Cards per draw"
+      wide
+      [options]="drawCounts"
+      [value]="settings.drawCount()"
+      [display]="drawLabel"
+      (picked)="settings.drawCount.set($event)"
+    />
+  } @else {
+    <p class="menu__sub">Eight columns, four cells, nothing hidden</p>
+  }
 
   <a class="button" routerLink="/play">Deal</a>
 

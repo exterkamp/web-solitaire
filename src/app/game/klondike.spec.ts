@@ -20,13 +20,21 @@ import {
   canPlaceOnTableau,
   deal,
   hasWon,
+  isDeadEnd,
   isMovableRun,
   legalMoves,
   liftable,
   timeBonus,
 } from './klondike';
 import { seeded } from './random';
-import { Solitaire } from './session';
+import { GameSession } from './session';
+import { klondikeTable } from './klondike-table';
+
+// The session under test is the shared one, holding Klondike. It is generic
+// over the game - the history, the clock and the count of changed minds are
+// the same whichever game is on the table - so this exercises it through the
+// game it was written for first.
+const klondike = () => klondikeTable(1);
 
 // A card by name, face up unless said otherwise. The tests read as positions
 // on a table rather than as object literals, which is the only way a rules
@@ -335,10 +343,70 @@ describe('the end of a game', () => {
   });
 });
 
+describe('a game that is over', () => {
+  it('is not over while something on the table can still be played', () => {
+    const state = board({
+      tableau: [[card('9', 'hearts')], [card('10', 'spades')], [], [], [], [], []],
+    });
+    expect(isDeadEnd(state)).toBe(false);
+  });
+
+  it('is not over when a card further down the deck can be played', () => {
+    // Nothing to do this moment, but the deck has an ace in it.
+    const state = board({
+      stock: [card('9', 'hearts', false), card('A', 'spades', false)],
+      tableau: [[card('7', 'spades')], [], [], [], [], [], []],
+    });
+    expect(legalMoves(state).filter((m) => m.kind === 'play')).toEqual([]);
+    expect(isDeadEnd(state)).toBe(false);
+  });
+
+  it('is over when turning the whole deck over changes nothing', () => {
+    // Two cards that fit nowhere, and a deck of two more of the same.
+    const state = board({
+      stock: [card('9', 'hearts', false), card('7', 'clubs', false)],
+      tableau: [[card('7', 'spades')], [card('9', 'diamonds')], [], [], [], [], []],
+    });
+    expect(isDeadEnd(state)).toBe(true);
+  });
+
+  it('is over with nothing on the table and nothing in hand', () => {
+    expect(isDeadEnd(board({ tableau: [[card('9', 'hearts')], [], [], [], [], [], []] }))).toBe(true);
+  });
+
+  it('is never over when the game is won', () => {
+    const full = (suit: Suit): Card[] =>
+      (['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as Rank[]).map((r) =>
+        card(r, suit),
+      );
+    const won = board({
+      foundations: [full('spades'), full('hearts'), full('diamonds'), full('clubs')],
+    });
+    expect(isDeadEnd(won)).toBe(false);
+  });
+
+  it('sees that a card buried in the middle of a draw-three triple is out of reach', () => {
+    // Drawing three pops the stock's top three and lays them down in reverse,
+    // so only the deepest of the three ends up on top of the waste. The ace
+    // here is the middle one: it is in the deck, it is never reachable, and
+    // the game is over in spite of it.
+    const state = board({
+      drawCount: 3,
+      stock: [card('9', 'hearts', false), card('A', 'spades', false), card('7', 'clubs', false)],
+      tableau: [[card('7', 'spades')], [], [], [], [], [], []],
+    });
+    expect(isDeadEnd(state)).toBe(true);
+
+    // The same three cards drawn one at a time are all reachable, so that
+    // game is very much alive.
+    expect(isDeadEnd({ ...state, drawCount: 1 })).toBe(false);
+  });
+});
+
 describe('a game in progress', () => {
   it('does not start its clock until the first move', () => {
     let now = 1000;
-    const game = new Solitaire(1, seeded(3), () => now);
+    const game = new GameSession(klondike(), seeded(3), () => now);
     now += 60_000;
     expect(game.elapsed()).toBe(0);
     game.play({ kind: 'draw' });
@@ -347,7 +415,7 @@ describe('a game in progress', () => {
   });
 
   it('steps back exactly one move at a time, cards turned over included', () => {
-    const game = new Solitaire(1, seeded(11));
+    const game = new GameSession(klondike(), seeded(11));
     const before = JSON.stringify(game.state);
     expect(game.canUndo).toBe(false);
 
@@ -360,7 +428,7 @@ describe('a game in progress', () => {
   });
 
   it('keeps an illegal move out of the history', () => {
-    const game = new Solitaire(1, seeded(12));
+    const game = new GameSession(klondike(), seeded(12));
     expect(game.play({ kind: 'play', from: foundation(0), to: tableau(0), count: 1 })).toBeUndefined();
     expect(game.canUndo).toBe(false);
   });

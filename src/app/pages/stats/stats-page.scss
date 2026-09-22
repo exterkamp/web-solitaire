@@ -24,6 +24,17 @@ h1 {
   margin: 0 0 0.5rem;
 }
 
+// The game a table belongs to. Two tables, because Klondike's two variants
+// belong beside each other and FreeCell is a different game - putting its win
+// rate in the same row as theirs would invite a comparison between a puzzle
+// and a gamble.
+.record__game {
+  @include display-type;
+  font-size: 1rem;
+  color: #ffd166;
+  margin: 0.75rem 0 0;
+}
+
 .record__note--warn {
   color: #ffd166;
 }

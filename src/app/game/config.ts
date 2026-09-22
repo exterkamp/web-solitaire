@@ -4,6 +4,31 @@
 export const GAME_WIDTH = 480;
 // Shorter than a phone screen on purpose.
 //
+// How much of a card a fanned pile reveals of the card below it.
+//
+// Measured off a rendered card rather than picked: the index and its two
+// margins, and nothing else. A font box is substantially taller than the
+// glyphs inside it - all the leading above the cap and below the baseline is
+// empty - and sizing a fan off the box is what leaves a band of blank card
+// under every index in a pile.
+//
+// These live here rather than beside the drawing code because the board's
+// layout is arithmetic, and arithmetic should not have to import a renderer
+// to know how far apart two cards sit. See card-sprite.ts, which draws the
+// corner these describe.
+export const CORNER_INK_HALF_HEIGHT = 9.7;
+export const CORNER_INK_TOP_MARGIN = 6;
+export const CORNER_INK_BOTTOM_MARGIN = 4;
+
+export const CARD_PEEK_HEIGHT =
+  CORNER_INK_TOP_MARGIN + 2 * CORNER_INK_HALF_HEIGHT + CORNER_INK_BOTTOM_MARGIN;
+
+// What a face-down card in a pile shows of itself. There is nothing to read
+// on the back, so it only has to be visibly a card: enough to see its edge
+// and its shadow, and no more, because every unit spent here is a unit the
+// face-up cards below it do not get.
+export const CARD_BACK_PEEK_HEIGHT = 11;
+
 // Seven columns of cards decide the width, and the width then decides how big
 // a card is; the height is what is left over. Made as tall as a phone, the
 // board is fitted by width and the spare height becomes felt nobody plays on
@@ -28,8 +53,11 @@ export const TABLEAU_COUNT = 7;
 export const FOUNDATION_COUNT = 4;
 
 // Room at the sides for the rail drawn in table.ts, plus a little more so a
-// card near the edge doesn't look wedged against it.
-const SIDE_MARGIN = 10;
+// card near the edge doesn't look wedged against it. The board works out its
+// own column pitch from this and its width, which is how eight columns fit a
+// wider table without the cards changing size.
+export const BOARD_MARGIN = 10;
+const SIDE_MARGIN = BOARD_MARGIN;
 export const COLUMN_PITCH = (GAME_WIDTH - 2 * SIDE_MARGIN) / TABLEAU_COUNT;
 
 // The centre of column `i`, counted from the left.

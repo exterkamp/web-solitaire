@@ -2,12 +2,29 @@
   <!-- The bar above the felt. Three numbers and the way out, which is every
        piece of state a solitaire player actually watches. -->
   <header class="hud">
-    <a class="hud__exit" routerLink="/" aria-label="Back to the menu">Menu</a>
+    <div class="hud__controls">
+      <a class="hud__button" routerLink="/" aria-label="Back to the menu">Menu</a>
+      <!-- Up here rather than down beside Undo, which is where it was and is
+           one thumb-slip from throwing away a game in progress. Dealing is
+           something you do between games; Undo and Finish are things you do
+           during one. -->
+      <button type="button" class="hud__button" (click)="newGame()">New deal</button>
+    </div>
     <div class="hud__stats">
-      <div class="hud__stat">
-        <span class="hud__label">Score</span>
-        <span class="hud__value">{{ view().score }}</span>
-      </div>
+      @if (view().score !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Score</span>
+          <span class="hud__value">{{ view().score }}</span>
+        </div>
+      }
+      <!-- FreeCell has no score and never has had one. What it has instead is
+           the thing its players actually watch: how much room is left. -->
+      @if (view().free !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Free</span>
+          <span class="hud__value">{{ view().free }}</span>
+        </div>
+      }
       <div class="hud__stat">
         <span class="hud__label">Time</span>
         <span class="hud__value">{{ asTime(elapsed()) }}</span>
@@ -23,10 +40,21 @@
        needs a size of its own before the board exists. See play.scss. -->
   <div class="board" #board></div>
 
-  @if (view().stuck && !win()) {
-    <p class="play__note">
-      Nothing left that can be played. Undo, or deal a new game.
-    </p>
+  @if (showStuck()) {
+    <!-- High on the board, in the band of felt nothing is ever dealt onto, so
+         the position it is talking about stays visible underneath it. -->
+    <div class="stuck" role="dialog" aria-label="No moves left">
+      <h2 class="stuck__title">No moves</h2>
+      <p class="stuck__note">
+        Nothing on the table can be played, and turning the deck over will not
+        change that. Taking a card back off a foundation is still allowed, if
+        you can see something in it.
+      </p>
+      <button type="button" class="button" (click)="newGame()">New deal</button>
+      <button type="button" class="button button--quiet" (click)="keepLooking()">
+        Keep looking
+      </button>
+    </div>
   }
 
   <footer class="hud hud--actions">
@@ -38,7 +66,6 @@
            hidden, and the rest of it a formality. -->
       <button type="button" class="action action--go" (click)="finish()">Finish</button>
     }
-    <button type="button" class="action" (click)="newGame()">Deal</button>
   </footer>
 
   @if (win(); as summary) {
@@ -47,18 +74,20 @@
     <div class="win" role="dialog" aria-label="Game won">
       <h2 class="win__title">Out</h2>
       <dl class="win__lines">
-        <div class="win__line">
-          <dt>Score</dt>
-          <dd>{{ summary.score.toLocaleString() }}</dd>
-        </div>
-        <div class="win__line">
-          <dt>Time bonus</dt>
-          <dd>{{ summary.bonus.toLocaleString() }}</dd>
-        </div>
-        <div class="win__line win__line--total">
-          <dt>Total</dt>
-          <dd>{{ summary.total.toLocaleString() }}</dd>
-        </div>
+        @if (summary.total) {
+          <div class="win__line">
+            <dt>Score</dt>
+            <dd>{{ summary.score.toLocaleString() }}</dd>
+          </div>
+          <div class="win__line">
+            <dt>Time bonus</dt>
+            <dd>{{ summary.bonus.toLocaleString() }}</dd>
+          </div>
+          <div class="win__line win__line--total">
+            <dt>Total</dt>
+            <dd>{{ summary.total.toLocaleString() }}</dd>
+          </div>
+        }
         <div class="win__line">
           <dt>Time</dt>
           <dd>{{ asTime(summary.seconds) }}</dd>

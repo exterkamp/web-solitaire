@@ -1,8 +1,8 @@
 # web-solitaire
 
-Klondike solitaire, in a browser, for one person. No account, no server, no
-network: the game is a directory of static files, and everything it remembers
-about you is in your browser's own storage.
+Two solitaires, in a browser, for one person: **Klondike** and **FreeCell**.
+No account, no server, no network - the game is a directory of static files,
+and everything it remembers about you is in your browser's own storage.
 
 It shares a deck with [web-nert](../web-nert) — the same court cards, the same
 seven deck themes, the same felt — and shares nothing else. See
@@ -91,9 +91,18 @@ than reloading — asking for `/`, which has never existed as a file, so
 answering it at all means the installed app can be opened cold rather than
 merely resumed.
 
-## The game
+## The games
 
-Klondike, drawing one card or three. Both are offered from the menu and are
+**FreeCell** deals all fifty-two face up across eight columns, with four free
+cells to park a card in. Nothing is hidden, so nothing is luck: of the thirty
+two thousand deals Microsoft shipped, every one is solvable but #11982. A run
+of cards moves as far as there is room to shuffle it - one card, plus one for
+each free cell, doubled for every empty column - which is the rule the whole
+game turns on. There is no score, because it has never had one; what the board
+shows instead is how many cells are still free, which is the number its players
+actually watch.
+
+**Klondike**, drawing one card or three. Both are offered from the menu and are
 scored and recorded separately, because they are not the same game: draw-one
 is won most of the time by anybody paying attention, and draw-three is won
 perhaps one hand in ten.
@@ -144,9 +153,12 @@ worth anything at all.
 
 ### What is remembered
 
-Games played and won, win rate, best score, best time, fewest moves, average
-length of a win, current streak and longest streak — kept separately for
-draw-one and draw-three, in `localStorage` under `solitaire.stats.v1`. A game
+Games played and won, win rate, best time, fewest moves, average length of a
+win, current streak and longest streak — kept separately for draw-one
+Klondike, draw-three Klondike and FreeCell, in `localStorage` under
+`solitaire.stats.v2`. A record written by the version before FreeCell arrived
+is carried over on first read rather than lost. Best score is Klondike's
+alone; FreeCell has never had a score. A game
 counts as played once you have made a move in it, so dealing a hand, looking at
 it and dealing another is free.
 
@@ -203,6 +215,21 @@ pile grows long enough to want that room back. It moves in steps of about one
 card index rather than following the deepest pile exactly, because a table
 that shifted on most moves would be worse than one sitting too high. See
 `MAX_BOARD_DROP` in `config.ts`.
+
+**One board, two games.** The scene in `solitaire-scene.ts` owns everything
+about a screen and a thumb - picking a run up, following it, deciding what a
+release meant, and the fifty-two cards that fall out of a won game - and knows
+nothing about either game. Each game supplies a `TableGame` instead: its rules
+behind one interface, and where its piles are printed. Neither game has heard
+of the board, and the board has never heard of a stock or a free cell. The
+day that input machinery is written twice is the day the two games start
+behaving differently by accident.
+
+The one thing a game's shape changes outside its own module is the board's
+width: eight columns of cards need a wider table than seven, so FreeCell asks
+for one and Phaser fits it to the screen. The cards come out about a tenth
+smaller and are drawn from exactly the same textures - the alternative was a
+second set of every measurement in `card-sprite.ts`.
 
 **Phaser owns the cards and nothing else.** The score, the clock, the buttons
 and the win panel are DOM laid over the canvas, because they are text and
