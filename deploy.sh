@@ -37,11 +37,16 @@ fi
 mode=${1:-}
 started=$SECONDS
 
+# Both build paths go through npm scripts that cap Node's heap - see
+# package.json. Node otherwise sizes it from the machine's total memory,
+# which on this host is how a build takes everything else down with it: the
+# daemon has stopped three times mid-build, taking Traefik and the tunnel
+# with it, and the third time the build was not even inside Docker.
 if [ "$mode" = "--now" ]; then
   [ -d dist/web-solitaire/browser ] || { echo "nothing built yet - run npm run build first" >&2; exit 1; }
   echo "shipping the build already in dist/"
 elif [ "$mode" = "--fast" ]; then
-  npx ng build --configuration development
+  NODE_OPTIONS=--max-old-space-size=2048 npx ng build --configuration development
 else
   npm run build
 fi
