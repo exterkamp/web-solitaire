@@ -18,6 +18,11 @@ import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
 import { yukonTable } from '../../game/yukon-table';
 import { tripeaksTable } from '../../game/tripeaks-table';
+import { spideretteTable } from '../../game/spiderette-table';
+import { scorpionTable } from '../../game/scorpion-table';
+import { pyramidTable } from '../../game/pyramid-table';
+import { golfTable } from '../../game/golf-table';
+import { acesUpTable } from '../../game/acesup-table';
 import { formatDuration } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -151,17 +156,28 @@ export class Play implements AfterViewInit, OnDestroy {
   protected readonly asTime = formatDuration;
 }
 
-// Which game the board is handed. One place that knows the four of them, so
-// adding a fifth is one line here rather than a conditional that grows a limb
-// each time.
+// Which game the board is handed. One place that knows all nine of them, so
+// adding a tenth is one line here rather than a conditional that grows a limb
+// each time - and the switch is exhaustive over GameId, so leaving a game out
+// is a compile error rather than a board that quietly deals Klondike.
 function makeTable(game: GameId, drawCount: DrawCount) {
   switch (game) {
     case 'freecell':
       return freecellTable();
     case 'yukon':
       return yukonTable();
+    case 'spiderette':
+      return spideretteTable();
+    case 'scorpion':
+      return scorpionTable();
     case 'tripeaks':
       return tripeaksTable();
+    case 'pyramid':
+      return pyramidTable();
+    case 'golf':
+      return golfTable();
+    case 'acesup':
+      return acesUpTable();
     default:
       return klondikeTable(drawCount);
   }

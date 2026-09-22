@@ -16,7 +16,23 @@ import { Move, PileRef } from './piles';
 // Neither game knows the board exists, and the board has never heard of a
 // stock or a free cell.
 
-export type GameId = 'klondike' | 'freecell' | 'yukon' | 'tripeaks';
+export type GameId =
+  // Build down, sort up, dig for what is buried.
+  | 'klondike'
+  | 'freecell'
+  | 'yukon'
+  | 'spiderette'
+  | 'scorpion'
+  // Match what you can see and clear it away.
+  | 'tripeaks'
+  | 'pyramid'
+  | 'golf'
+  | 'acesup';
+
+const GAME_IDS: readonly GameId[] = [
+  'klondike', 'freecell', 'yukon', 'spiderette', 'scorpion',
+  'tripeaks', 'pyramid', 'golf', 'acesup',
+];
 
 /** One pile, and what is in it. The board draws piles in the order given. */
 export interface PileCards {
@@ -58,6 +74,11 @@ export interface PileSlot {
 export interface GameView {
   score?: number;
   stock?: number;
+  // Cards still in the deck, when that is a number the player is playing
+  // against rather than plumbing. Klondike keeps `stock` for the finish
+  // heuristic and does not show it; Spiderette's four remaining rows are the
+  // clock the whole hand is run against.
+  deck?: number;
   waste?: number;
   free?: number;
   // Cards still face down. Yukon's only measure of progress, and the one
@@ -179,5 +200,5 @@ export interface TableMoveResult<S> {
  * deals the one everybody means by "solitaire" rather than a blank board.
  */
 export function asGameId(value: unknown): GameId {
-  return value === 'freecell' || value === 'yukon' || value === 'tripeaks' ? value : 'klondike';
+  return GAME_IDS.includes(value as GameId) ? (value as GameId) : 'klondike';
 }

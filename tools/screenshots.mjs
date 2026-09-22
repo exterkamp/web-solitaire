@@ -184,7 +184,14 @@ if (wanted('setup-klondike')) {
 // every one of FreeCell's four cells, which is a picture of a game going
 // badly - so FreeCell is shown as dealt, which is its own best picture
 // anyway. Fifty-two cards face up is the whole pitch for that game.
-for (const [game, rounds] of [['klondike', 4], ['freecell', 0], ['yukon', 3], ['tripeaks', 3]]) {
+//
+// Pyramid gets two rounds and they are nearly all deck turns, because tapping
+// does almost nothing in that game by design: a pair is two cards and has to
+// be dragged. Its picture is a pyramid, which is what it should be.
+for (const [game, rounds] of [
+  ['klondike', 4], ['freecell', 0], ['yukon', 3], ['spiderette', 3], ['scorpion', 3],
+  ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['acesup', 3],
+]) {
   if (wanted(game)) await board(game, rounds);
 }
 

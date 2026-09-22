@@ -1,5 +1,7 @@
-import { SUITS, Suit, rankValue, sameColour } from './config';
+import { RANKS, SUITS, Suit, rankValue, sameColour } from './config';
 import { Card } from './deck';
+
+const RANK_COUNT = RANKS.length;
 
 // The rules both games agree on.
 //
@@ -56,4 +58,43 @@ export function isRun(pile: readonly Card[], index: number): boolean {
     if (i > index && !buildsDown(pile[i], pile[i - 1])) return false;
   }
   return true;
+}
+
+/**
+ * Whether `card` builds down on `onto` in the same suit: the Spider family's
+ * rule rather than Klondike's.
+ *
+ * The difference is the whole of what makes those games hard. Klondike lets
+ * you park a red seven on a black eight and get on with it; Spiderette and
+ * Scorpion only let you build a run you could actually move later, so every
+ * convenient placement is a card buried on purpose.
+ */
+export function buildsDownInSuit(card: Card, onto: Card): boolean {
+  if (!onto.faceUp) return false;
+  return card.suit === onto.suit && rankValue(card.rank) === rankValue(onto.rank) - 1;
+}
+
+/**
+ * Whether the cards from `index` to the top of a pile are one suit,
+ * descending, and all face up - the handful the Spider family lets you carry.
+ */
+export function isSuitRun(pile: readonly Card[], index: number): boolean {
+  if (index < 0 || index >= pile.length) return false;
+  for (let i = index; i < pile.length; i++) {
+    if (!pile[i].faceUp) return false;
+    if (i > index && !buildsDownInSuit(pile[i], pile[i - 1])) return false;
+  }
+  return true;
+}
+
+/**
+ * Whether a pile ends in a complete king-to-ace run of one suit - the thing
+ * Spiderette and Scorpion are played to produce, and which leaves the table
+ * the moment it exists.
+ */
+export function completedSuit(pile: readonly Card[]): readonly Card[] | undefined {
+  if (pile.length < RANK_COUNT) return undefined;
+  const run = pile.slice(-RANK_COUNT);
+  if (run[0].rank !== 'K' || !isSuitRun(run, 0)) return undefined;
+  return run;
 }

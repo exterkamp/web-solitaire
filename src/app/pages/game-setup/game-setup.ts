@@ -70,6 +70,67 @@ const GUIDES: Record<GameId, Guide> = {
       'thousand Microsoft shipped, only one cannot - so a loss here is a loss ' +
       'rather than a bad hand.',
   },
+  spiderette: {
+    title: 'Spiderette',
+    summary:
+      'Spider on one deck: build down by rank, but carry only a run of one suit.',
+    detail:
+      'Any card goes on one a rank higher, whatever the suits - and only a ' +
+      'run that is all one suit can be picked up and moved. So every ' +
+      'convenient place to put a card is a card buried on purpose, and that ' +
+      'argument is the whole game. Nothing goes home one card at a time: a ' +
+      'suit leaves the table as a finished king-to-ace run, all thirteen at ' +
+      'once. The deck deals a card onto every column when you ask it, four ' +
+      'times, and an empty column will hold anything.',
+  },
+  scorpion: {
+    title: 'Scorpion',
+    summary:
+      'Yukon\u2019s grip and Spider\u2019s order: a handful moves at once, onto its own suit.',
+    detail:
+      'Any face-up card comes away with everything piled on it, in whatever ' +
+      'state those cards are in - and it may only be put down on the same ' +
+      'suit, one rank higher. A nine of hearts has exactly one home in the ' +
+      'whole deck, and it is very probably buried. Kings start empty ' +
+      'columns, a finished suit goes home by itself, and three cards are ' +
+      'held back to be dealt when you want them. The hardest game here.',
+  },
+  pyramid: {
+    title: 'Pyramid',
+    summary:
+      'Twenty-eight cards stacked in a pyramid, taken away in pairs that add to thirteen.',
+    detail:
+      'An ace is one, a jack eleven, a queen twelve - and a king is thirteen ' +
+      'on his own, so kings leave alone. A card is yours once the two cards ' +
+      'lying on it have gone. Drag one card onto another to take the pair, ' +
+      'or tap a card to pair it with the one beside the deck; finding the ' +
+      'other half is the game, so nothing here goes looking for it. Three ' +
+      'passes through the deck, and then the hand is over.',
+  },
+  golf: {
+    title: 'Golf',
+    summary:
+      'A wall of thirty-five cards, cleared one rank up or down onto the card in play.',
+    detail:
+      'Take any card at the foot of a column that is one rank above or below ' +
+      'the card beside the deck, over and over, and turn the deck when you ' +
+      'run out. The ranks do not go round the corner here - a king takes ' +
+      'only a queen and an ace only a two - which is what makes a king on ' +
+      'the wall a problem rather than a card. Sixteen turns of the deck and ' +
+      'no second pass. Ninety seconds, and about one hand in ten goes out.',
+  },
+  acesup: {
+    title: 'Aces Up',
+    summary:
+      'Four piles, four cards at a time, and the lower card of a suit is thrown away.',
+    detail:
+      'Deal four, throw away any card that has a higher card of its own suit ' +
+      'showing elsewhere, and deal four more. An ace beats everything and ' +
+      'can never be thrown away, which is where the game gets its name and ' +
+      'its difficulty. The only decision is what to move into an empty ' +
+      'column, because that uncovers what was underneath. You win by getting ' +
+      'down to the four aces, which happens about one hand in twenty.',
+  },
 };
 
 @Component({

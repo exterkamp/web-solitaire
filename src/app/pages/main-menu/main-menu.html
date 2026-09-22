@@ -1,8 +1,13 @@
 <div class="menu">
   <h1>Solitaire</h1>
 
-  <!-- Two games, two doors, each opening onto the page where that game
-       introduces itself. -->
+  <!-- Nine games, in two families, because a list of nine buttons is a list
+       and two lists of four or five are a choice. The heading says which kind
+       of evening each one is: the first lot are games of arrangement that
+       take a quarter of an hour, the second are games of noticing that take
+       two minutes. -->
+  <h2 class="menu__family">Build and sort</h2>
+
   <div class="game">
     <a class="button" routerLink="/setup/klondike">Klondike</a>
     <p class="menu__note">{{ line('klondike') }}</p>
@@ -19,10 +24,42 @@
   </div>
 
   <div class="game">
+    <a class="button" routerLink="/setup/spiderette">Spiderette</a>
+    <p class="menu__note">{{ line('spiderette') }}</p>
+  </div>
+
+  <div class="game">
+    <a class="button" routerLink="/setup/scorpion">Scorpion</a>
+    <p class="menu__note">{{ line('scorpion') }}</p>
+  </div>
+
+  <h2 class="menu__family">Match and clear</h2>
+
+  <div class="game">
     <a class="button" routerLink="/setup/tripeaks">Tri Peaks</a>
     <p class="menu__note">{{ line('tripeaks') }}</p>
   </div>
 
-  <a class="button button--quiet" routerLink="/stats">Record</a>
-  <a class="button button--quiet" routerLink="/settings">Settings</a>
+  <div class="game">
+    <a class="button" routerLink="/setup/pyramid">Pyramid</a>
+    <p class="menu__note">{{ line('pyramid') }}</p>
+  </div>
+
+  <div class="game">
+    <a class="button" routerLink="/setup/golf">Golf</a>
+    <p class="menu__note">{{ line('golf') }}</p>
+  </div>
+
+  <div class="game">
+    <a class="button" routerLink="/setup/acesup">Aces Up</a>
+    <p class="menu__note">{{ line('acesup') }}</p>
+  </div>
+
+  <!-- Side by side rather than stacked, which is a whole button's height
+       back - and enough, with a smaller title, to keep every game and both
+       ways out on one screen. -->
+  <div class="menu__ways">
+    <a class="button button--quiet" routerLink="/stats">Record</a>
+    <a class="button button--quiet" routerLink="/settings">Settings</a>
+  </div>
 </div>

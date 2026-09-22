@@ -1,15 +1,57 @@
 @use 'type' as *;
 @use 'page' as *;
 
+// Tighter than the other pages, and it has to be: nine games, two family
+// headings and two ways out do not fit a phone at the button size the rest of
+// the app uses. The alternative was letting the menu scroll, which puts
+// Record and Settings below the fold on every visit - a list you scroll past
+// to reach the things you did not come for.
+//
+// Nothing here changes the buttons' width or their targets, only the air
+// around them: the padding inside a button drops from 0.9rem to 0.55 and the
+// column's gap from 1rem to 0.55, which is 340 units of height and the
+// difference between fitting and not.
 .menu {
-  @include page-fits($gap: 1rem, $padding: 1.5rem 1rem);
+  @include page-fits($gap: 0.55rem, $padding: 1rem 1rem);
+}
+
+// The games, at the size nine of them fit in. Still a 44px target twice over.
+.game .button {
+  padding: 0.55rem 0;
+  font-size: 1.2rem;
 }
 
 h1 {
   @include display-type;
-  font-size: clamp(2.6rem, 13vw, 4.5rem);
+  // Smaller than it was, for the same reason the buttons are: nine games.
+  font-size: clamp(2.1rem, 10.5vw, 3.6rem);
   color: #fdfdfd;
   margin: 0;
+}
+
+// Which kind of game the next few are. Quiet on purpose: it is a label on a
+// drawer, not a heading somebody has to read before they can press anything,
+// and the buttons under it have to stay the loudest thing on the page.
+.menu__family {
+  @include display-type;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #7fae86;
+  margin: 0.4rem 0 -0.1rem;
+}
+
+// The record book and the settings, in a row. Neither is why anybody opened
+// this app, and between them they now take one line instead of two.
+.menu__ways {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+
+  .button {
+    width: min(125px, 38vw);
+    padding: 0.5rem 0;
+    font-size: 1rem;
+  }
 }
 
 // A game and the line under it, kept together so the line cannot drift onto
@@ -26,7 +68,7 @@ h1 {
 // is a sentence as often as it is a score.
 .menu__note {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #9fc4a4;
   margin: 0;
   text-align: center;

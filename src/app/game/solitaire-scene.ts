@@ -15,7 +15,7 @@ import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
 import { CardSprite, ghostSuitKey, preloadCardArt, setDeck } from './card-sprite';
 import { Move, PileRef, pileKey } from './piles';
-import { PileSlot, TableGame } from './table-game';
+import { GameView, PileSlot, TableGame } from './table-game';
 import { Handedness } from './settings-types';
 import { timeBonus } from './klondike';
 import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
@@ -39,18 +39,14 @@ import { drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface } from '.
 type AnyGame = TableGame<any>;
 
 /** What the page's heads-up display reads, refreshed after every move. */
-export interface BoardView {
+export interface BoardView extends GameView {
   moves: number;
-  // Whatever this game keeps score of, if anything: Klondike has a score and
-  // a stock, FreeCell has neither and counts its free cells instead. See
-  // TableGame.view.
-  score?: number;
-  stock?: number;
-  waste?: number;
-  free?: number;
-  hidden?: number;
-  run?: number;
-  left?: number;
+  // Everything a game keeps score of arrives through GameView, which this
+  // extends rather than restates. It restated it until a tenth field was
+  // added to one and not the other, and the board then published a number
+  // the page had no name for - caught by the template compiler rather than
+  // by tsc, which is a long way from where the mistake was made.
+  //
   // Whether this game thinks its move count is worth the room. See
   // TableGame.showsMoves.
   showsMoves: boolean;

@@ -19,13 +19,24 @@ import { WinSummary } from './game/solitaire-scene';
 // almost every deal is winnable, so a loss there is a loss rather than a bad
 // hand.
 
-export type Variant = 'klondike-1' | 'klondike-3' | 'freecell' | 'yukon' | 'tripeaks';
+export type Variant =
+  | 'klondike-1'
+  | 'klondike-3'
+  | 'freecell'
+  | 'yukon'
+  | 'spiderette'
+  | 'scorpion'
+  | 'tripeaks'
+  | 'pyramid'
+  | 'golf'
+  | 'acesup';
 
 export function variantOf(game: GameId, drawCount: DrawCount): Variant {
-  if (game === 'freecell') return 'freecell';
-  if (game === 'yukon') return 'yukon';
-  if (game === 'tripeaks') return 'tripeaks';
-  return drawCount === 3 ? 'klondike-3' : 'klondike-1';
+  // Klondike is the only game here that is two games. Everything else is
+  // recorded under its own name, which is also its game id - the menu leans
+  // on that when it adds a game's variants together.
+  if (game === 'klondike') return drawCount === 3 ? 'klondike-3' : 'klondike-1';
+  return game;
 }
 
 export const VARIANT_LABELS: Record<Variant, string> = {
@@ -33,10 +44,18 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   'klondike-3': 'Draw three',
   freecell: 'FreeCell',
   yukon: 'Yukon',
+  spiderette: 'Spiderette',
+  scorpion: 'Scorpion',
   tripeaks: 'Tri Peaks',
+  pyramid: 'Pyramid',
+  golf: 'Golf',
+  acesup: 'Aces Up',
 };
 
-const VARIANTS: Variant[] = ['klondike-1', 'klondike-3', 'freecell', 'yukon', 'tripeaks'];
+const VARIANTS: Variant[] = [
+  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'spiderette', 'scorpion',
+  'tripeaks', 'pyramid', 'golf', 'acesup',
+];
 
 // v2 because the shape changed when the second game arrived: what used to be
 // keyed by how many cards a draw turned is now keyed by which game was being
@@ -83,7 +102,12 @@ function emptyStats(): StatsRecord {
       'klondike-3': emptyMode(),
       freecell: emptyMode(),
       yukon: emptyMode(),
+      spiderette: emptyMode(),
+      scorpion: emptyMode(),
       tripeaks: emptyMode(),
+      pyramid: emptyMode(),
+      golf: emptyMode(),
+      acesup: emptyMode(),
     },
   };
 }

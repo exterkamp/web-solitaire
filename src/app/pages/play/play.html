@@ -33,6 +33,14 @@
           <span class="hud__value">{{ view().hidden }}</span>
         </div>
       }
+      <!-- And the Spider family plays against the deck: how many rows are
+           left to deal is the shape of the rest of the hand. -->
+      @if (view().deck !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Deck</span>
+          <span class="hud__value">{{ view().deck }}</span>
+        </div>
+      }
       <!-- TriPeaks watches its run climb: the tenth card taken without
            turning the deck is worth ten times what the first one was. -->
       @if (view().run !== undefined) {

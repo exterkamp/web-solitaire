@@ -124,7 +124,8 @@ src/app/game/
   table-game.ts      the interface a game implements for the board
   klondike.ts        the rules. no Phaser, no Angular, no DOM
   klondike.spec.ts   and their tests
-  freecell.ts  yukon.ts  tripeaks.ts    the same, three more times
+  freecell.ts  yukon.ts  spiderette.ts  scorpion.ts        the same,
+  tripeaks.ts  pyramid.ts  golf.ts  acesup.ts              eight more times
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock
@@ -152,17 +153,37 @@ animates the answer. Where the two could disagree — what a tap means, which
 pile a dropped card is nearest — the scene decides, because those are facts
 about a thumb rather than about Klondike.
 
-**One board, four games.** `solitaire-scene.ts` owns everything about a screen
+**One board, nine games.** `solitaire-scene.ts` owns everything about a screen
 and a thumb — picking a run up, following it, deciding what a release meant,
 and the fifty-two cards that fall out of a won game — and knows nothing about
 any particular game. Each game supplies a `TableGame` instead: its rules behind
-one interface, and where its piles are printed. Three of them lay their piles
-out in columns and let the board place them; Tri Peaks places all thirty
-itself, says it does not want the board's thumb-reach drop, and marks its board
-positions as neither printed on the felt nor droppable onto. No game has heard
-of the board, and the board has never heard of a stock or a free cell. The day
-that input machinery is written twice is the day the games start behaving
-differently by accident.
+one interface, and where its piles are printed. No game has heard of the board,
+and the board has never heard of a stock or a free cell. The day that input
+machinery is written twice is the day the games start behaving differently by
+accident.
+
+Most of them lay their piles out in columns and two rows and let the board
+place them. Three do not: Tri Peaks, Pyramid and Golf give exact coordinates
+for every pile, say they do not want the board's thumb-reach drop, and decide
+for themselves which of their positions are printed on the felt and which can
+be dropped onto. Those three flags — `x`/`y` instead of `column`/`row`,
+`drops`, `printed`/`target` — are the whole of what it took to put a pyramid
+and a wall on a board built for columns.
+
+Those flags arrived with Tri Peaks, along with `homeFor` becoming optional for
+a game with no foundations to flick a card to. Adding the five games after it -
+Spiderette, Scorpion, Pyramid, Golf and Aces Up - needed **one** further field
+on the interface, `GameView.deck`, and otherwise touched only the lists that
+have to name every game: the id union, the factory in `play.ts`, the record
+book's variants and the menu. Each game is three new files and nothing else,
+which is the measure of whether the shape was right.
+
+Those lists are worth keeping exhaustive rather than defaulted. `GameId` is a
+union and `makeTable` switches over it, so a game left out of the factory is a
+compile error; the same goes for the menu's blurbs and the setup page's guides,
+which are `Record<GameId, …>`. The one place that cannot work that way is the
+route, which is a string a person can type - `asGameId` guards it and answers
+Klondike for anything it does not know.
 
 The one thing a game's shape changes outside its own module is the board's
 width: eight columns of cards need a wider table than seven, so FreeCell asks
@@ -192,7 +213,7 @@ and the win panel are DOM laid over the canvas, because they are text and
 buttons, and a browser draws those better than a canvas can — with focus rings
 and screen-reader labels that come for free.
 
-### Two things Phaser will catch you with
+### Three things this codebase keeps relearning
 
 `Scene` already has members called `game` and `events`, and a field of your own
 by either name replaces machinery Phaser needs. This file has learned that
@@ -203,6 +224,11 @@ display origin itself. `new Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT)` is right
 and `new Rectangle(-w/2, -h/2, w, h)` puts every card's grabbable area half a
 card up and to the left, which is subtle enough to ship and infuriating enough
 to report.
+
+A game laid out by hand has to start **below `TABLEAU_TOP_Y - 23`**, which is
+where the board prints the game's name across the felt. Pyramid was given an
+apex at 100 and put its second row straight through the lettering. Tri Peaks
+and Golf both start at 150, and now so does Pyramid.
 
 ## Testing
 
@@ -239,7 +265,7 @@ with this game: Nertz's board measures the same on the same machine.
 
 ```bash
 ./deploy.sh --now                  # or point --host at a dev server
-node tools/screenshots.mjs         # --only=freecell to retake one
+node tools/screenshots.mjs         # --only=freecell,menu to retake some
 ```
 
 Same headless Chrome, at a phone's size and pixel ratio, writing webp into

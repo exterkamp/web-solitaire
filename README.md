@@ -1,18 +1,32 @@
 # web-solitaire
 
-Four solitaires, in a browser, for one person: **Klondike**, **FreeCell**,
-**Yukon** and **Tri Peaks**. No account, no server, no network — the game is a
-directory of static files, and everything it remembers about you is in your
-browser's own storage.
+Nine solitaires, in a browser, for one person. No account, no server, no
+network — the game is a directory of static files, and everything it remembers
+about you is in your browser's own storage.
 
 **Play it: [solitaire.exterkamp.codes](https://solitaire.exterkamp.codes)**
 
+**Build and sort** — an evening's game, or a quarter of an hour of one.
+
 <table>
 <tr>
-<td width="25%" align="center"><img src="docs/screenshots/klondike.webp" alt="Klondike, part way through a hand"><br><b>Klondike</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/freecell.webp" alt="FreeCell, freshly dealt"><br><b>FreeCell</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/yukon.webp" alt="Yukon, part way through a hand"><br><b>Yukon</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/klondike.webp" alt="Klondike, part way through a hand"><br><b>Klondike</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/freecell.webp" alt="FreeCell, freshly dealt"><br><b>FreeCell</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/yukon.webp" alt="Yukon, part way through a hand"><br><b>Yukon</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/spiderette.webp" alt="Spiderette, part way through a hand"><br><b>Spiderette</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
+</tr>
+</table>
+
+**Match and clear** — two minutes, standing up.
+
+<table>
+<tr>
+<td width="20%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/pyramid.webp" alt="Pyramid, part way through a hand"><br><b>Pyramid</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
+<td width="20%"></td>
 </tr>
 </table>
 
@@ -44,16 +58,47 @@ to be; only the bottom one has to fit where it lands. Everything is on the
 table from the first move, so the game is digging — twenty-one cards start
 face down and the board counts them down instead of a score.
 
-**Tri Peaks** is the odd one out and is here for that reason. Three peaks of
-cards, one card face up beside the deck, and any card you can see that is one
-rank either side of it can be taken — the ranks go round the corner, so an ace
-follows a king. Nothing is built and nothing is sorted; the whole game is
-noticing, and it takes two minutes.
+**Spiderette** is Spider's game on one deck and seven columns. Build down by
+rank ignoring suit, but pick up only a run that is all one suit — so every
+convenient placement is a card buried on purpose, and that argument is the
+whole game. Nothing goes home one card at a time: a suit leaves as a finished
+king-to-ace run, all thirteen at once. It is here rather than Spider because
+ten columns of a double deck come out at about thirty-six pixels a card on a
+phone, and the cards are the game.
+
+**Scorpion** is Yukon's grip with Spider's order. A face-up card comes away
+with everything piled on it, in whatever state those cards are in, and may
+only be put down on the same suit one rank higher — so a nine of hearts has
+exactly one home in the whole deck, and it is very probably buried. The
+hardest game here.
+
+**Tri Peaks** is the odd one out among the first lot and is here for that
+reason. Three peaks of cards, one card face up beside the deck, and any card
+you can see that is one rank either side of it can be taken — the ranks go
+round the corner, so an ace follows a king. Nothing is built and nothing is
+sorted; the whole game is noticing, and it takes two minutes.
+
+**Pyramid** is twenty-eight cards stacked up and taken away in pairs that add
+to thirteen. An ace is one, a queen twelve, and a king is thirteen on his own,
+so kings leave alone. Drag one card onto another to take a pair — finding the
+other half is the game, so nothing here goes looking for it on your behalf.
+
+**Golf** is a wall of thirty-five cards cleared one rank up or down onto the
+card beside the deck. The ranks do **not** go round the corner here, which is
+the one rule separating it from Tri Peaks and the reason a king on the wall is
+a problem rather than a card. Sixteen turns of the deck, no second pass, about
+ninety seconds.
+
+**Aces Up** deals four cards at a time onto four piles and throws away the
+lower card whenever two of a suit are showing. An ace beats everything and can
+never be thrown away, which is where the name and the difficulty come from.
+The only decision in it is what to move into an empty column. You win about
+one hand in twenty.
 
 </td>
 <td width="50%" valign="top">
 <p align="center">
-<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: Klondike, FreeCell, Yukon, Tri Peaks, Record, Settings">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: nine games in two families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
 <p align="center"><i>Every game gets a page before the board — what it is,<br>and whatever it needs to ask.</i></p>
@@ -72,12 +117,15 @@ noticing, and it takes two minutes.
 * **Flick** a card up the board and it goes to its foundation, wherever you
   let go of it. One card at a time, since that is all a foundation takes, and
   a throw the foundations will not accept costs nothing — it lands as an
-  ordinary drop would have.
+  ordinary drop would have. Games with no foundations have no such gesture,
+  because there would be nothing for it to mean.
 * **Undo** as far back as you like, including past a win. Undoing costs
   nothing: a score is a measure of the game you played, and an undone move is
   a game that did not happen.
 * **Finish** appears once every card is face up and the rest of the game is a
-  formality, and plays it out. The cards then fall out of the foundations and
+  formality, and plays it out. Only in the games that have such a position:
+  in the Spider family a suit goes home the moment it is finished, so the
+  formality has already been cleared away by the time it would arrive. The cards then fall out of the foundations and
   bounce off the bottom of the screen, which is the oldest piece of
   choreography in computer games and the only reason anybody finishes a hand
   they have already won.
@@ -110,10 +158,16 @@ interruption rather than the play. The time bonus is the other half of that
 bargain — finishing quickly is still worth something, thinking slowly is not
 worth anything at all.
 
-Tri Peaks scores its own way: every card taken without turning the deck is
-worth more than the last, and clearing a peak is worth fifteen. FreeCell has
-no score and never has had one; what the board shows instead is how many cells
-are still free, which is the number its players actually watch.
+That is Klondike's, and Klondike is the only game here with a score in that
+sense. Tri Peaks keeps its own: every card taken without turning the deck is
+worth more than the last, and clearing a peak is worth fifteen.
+
+The other seven have never had a score, and none is invented for them. What
+the board shows instead is whichever number that game's players actually
+watch — free cells in FreeCell, cards still face down in Yukon and the Spider
+family, rows left in the deck in Spiderette, cards still standing in Pyramid,
+Golf and Aces Up. A score bolted onto a game that does not have one is a
+number that measures nothing.
 
 ## What is remembered
 
@@ -147,8 +201,9 @@ in a waiting room.
 ## Building it
 
 Angular for the pages, Phaser for the board, and a hard line between them. One
-board runs all four games; each game is a rules module of pure functions plus
-a description of where its piles are printed.
+board runs all nine games; each game is a rules module of pure functions plus
+a description of where its piles are printed. Adding the ninth touched two
+shared files and added three of its own.
 
 ```bash
 npm install
