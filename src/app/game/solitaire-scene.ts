@@ -6,6 +6,7 @@ import {
   CARD_WIDTH,
   COLUMN_PITCH,
   MAX_BOARD_DROP,
+  MIN_BOARD_DROP,
   FIRST_FOUNDATION_COLUMN,
   FOUNDATION_COUNT,
   GAME_HEIGHT,
@@ -16,7 +17,6 @@ import {
   TABLEAU_TOP_Y,
   TOP_ROW_Y,
   WASTE_COLUMN,
-  WASTE_FAN_X,
   columnX,
 } from './config';
 import { Card } from './deck';
@@ -108,6 +108,23 @@ const FLIP_MS = 110;
 // Between two cards of an automatic finish. Slower than a move you made,
 // because this one is a thing to watch rather than a thing you did.
 const FINISH_STEP_MS = 90;
+
+// How far apart the cards of a draw-three waste sit, and in which direction.
+//
+// Downward, and by exactly the amount that reveals an index - the same step a
+// tableau pile fans by, and for the same reason. This was a sideways fan of
+// fifteen units, which looked like a fan and told you nothing: a card is
+// indexed in its top-left corner only, and a pile fanned to the left shows
+// you the right-hand edges of the cards underneath, which carry no ink at
+// all. You could see that two cards were there and not what either of them
+// was.
+//
+// The newest card stays in the slot and the older two stand above it, rather
+// than the other way round, for two reasons. The card you can actually play
+// is then always in the same place, lined up with the stock beside it; and
+// each card is covered by the one *below* it, which is what leaves its top
+// edge - and therefore its index - in view.
+const WASTE_FAN_Y = CARD_PEEK_HEIGHT;
 
 // The cascade's physics, in board units per 60th of a second. Gravity is
 // tuned by eye against a 900-unit screen rather than derived from anything:
@@ -277,20 +294,18 @@ export class SolitaireScene extends Phaser.Scene {
   // is holding the phone, and the foundations take the other end. The waste
   // sits inboard of the stock and fans toward the middle, which leaves its
   // three cards room without them ever running into a foundation.
-  private topColumns(): { stock: number; waste: number; foundations: number[]; fan: number } {
+  private topColumns(): { stock: number; waste: number; foundations: number[] } {
     if (this.handedness === 'right') {
       return {
         stock: TABLEAU_COUNT - 1 - STOCK_COLUMN,
         waste: TABLEAU_COUNT - 1 - WASTE_COLUMN,
         foundations: Array.from({ length: FOUNDATION_COUNT }, (_, i) => FOUNDATION_COUNT - 1 - i),
-        fan: -1,
       };
     }
     return {
       stock: STOCK_COLUMN,
       waste: WASTE_COLUMN,
       foundations: Array.from({ length: FOUNDATION_COUNT }, (_, i) => FIRST_FOUNDATION_COLUMN + i),
-      fan: 1,
     };
   }
 
@@ -347,7 +362,7 @@ export class SolitaireScene extends Phaser.Scene {
     const deepest = Math.max(0, ...this.session.state.tableau.map((pile) => this.fanDepth(pile)));
     const slack = BOARD_FLOOR - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
     const stepped = Math.floor(Math.max(0, slack) / BOARD_DROP_STEP) * BOARD_DROP_STEP;
-    const next = Math.min(stepped, MAX_BOARD_DROP);
+    const next = Math.min(Math.max(stepped, MIN_BOARD_DROP), MAX_BOARD_DROP);
     if (next === this.drop) return;
 
     this.drop = next;
@@ -395,11 +410,13 @@ export class SolitaireScene extends Phaser.Scene {
       // there is one card to look at and a fan of one is a card that has
       // wandered off its slot.
       const fanned = this.drawCount === 3 ? Math.min(3, pile.length) : 1;
-      const place = index - (pile.length - fanned);
-      const columns = this.topColumns();
+      // How far back from the newest card this one is. Everything older than
+      // the fan sits under the card at the back of it, where the pile's own
+      // depth is all there is to see anyway.
+      const back = Math.max(0, pile.length - 1 - index);
       return {
-        x: base.x + (place > 0 ? place * WASTE_FAN_X * columns.fan : 0),
-        y: base.y,
+        x: base.x,
+        y: base.y - Math.min(back, fanned - 1) * WASTE_FAN_Y,
       };
     }
     return base;

@@ -38,8 +38,8 @@ export function columnX(index: number): number {
 }
 
 // The top row: stock, waste, a gap, then the four foundations. The gap is
-// column 2 and is deliberately empty - draw-three fans the waste out to the
-// right, and it needs somewhere to fan into.
+// column 2 and is deliberately empty - it is the room a court card's shoulder
+// needs, and it keeps the waste from crowding the first foundation.
 //
 // High enough to clear the rail by about its own width, and no higher: every
 // unit spent up here is a unit the tableau's longest pile does not get.
@@ -47,11 +47,6 @@ export const TOP_ROW_Y = 72;
 export const STOCK_COLUMN = 0;
 export const WASTE_COLUMN = 1;
 export const FIRST_FOUNDATION_COLUMN = 3;
-
-// How far apart the three cards of a draw-three waste sit. Enough that each
-// one's index is clear of the one in front, and no further - the fan has to
-// finish before it reaches the first foundation.
-export const WASTE_FAN_X = 15;
 
 // Where the tableau begins, measured to the top edge of the first card, with
 // the board pushed as far up as it ever goes. Far enough below the top row
@@ -87,6 +82,14 @@ export const BOARD_FLOOR = 700;
 // have table on it, and nothing was ever played up there.
 export const MAX_BOARD_DROP = 260;
 export const BOARD_DROP_STEP = 65;
+
+// And how far down it must always sit, which is a fact about the waste rather
+// than about the tableau: a draw-three waste fans *upward* out of its slot, so
+// there has to be room above the top row for two more cards to stand in. One
+// step is enough, and it costs the deepest pile Klondike can deal about seven
+// per cent of its fan - which that pile survives, and which nothing shallower
+// ever notices.
+export const MIN_BOARD_DROP = BOARD_DROP_STEP;
 
 // The four natural suits, and nothing else - this is a plain deck. They are
 // in the order the foundations sit in, left to right.

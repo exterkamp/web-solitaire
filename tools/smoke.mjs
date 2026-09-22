@@ -575,6 +575,51 @@ async function main() {
     `pressing an empty stock turns the waste back over (${JSON.stringify(recycled)})`,
   );
 
+  // Draw three, and what you can see of it.
+  //
+  // The rule a waste fan has to satisfy is not "the cards are visibly
+  // separate" - a sideways fan managed that and still told you nothing,
+  // because a card carries its index in its top-left corner only and a fan to
+  // the left shows you right-hand edges. So this checks the thing that
+  // matters: each covered card's top edge is clear of the card in front of
+  // it by enough to read an index off, and the playable card is still in the
+  // slot beside the stock.
+  await browser.evaluate(`(${SCENE}.newGame(3), true)`);
+  await browser.settle(SCENE);
+  const stockNow = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
+  await browser.tap(stockNow.x, stockNow.y);
+  await browser.settle(SCENE);
+  const fan = await browser.evaluate(`(() => {
+    const at = ${STATE}.waste.map((c) => {
+      const sprite = ${SCENE}.sprites.get(c.id);
+      return { x: Math.round(sprite.x), y: Math.round(sprite.y) };
+    });
+    const slot = ${SCENE}.pileBase({ kind: 'waste', index: 0 });
+    return { at, slot: { x: Math.round(slot.x), y: Math.round(slot.y) } };
+  })()`);
+  check(fan.at.length === 3, `a draw of three turns three (${fan.at.length})`);
+  check(
+    fan.at.every((card) => card.x === fan.slot.x),
+    'the fan runs straight down its column, not across into the next one',
+  );
+  // Down the screen, so each step is a card further along the waste sitting
+  // lower than the one before it. 26 is the index's ink plus its margin -
+  // less than that and the rank is clipped.
+  const steps = fan.at.slice(1).map((card, i) => card.y - fan.at[i].y);
+  check(
+    steps.every((step) => step >= 26),
+    `each card behind shows enough of itself to read (${steps.join(', ')} units)`,
+  );
+  check(
+    fan.at[fan.at.length - 1].y === fan.slot.y,
+    'and the card you can play is the one in the slot',
+  );
+
+  // Back to drawing one, which is the mode the rest of this plays in - and a
+  // second deal, which is worth having happen at least once.
+  await browser.evaluate(`(${SCENE}.newGame(1), true)`);
+  await browser.settle(SCENE);
+
   await browser.screenshot(shot);
   console.log(`  --   board written to ${shot}`);
 
