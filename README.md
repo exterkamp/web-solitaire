@@ -328,3 +328,26 @@ book.
 
 No sound. Nertz has music and this does not — solitaire is the game you play
 in a waiting room.
+
+## Licence
+
+[CC0 1.0](LICENSE) — public domain, as far as the law allows. No attribution
+required, no notice to ship, commercial use and modification both fine. Take
+the rules modules, take the board, take the whole thing.
+
+CC0 rather than MIT because the deck that made this possible arrived that way.
+Dmitry Fomin put the court cards in the public domain and every deck theme
+here is downstream of that; passing it on with a condition attached would be a
+poor way to say thank you.
+
+Two things in this tree are **not** covered by it, and cannot be:
+
+- **The fonts** in [public/fonts](public/fonts) are third-party. Three are SIL
+  OFL 1.1 and one is Apache 2.0, and each carries its own licence text beside
+  it. All four are fine to bundle and redistribute, including commercially —
+  they simply are not mine to dedicate.
+- **npm dependencies** are not vendored here, but `npm install` brings in
+  Angular, Phaser and the rest under their own licences.
+
+Everything else — the rules, the board, the art in
+[public/cards](public/cards), the words — is CC0.
