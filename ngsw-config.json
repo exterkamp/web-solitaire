@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/index.html",
+          "/manifest.webmanifest",
+          "/favicon.ico",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "the-table",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/fonts/*.woff2",
+          "/cards/suits/*.svg",
+          "/cards/art/press/*.webp",
+          "/icon-*.png",
+          "/apple-touch-icon.png"
+        ]
+      }
+    },
+    {
+      "name": "other-decks",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/cards/art/**/*.webp"
+        ]
+      }
+    }
+  ]
+}

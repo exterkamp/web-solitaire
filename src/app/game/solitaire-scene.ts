@@ -42,6 +42,7 @@ import {
 } from './klondike';
 import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { Solitaire } from './session';
+import { firstBoardDealt } from './first-board';
 import { drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface } from './table';
 
 // The board: everything you can see and everything you can do to it.
@@ -283,6 +284,9 @@ export class SolitaireScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.GAME_OUT, () => this.releaseDrag(), this);
 
     this.newGame();
+    // The art is in and there are cards on the table. Nothing in the game
+    // waits on this; the service worker does. See first-board.ts.
+    firstBoardDealt();
   }
 
   // --- where everything sits ---------------------------------------------

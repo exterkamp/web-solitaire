@@ -9,7 +9,10 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY angular.json tsconfig.json tsconfig.app.json ./
+# ngsw-config.json belongs with these: `ng build` reads it because
+# angular.json names it, and without it in the image the build fails here
+# while succeeding on the machine it was written on.
+COPY angular.json tsconfig.json tsconfig.app.json ngsw-config.json ./
 COPY src ./src
 COPY public ./public
 RUN npx ng build

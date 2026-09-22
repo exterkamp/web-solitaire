@@ -60,6 +60,37 @@ Because the tunnel belongs to the personal site's stack, this route goes down
 whenever that stack is restarted, and the symptom will not point at solitaire.
 Nertz has the same caveat, recorded in the same words next to its own router.
 
+## Installing it
+
+The game installs to a home screen and plays with the network off, which is
+the arrangement it was always asking for: there is no server to lose touch
+with, so "offline" here is only a question of whether the browser still has
+the files.
+
+* `public/manifest.webmanifest` is what makes a browser offer to install it —
+  name, icons, portrait, and the felt's own colour for the splash so the
+  launch does not flash white.
+* `ngsw-config.json` says what to keep. The app and the deck it deals by
+  default are fetched on install, about 2.3MB; the other six decks are kept
+  as they are used, which is another 3.9MB nobody should pay for up front.
+* A deck that was never cached still deals — see the `textures.exists` check
+  in `card-sprite.ts`. Its court cards come out wearing the big suit that
+  number cards wear, which is a plainer card rather than a broken one.
+* The worker registers **after the first board has loaded**, not on startup.
+  A new worker answers no request until it has finished prefetching, so
+  registering it while the first game is still asking for its cards means the
+  game waits on the cache instead of the other way round. That cost half a
+  minute of empty felt before it was moved. See `first-board.ts`.
+* A new version reloads the app as soon as the player is somewhere a reload is
+  free — anywhere but the board, where it would take the deal with it. See
+  `app.ts`.
+
+`npm run smoke` proves the whole of it: it plays a game, waits for the worker
+to fill its cache, cuts the network, and then **enters by address** rather
+than reloading — asking for `/`, which has never existed as a file, so
+answering it at all means the installed app can be opened cold rather than
+merely resumed.
+
 ## The game
 
 Klondike, drawing one card or three. Both are offered from the menu and are

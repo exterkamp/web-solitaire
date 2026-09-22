@@ -442,8 +442,17 @@ export class CardSprite extends Phaser.GameObjects.Container {
     // Face content: a court figure for J/Q/K, or one big suit for everything
     // else. Both sit below the index, which is added last so it draws over
     // either of them.
+    // A court portrait, if the deck this card belongs to actually arrived.
+    //
+    // The exists() check is what makes an uncached deck survive being played
+    // offline. Only the default deck is fetched when the game is installed -
+    // seven of them is five megabytes - so a player who picks another one and
+    // then loses the network has a board whose court art was never
+    // downloaded. Without this they would get Phaser's missing-texture
+    // placeholder on twelve cards; with it they get the same big suit the
+    // number cards wear, which is a plainer card rather than a broken one.
     const artKey = faceArtKey(card.rank, card.suit, currentTheme);
-    if (artKey) {
+    if (artKey && scene.textures.exists(artKey)) {
       // Full card width, height from the texture's own proportions, flush
       // with the bottom edge. Taking the aspect from the texture rather than
       // naming a height here keeps this in step with however the art was

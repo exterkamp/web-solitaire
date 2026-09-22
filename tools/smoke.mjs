@@ -50,6 +50,9 @@ class Browser {
     this.pending = new Map();
     this.nextId = 1;
     this.logs = [];
+    // Where in the log the network was cut, so the console check can tell a
+    // real fault from the noise of having no network on purpose.
+    this.offlineFrom = Infinity;
     this.process = spawn('google-chrome', [
       '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
       `--force-device-scale-factor=${dpr}`,
@@ -265,6 +268,16 @@ class Browser {
     await this.settle(scene);
     await sleep(300);
     return held;
+  }
+
+  // Pulls the plug. Everything after this is served by the service worker or
+  // not at all, which is the whole of what "installed" means.
+  async goOffline() {
+    await this.send('Network.enable');
+    await this.send('Network.emulateNetworkConditions', {
+      offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+    });
+    this.offlineFrom = this.logs.length;
   }
 
   async screenshot(path) {
@@ -672,11 +685,80 @@ async function main() {
     `the record book counts the win (${JSON.stringify(mode)})`,
   );
 
+  // --- and now with the network off ------------------------------------
+  //
+  // The point of installing this game is that it works on a train. There is
+  // no server to lose touch with - the whole thing is files and
+  // localStorage - so the only question is whether the browser still has the
+  // files, and the only way to answer it is to take the network away and see.
+  const controlled = await browser.until(
+    `!!(navigator.serviceWorker && navigator.serviceWorker.controller)`,
+    'the service worker to take over the page',
+    60000,
+  );
+  check(controlled, 'a service worker is running the page');
+  if (!controlled) return finish(browser);
+
+  // Installed is not the same as ready: the worker fetches the app and the
+  // default deck in the background, and going offline before it has finished
+  // would be testing the wrong thing. A court card from that deck is the last
+  // thing in, so it is the thing to wait for.
+  const stocked = await browser.until(
+    `caches.keys()
+      .then((names) => Promise.all(names.map((n) => caches.open(n).then((c) => c.match('/cards/art/press/king-spades.webp')))))
+      .then((hits) => hits.some(Boolean))`,
+    'the deck to be cached',
+    90000,
+  );
+  check(stocked, 'the deck it deals by default is kept for later');
+
+  await browser.goOffline();
+  // A fresh navigation to the menu, not a reload: the browser is sitting on
+  // /play by now, and reloading that would have proved a smaller thing. This
+  // asks the service worker for a route it has never served as a document -
+  // there is no /play or / file in the build, only index.html - so answering
+  // it at all means the offline app can be entered by address, not just
+  // resumed.
+  await browser.go(`${host}/`);
+  if (!await browser.until(`!!document.querySelector('.menu h1')`, 'the menu, offline', 45000)) {
+    return finish(browser);
+  }
+  check(true, 'the menu opens with no network');
+
+  await browser.evaluate(`(document.querySelector('a[href="/play"]').click(), true)`);
+  if (!await browser.until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, 'the board, offline', 60000)) {
+    return finish(browser);
+  }
+  await browser.evaluate(`(${SCENE}.tweens.timeScale = 20, ${SCENE}.time.timeScale = 20, true)`);
+  await browser.until(`${SCENE}.busy === false`, 'the offline deal to land', 60000);
+  const offlineDeal = await browser.evaluate(`({
+    sprites: ${SCENE}.sprites.size,
+    tableau: ${STATE}.tableau.map((p) => p.length),
+    courts: Object.keys(${SCENE}.textures.list).filter((k) => k.startsWith('face-')).length,
+  })`);
+  check(offlineDeal.sprites === 52, `a whole deck deals offline (${offlineDeal.sprites})`);
+  check(
+    JSON.stringify(offlineDeal.tableau) === '[1,2,3,4,5,6,7]',
+    'into the seven piles it should',
+  );
+  // Twelve court cards and a back, from the cache rather than from anywhere.
+  check(offlineDeal.courts === 12, `with its court cards (${offlineDeal.courts} of 12)`);
+
   return finish(browser);
 }
 
 function finish(browser) {
-  const noisy = browser.logs.filter((l) => l.level === 'error' || l.level === 'warning');
+  // A browser with no network logs a failure for every request that does not
+  // come out of a cache, and the offline section above arranges for exactly
+  // that - the worker's own check for a new version is one. Those are
+  // expected; anything else logged after the plug was pulled is not, and
+  // still fails this.
+  const expected = /ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|Failed to fetch|NetworkError/i;
+  const noisy = browser.logs.filter(
+    (l, i) =>
+      (l.level === 'error' || l.level === 'warning') &&
+      !(i >= browser.offlineFrom && expected.test(l.text)),
+  );
   for (const log of noisy) console.log(`  --   console ${log.level}: ${log.text}`);
   check(!noisy.some((l) => l.level === 'error'), 'nothing went wrong in the console');
 

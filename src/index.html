@@ -17,6 +17,21 @@
   <!-- iOS ignores transparency and rounds the corners itself, so this one is
        square and unrounded - the system tile does the rest. -->
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- Installable, and playable with the aeroplane mode on. The manifest is
+       what makes a browser offer to add this to a home screen; the service
+       worker registered in app.config.ts is what makes the thing that opens
+       actually work with no network behind it. See "Installing it" in
+       README.md.
+
+       The three apple- tags are the same idea for a platform that ignores
+       most of the manifest. Safari reads these, and without the first one a
+       home-screen launch opens in a browser tab with its chrome, which is a
+       bookmark rather than an app. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Solitaire">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
   <app-root></app-root>

@@ -39,7 +39,8 @@
               "includePaths": [
                 "src"
               ]
-            }
+            },
+            "serviceWorker": "ngsw-config.json"
           },
           "configurations": {
             "production": {
