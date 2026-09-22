@@ -12,7 +12,7 @@
 // column's gap from 1rem to 0.55, which is 340 units of height and the
 // difference between fitting and not.
 .menu {
-  @include page-fits($gap: 0.55rem, $padding: 1rem 1rem);
+  @include page-fits($gap: 0.55rem, $padding: 0.75rem 1rem);
 }
 
 // The games, at the size nine of them fit in. Still a 44px target twice over.
