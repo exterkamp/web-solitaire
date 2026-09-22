@@ -1,0 +1,66 @@
+@use 'type' as *;
+@use 'page' as *;
+
+// Long enough on a small screen to want scrolling, and centred when it fits.
+// See _page.scss.
+.menu {
+  @include page-scrolls($gap: 0.9rem, $padding: 1.25rem 1rem);
+}
+
+h1 {
+  @include display-type;
+  font-size: clamp(2rem, 11vw, 3.5rem);
+  color: #fdfdfd;
+  margin: 0;
+}
+
+// The one-line answer to "what is this game", set larger than the rest
+// because it is the line somebody reads while deciding.
+.setup__summary {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.45;
+  color: #fdfdfd;
+  text-align: center;
+  max-width: min(340px, 86vw);
+  margin: 0;
+}
+
+.setup__detail {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #cfead0;
+  text-align: center;
+  max-width: min(340px, 86vw);
+  margin: 0;
+}
+
+.setup__detail--tight {
+  margin-top: -0.4rem;
+}
+
+// The gestures, which are the app's rather than the game's - so they are set
+// apart from the rules above them.
+.setup__gestures {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #9fc4a4;
+  text-align: center;
+  max-width: min(340px, 86vw);
+  margin: 0.25rem 0 0.25rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(207, 234, 208, 0.18);
+}
+
+.menu__note {
+  @include numeric-type;
+  font-size: 0.82rem;
+  color: #9fc4a4;
+  margin: -0.4rem 0 0;
+}
+
+app-chip-select {
+  margin-top: 0.4rem;
+}

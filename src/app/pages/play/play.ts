@@ -8,10 +8,11 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
+import { GameId } from '../../game/table-game';
 import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
 import { formatDuration } from '../../format';
@@ -68,7 +69,11 @@ export class Play implements AfterViewInit, OnDestroy {
   // The game this board was opened with, held apart from the settings: those
   // can be changed from the menu while a game is still on the table, and a
   // hand belongs to the rules it was dealt under.
-  private readonly gameId = this.settings.game();
+  // Which game, from the address rather than from a setting - see
+  // app.routes.ts. A board that read a preference could be opened by a link
+  // and show something else.
+  private readonly gameId: GameId =
+    inject(ActivatedRoute).snapshot.paramMap.get('game') === 'freecell' ? 'freecell' : 'klondike';
   private readonly drawCount = this.settings.drawCount();
   private readonly table =
     this.gameId === 'freecell' ? freecellTable() : klondikeTable(this.drawCount);

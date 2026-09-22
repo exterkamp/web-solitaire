@@ -92,6 +92,25 @@ export class Stats {
     return this.record().byVariant[variant];
   }
 
+  /**
+   * A whole game's record, with its variants added together.
+   *
+   * For the menu, where one line under one button should say how a game has
+   * gone rather than how one way of playing it has. The record book itself
+   * still keeps the variants apart, because that is the comparison worth
+   * having once you are choosing between them.
+   */
+  game(game: GameId): { played: number; won: number } {
+    const variants = VARIANTS.filter((v) => v.startsWith(game));
+    return variants.reduce(
+      (total, variant) => {
+        const mode = this.mode(variant);
+        return { played: total.played + mode.played, won: total.won + mode.won };
+      },
+      { played: 0, won: 0 },
+    );
+  }
+
   winRate(variant: Variant): number {
     const mode = this.mode(variant);
     return mode.played ? mode.won / mode.played : 0;

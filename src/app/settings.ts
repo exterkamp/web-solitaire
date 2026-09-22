@@ -1,7 +1,6 @@
 import { Injectable, effect, signal } from '@angular/core';
 import { DeckTheme, asDeckTheme, asBackColor, backColorHex } from './game/deck-theme';
 import { DrawCount } from './game/klondike';
-import { GameId } from './game/table-game';
 import { Handedness } from './game/settings-types';
 
 // Standing preferences: facts about the person rather than about one deal.
@@ -13,7 +12,6 @@ import { Handedness } from './game/settings-types';
 // whole of what persists, and every read goes through a guard because
 // localStorage is user-writable and survives anything being renamed.
 
-const GAME_KEY = 'solitaire.game';
 const DECK_THEME_KEY = 'solitaire.deckTheme';
 const BACK_COLOR_KEY = 'solitaire.backColor';
 const DRAW_COUNT_KEY = 'solitaire.drawCount';
@@ -21,10 +19,6 @@ const HANDEDNESS_KEY = 'solitaire.handedness';
 
 @Injectable({ providedIn: 'root' })
 export class Settings {
-  // Which game is dealt from the menu. Remembered rather than asked each
-  // time, because somebody who plays FreeCell plays FreeCell.
-  readonly game = signal<GameId>(read(GAME_KEY) === 'freecell' ? 'freecell' : 'klondike');
-
   readonly deckTheme = signal<DeckTheme>(asDeckTheme(read(DECK_THEME_KEY)));
   readonly backColor = signal<number>(asBackColor(read(BACK_COLOR_KEY)));
 
@@ -40,7 +34,6 @@ export class Settings {
   readonly handedness = signal<Handedness>(read(HANDEDNESS_KEY) === 'left' ? 'left' : 'right');
 
   constructor() {
-    effect(() => write(GAME_KEY, this.game()));
     effect(() => write(DECK_THEME_KEY, this.deckTheme()));
     effect(() => write(BACK_COLOR_KEY, backColorHex(this.backColor())));
     effect(() => write(DRAW_COUNT_KEY, String(this.drawCount())));

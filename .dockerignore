@@ -1,0 +1,9 @@
+# The image copies a build, so the build's ingredients are not wanted in the
+# context - node_modules alone is a few hundred megabytes of it.
+node_modules
+.angular
+.git
+src
+tools
+public
+*.md

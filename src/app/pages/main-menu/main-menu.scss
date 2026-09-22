@@ -12,23 +12,22 @@ h1 {
   margin: 0;
 }
 
-// The variant, under the name. Klondike is what almost everyone means by
-// "solitaire", so this is a label rather than a choice - but it is the kind
-// of label that saves an argument.
-.menu__sub {
-  @include display-type;
-  font-size: 0.95rem;
-  color: #9fc4a4;
-  margin: -0.75rem 0 0.5rem;
+// A game and the line under it, kept together so the line cannot drift onto
+// the wrong button when the column is tight.
+.game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
 }
 
+// Either what this game is, or how you have been doing at it - see line() in
+// main-menu.ts. Set in the body face rather than tabular figures, because it
+// is a sentence as often as it is a score.
 .menu__note {
-  @include numeric-type;
-  font-size: 0.82rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
   color: #9fc4a4;
-  margin: -0.5rem 0 0.25rem;
-}
-
-app-chip-select {
-  margin-bottom: 0.5rem;
+  margin: 0;
+  text-align: center;
 }

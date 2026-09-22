@@ -1,0 +1,32 @@
+<div class="menu">
+  <h1>{{ guide.title }}</h1>
+  <p class="setup__summary">{{ guide.summary }}</p>
+  <p class="setup__detail">{{ guide.detail }}</p>
+
+  <!-- How you move a card, which is the same in both games and is the one
+       thing a first-time player here cannot guess: the flick especially. -->
+  <p class="setup__gestures">
+    Tap a card to send it somewhere sensible, drag it to place it exactly, or
+    flick it up the board to send it home.
+  </p>
+
+  @if (game === 'klondike') {
+    <app-chip-select
+      label="Cards per draw"
+      wide
+      [options]="drawCounts"
+      [value]="settings.drawCount()"
+      [display]="drawLabel"
+      (picked)="settings.drawCount.set($event)"
+    />
+    <p class="setup__detail setup__detail--tight">{{ drawNote() }}</p>
+  }
+
+  <a class="button" [routerLink]="['/play', game]">Deal</a>
+
+  @if (record(); as line) {
+    <p class="menu__note">{{ line }}</p>
+  }
+
+  <a class="button button--quiet" routerLink="/">Back</a>
+</div>

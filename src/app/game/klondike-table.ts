@@ -98,9 +98,14 @@ export function klondikeTable(drawCount: DrawCount): TableGame<GameState> {
         // Only the last few are fanned, and only in draw-three: in draw-one
         // there is one card to look at and a fan of one is a card that has
         // wandered off its slot.
+        //
+        // This is the gap *before* card `index`, not that card's distance
+        // from the slot - the board adds the gaps up. Getting that backwards
+        // is what made a draw of three look like a draw of two: the last two
+        // cards came out with the same total and landed on each other.
         const fanned = drawCount === 3 ? Math.min(WASTE_FANNED, cards.length) : 1;
-        const back = Math.max(0, cards.length - 1 - index);
-        return Math.min(back, fanned - 1) === 0 ? 0 : WASTE_FAN;
+        const firstFanned = cards.length - fanned;
+        return index > firstFanned ? WASTE_FAN : 0;
       }
       return 0;
     },
