@@ -18,9 +18,17 @@ npm run smoke      # a real browser plays a real game (see below)
 Or serve the built game the way it is meant to be served:
 
 ```bash
-docker compose up -d --build
+./deploy.sh          # npm run build, then compose up
 open http://localhost:8083
 ```
+
+`deploy.sh` rather than `docker compose up --build` because the image copies
+a build instead of making one. That is a step backwards from a self-contained
+multi-stage Dockerfile and it was taken for a reason: building inside the
+Docker daemon on this host took enough memory to stop dockerd — twice — and
+every container on the machine went down with it, Traefik and the tunnel
+included. A build that can take the household offline is not a build worth
+having in the image.
 
 8083 because the neighbours got there first: 8080 and 8081 are Nertz,
 production and development, 8082 is exterkamp.codes, and 8085 is the chiptune
