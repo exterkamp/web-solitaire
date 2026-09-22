@@ -17,7 +17,7 @@
 // part of this a person still has to look at.
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -44,8 +44,13 @@ const check = (ok, what) => {
 // A headless Chrome, driven over the debugging protocol. No dependency on a
 // driver library: this is a few hundred lines of JSON over a socket, and a
 // smoke test that needs its own install is a smoke test nobody runs.
+// Every browser this run has opened, so that nothing leaks however the run
+// ends. See the signal handlers at the foot of this file.
+const browsers = [];
+
 class Browser {
   constructor(port) {
+    browsers.push(this);
     this.port = port;
     this.pending = new Map();
     this.nextId = 1;
@@ -53,13 +58,17 @@ class Browser {
     // Where in the log the network was cut, so the console check can tell a
     // real fault from the noise of having no network on purpose.
     this.offlineFrom = Infinity;
+    // Its own process group, so closing can take the whole family with it.
+    // See close() - a browser is a dozen processes and killing the one you
+    // spawned leaves the rest of them running.
+    this.profile = mkdtempSync(join(tmpdir(), 'solitaire-smoke-'));
     this.process = spawn('google-chrome', [
       '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
       `--force-device-scale-factor=${dpr}`,
       '--window-size=480,900', `--remote-debugging-port=${port}`,
-      `--user-data-dir=${mkdtempSync(join(tmpdir(), 'solitaire-smoke-'))}`,
+      `--user-data-dir=${this.profile}`,
       'about:blank',
-    ], { stdio: 'ignore' });
+    ], { stdio: 'ignore', detached: true });
   }
 
   async attach() {
@@ -285,9 +294,33 @@ class Browser {
     writeFileSync(path, Buffer.from(data, 'base64'));
   }
 
+  /**
+   * Shuts the browser down - all of it.
+   *
+   * This used to be `this.process.kill()`, which kills the one process node
+   * spawned and leaves the renderers, the zygote, the GPU process and the
+   * helpers running. Chrome is a dozen processes; a run of this tool leaked
+   * eleven of them, and enough runs in one afternoon leaked eleven gigabytes
+   * and took the machine's Docker daemon down with it three times.
+   *
+   * Killing the process *group* is what gets the family, which is what
+   * `detached: true` above is for - without it the browser shares a group
+   * with this script and the signal would come back around.
+   */
   close() {
     this.socket?.close();
-    this.process.kill();
+    try {
+      process.kill(-this.process.pid, 'SIGKILL');
+    } catch {
+      // Already gone, or never started. Either way there is nothing to kill
+      // and nothing to say about it.
+      this.process.kill('SIGKILL');
+    }
+    try {
+      rmSync(this.profile, { recursive: true, force: true });
+    } catch {
+      // A profile left in /tmp is untidy, not broken.
+    }
   }
 }
 
@@ -807,3 +840,13 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+// Whatever happens - a thrown error, a Ctrl-C, a check that gave up - the
+// browser goes. Leaking one is how this tool came to be the heaviest thing
+// running on the machine.
+for (const signal of ['SIGINT', 'SIGTERM', 'uncaughtException']) {
+  process.on(signal, () => {
+    for (const browser of browsers) browser.close();
+    process.exit(1);
+  });
+}
