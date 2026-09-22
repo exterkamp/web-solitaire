@@ -52,7 +52,10 @@ noticing, and it takes two minutes.
 
 </td>
 <td width="50%" valign="top">
-<img src="docs/screenshots/setup-klondike.webp" alt="The Klondike page: what the game is, and how many cards to draw">
+<p align="center">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: Klondike, FreeCell, Yukon, Tri Peaks, Record, Settings">
+<img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
+</p>
 <p align="center"><i>Every game gets a page before the board — what it is,<br>and whatever it needs to ask.</i></p>
 </td>
 </tr>
