@@ -16,6 +16,39 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
   nvm use >/dev/null
 fi
 
-npm run build
+# Two speeds, because they are for two different things.
+#
+#   ./deploy.sh          production build - minified, hashed, what goes public
+#   ./deploy.sh --fast   development build - no minifier
+#   ./deploy.sh --now    no build at all - ship whatever is in dist/
+#
+# Measured on this machine, which is a slow one for this and is the machine
+# that matters: production build 13 minutes, development build 6, and the
+# container step 15 seconds. The build is the whole cost; Docker is noise.
+#
+# Which is what --now is for. Leave a watcher running in another terminal:
+#
+#   npm run watch        rebuilds dist/ on save, about 85s a change here
+#   ./deploy.sh --now    and this ships it in fifteen seconds
+#
+# That is the loop to use while somebody is waiting with a phone in their
+# hand. Finish with a plain ./deploy.sh so the public site gets a minified,
+# content-hashed build rather than a development one.
+mode=${1:-}
+started=$SECONDS
+
+if [ "$mode" = "--now" ]; then
+  [ -d dist/web-solitaire/browser ] || { echo "nothing built yet - run npm run build first" >&2; exit 1; }
+  echo "shipping the build already in dist/"
+elif [ "$mode" = "--fast" ]; then
+  npx ng build --configuration development
+else
+  npm run build
+fi
+built=$SECONDS
+
 docker compose up -d --build
 docker compose ps
+echo
+echo "build $((built - started))s, deploy $((SECONDS - built))s, total $SECONDS s"
+

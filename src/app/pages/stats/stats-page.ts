@@ -26,6 +26,7 @@ export class StatsPage {
   // win rate with theirs would be comparing a puzzle with a gamble.
   protected readonly klondike: Variant[] = ['klondike-1', 'klondike-3'];
   protected readonly freecell: Variant[] = ['freecell'];
+  protected readonly yukon: Variant[] = ['yukon'];
   protected readonly labels = VARIANT_LABELS;
 
   private readonly common: Row[] = [
@@ -52,7 +53,8 @@ export class StatsPage {
     { label: 'Best score', value: (m) => formatBest(m.bestScore) },
     ...this.tail,
   ];
-  protected readonly freecellRows: Row[] = [...this.common, ...this.tail];
+  // FreeCell and Yukon are both scoreless, so they take the same rows.
+  protected readonly scorelessRows: Row[] = [...this.common, ...this.tail];
 
   protected mode(variant: Variant): ModeRecord {
     return this.stats.mode(variant);

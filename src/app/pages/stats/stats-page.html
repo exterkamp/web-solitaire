@@ -30,10 +30,24 @@
   <h2 class="record__game">FreeCell</h2>
   <table class="record">
     <tbody>
-      @for (row of freecellRows; track row.label) {
+      @for (row of scorelessRows; track row.label) {
         <tr>
           <th scope="row">{{ row.label }}</th>
           @for (variant of freecell; track variant) {
+            <td>{{ row.value(mode(variant)) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <h2 class="record__game">Yukon</h2>
+  <table class="record">
+    <tbody>
+      @for (row of scorelessRows; track row.label) {
+        <tr>
+          <th scope="row">{{ row.label }}</th>
+          @for (variant of yukon; track variant) {
             <td>{{ row.value(mode(variant)) }}</td>
           }
         </tr>

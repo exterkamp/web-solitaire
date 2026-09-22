@@ -25,6 +25,14 @@
           <span class="hud__value">{{ view().free }}</span>
         </div>
       }
+      <!-- And Yukon counts down what it has not shown you yet, which is the
+           only measure of progress that game has. -->
+      @if (view().hidden !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Hidden</span>
+          <span class="hud__value">{{ view().hidden }}</span>
+        </div>
+      }
       <div class="hud__stat">
         <span class="hud__label">Time</span>
         <span class="hud__value">{{ asTime(elapsed()) }}</span>

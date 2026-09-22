@@ -27,6 +27,7 @@ export class MainMenu {
   private readonly blurbs: Record<GameId, string> = {
     klondike: 'Draw one or three · the classic',
     freecell: 'Nothing hidden · almost always winnable',
+    yukon: 'No deck to turn · dig for what is buried',
   };
 
   protected line(game: GameId): string {

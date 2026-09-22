@@ -16,7 +16,7 @@ import { Move, PileRef } from './piles';
 // Neither game knows the board exists, and the board has never heard of a
 // stock or a free cell.
 
-export type GameId = 'klondike' | 'freecell';
+export type GameId = 'klondike' | 'freecell' | 'yukon';
 
 /** One pile, and what is in it. The board draws piles in the order given. */
 export interface PileCards {
@@ -43,6 +43,9 @@ export interface GameView {
   stock?: number;
   waste?: number;
   free?: number;
+  // Cards still face down. Yukon's only measure of progress, and the one
+  // number in that game worth watching.
+  hidden?: number;
 }
 
 export interface TableGame<S> {
@@ -116,4 +119,15 @@ export interface TableMoveResult<S> {
   drawn?: readonly Card[];
   recycled?: boolean;
   points?: number;
+}
+
+/**
+ * A game named in an address, guarded.
+ *
+ * Routes are user-writable in the same way localStorage is - typed, shared,
+ * bookmarked from a version that had different games - so an unknown name
+ * deals the one everybody means by "solitaire" rather than a blank board.
+ */
+export function asGameId(value: unknown): GameId {
+  return value === 'freecell' || value === 'yukon' ? value : 'klondike';
 }

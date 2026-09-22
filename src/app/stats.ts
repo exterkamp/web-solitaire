@@ -19,10 +19,11 @@ import { WinSummary } from './game/solitaire-scene';
 // almost every deal is winnable, so a loss there is a loss rather than a bad
 // hand.
 
-export type Variant = 'klondike-1' | 'klondike-3' | 'freecell';
+export type Variant = 'klondike-1' | 'klondike-3' | 'freecell' | 'yukon';
 
 export function variantOf(game: GameId, drawCount: DrawCount): Variant {
   if (game === 'freecell') return 'freecell';
+  if (game === 'yukon') return 'yukon';
   return drawCount === 3 ? 'klondike-3' : 'klondike-1';
 }
 
@@ -30,9 +31,10 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   'klondike-1': 'Draw one',
   'klondike-3': 'Draw three',
   freecell: 'FreeCell',
+  yukon: 'Yukon',
 };
 
-const VARIANTS: Variant[] = ['klondike-1', 'klondike-3', 'freecell'];
+const VARIANTS: Variant[] = ['klondike-1', 'klondike-3', 'freecell', 'yukon'];
 
 // v2 because the shape changed when the second game arrived: what used to be
 // keyed by how many cards a draw turned is now keyed by which game was being
@@ -78,6 +80,7 @@ function emptyStats(): StatsRecord {
       'klondike-1': emptyMode(),
       'klondike-3': emptyMode(),
       freecell: emptyMode(),
+      yukon: emptyMode(),
     },
   };
 }

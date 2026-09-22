@@ -12,9 +12,10 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
-import { GameId } from '../../game/table-game';
+import { GameId, asGameId } from '../../game/table-game';
 import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
+import { yukonTable } from '../../game/yukon-table';
 import { formatDuration } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -72,11 +73,14 @@ export class Play implements AfterViewInit, OnDestroy {
   // Which game, from the address rather than from a setting - see
   // app.routes.ts. A board that read a preference could be opened by a link
   // and show something else.
-  private readonly gameId: GameId =
-    inject(ActivatedRoute).snapshot.paramMap.get('game') === 'freecell' ? 'freecell' : 'klondike';
+  private readonly gameId: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
   private readonly drawCount = this.settings.drawCount();
   private readonly table =
-    this.gameId === 'freecell' ? freecellTable() : klondikeTable(this.drawCount);
+    this.gameId === 'freecell'
+      ? freecellTable()
+      : this.gameId === 'yukon'
+        ? yukonTable()
+        : klondikeTable(this.drawCount);
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
 

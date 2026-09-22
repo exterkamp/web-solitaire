@@ -48,6 +48,7 @@ export interface BoardView {
   stock?: number;
   waste?: number;
   free?: number;
+  hidden?: number;
   canUndo: boolean;
   canFinish: boolean;
   // Nothing legal left to do. Not the same as lost - the game is still there

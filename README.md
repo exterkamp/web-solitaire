@@ -22,6 +22,20 @@ Or serve the built game the way it is meant to be served:
 open http://localhost:8083
 ```
 
+Three speeds, because the build is the whole cost — measured here: production
+13 minutes, development 6, and the container step 15 seconds.
+
+```bash
+./deploy.sh          # production: minified and hashed, what the public gets
+./deploy.sh --fast   # development build, no minifier
+npm run watch &      # rebuilds dist/ on save, about 85s a change here
+./deploy.sh --now    # ships whatever is in dist/ — fifteen seconds
+```
+
+`--now` beside a running watcher is the loop to use while somebody is waiting
+with a phone in their hand. Finish with a plain `./deploy.sh` so the site
+strangers load is a real build.
+
 `deploy.sh` rather than `docker compose up --build` because the image copies
 a build instead of making one. That is a step backwards from a self-contained
 multi-stage Dockerfile and it was taken for a reason: building inside the

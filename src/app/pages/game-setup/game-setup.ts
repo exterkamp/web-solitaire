@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
 import { DrawCount } from '../../game/klondike';
-import { GameId } from '../../game/table-game';
+import { GameId, asGameId } from '../../game/table-game';
 import { formatPercent } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -34,6 +34,18 @@ const GUIDES: Record<GameId, Guide> = {
       'deck begins face down, so the game is as much about what you have not ' +
       'seen as about what you have - which is why a deal can simply be a bad one.',
   },
+  yukon: {
+    title: 'Yukon',
+    summary:
+      'Klondike\u2019s seven columns with no deck to turn, and a handful of cards moves at once.',
+    detail:
+      'Any card that is face up comes away with every card sitting on it, in ' +
+      'whatever order those happen to be - only the bottom one has to fit ' +
+      'where it lands. Build down in alternating colours, kings into empty ' +
+      'columns, and everything you will ever be dealt is already on the table ' +
+      'from the first move. What is left is digging: twenty-one cards start ' +
+      'face down, and every one you turn over you earned.',
+  },
   freecell: {
     title: 'FreeCell',
     summary:
@@ -58,8 +70,12 @@ export class GameSetup {
   protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
 
-  protected readonly game: GameId =
-    inject(ActivatedRoute).snapshot.paramMap.get('game') === 'freecell' ? 'freecell' : 'klondike';
+  // Through asGameId, like the board does. This was a two-way check written
+  // when there were two games, and it did not fail loudly when a third
+  // arrived - it quietly answered "klondike", so the Yukon button opened a
+  // page titled Klondike with a Deal that dealt Klondike. A guard that names
+  // every game it knows is the only kind worth having.
+  protected readonly game: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
   protected readonly guide = GUIDES[this.game];
 
   protected readonly drawCounts: DrawCount[] = [1, 3];
