@@ -4,6 +4,8 @@ import {
   FOUNDATION_COUNT,
   SUITS,
   TABLEAU_COUNT,
+  TOP_ROW_Y,
+  columnCentre,
 } from './config';
 import { Card } from './deck';
 import { Move, PileRef } from './piles';
@@ -141,12 +143,13 @@ export function klondikeTable(drawCount: DrawCount): TableGame<GameState> {
       return { score: state.score, stock: state.stock.length, waste: state.waste.length };
     },
 
+    drops: true,
+    showsMoves: true,
+
     dealOrigin(handedness: Handedness) {
       // Off the stock, which is where a hand of Klondike comes from.
-      return {
-        column: handedness === 'right' ? TABLEAU_COUNT - 1 - STOCK_COLUMN : STOCK_COLUMN,
-        row: 'top' as const,
-      };
+      const column = handedness === 'right' ? TABLEAU_COUNT - 1 - STOCK_COLUMN : STOCK_COLUMN;
+      return { x: columnCentre(column, 480, TABLEAU_COUNT), y: TOP_ROW_Y };
     },
   };
 }

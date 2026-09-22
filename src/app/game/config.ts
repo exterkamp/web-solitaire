@@ -60,9 +60,18 @@ export const BOARD_MARGIN = 10;
 const SIDE_MARGIN = BOARD_MARGIN;
 export const COLUMN_PITCH = (GAME_WIDTH - 2 * SIDE_MARGIN) / TABLEAU_COUNT;
 
-// The centre of column `i`, counted from the left.
+// The centre of column `i`, counted from the left, on a board of the given
+// width and column count. Klondike's seven columns in 480 units and
+// FreeCell's eight in 546 come out at the same pitch, which is why the cards
+// are the same size in both.
+export function columnCentre(column: number, width: number, columns: number): number {
+  const pitch = (width - 2 * BOARD_MARGIN) / columns;
+  return BOARD_MARGIN + pitch / 2 + column * pitch;
+}
+
+/** The same, for the board Klondike is laid out on. */
 export function columnX(index: number): number {
-  return SIDE_MARGIN + COLUMN_PITCH / 2 + index * COLUMN_PITCH;
+  return columnCentre(index, GAME_WIDTH, TABLEAU_COUNT);
 }
 
 // The top row: stock, waste, a gap, then the four foundations. The gap is

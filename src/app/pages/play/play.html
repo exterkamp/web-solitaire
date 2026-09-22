@@ -33,14 +33,30 @@
           <span class="hud__value">{{ view().hidden }}</span>
         </div>
       }
+      <!-- TriPeaks watches its run climb: the tenth card taken without
+           turning the deck is worth ten times what the first one was. -->
+      @if (view().run !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Run</span>
+          <span class="hud__value">{{ view().run }}</span>
+        </div>
+      }
+      @if (view().left !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Left</span>
+          <span class="hud__value">{{ view().left }}</span>
+        </div>
+      }
       <div class="hud__stat">
         <span class="hud__label">Time</span>
         <span class="hud__value">{{ asTime(elapsed()) }}</span>
       </div>
-      <div class="hud__stat">
-        <span class="hud__label">Moves</span>
-        <span class="hud__value">{{ view().moves }}</span>
-      </div>
+      @if (view().showsMoves) {
+        <div class="hud__stat">
+          <span class="hud__label">Moves</span>
+          <span class="hud__value">{{ view().moves }}</span>
+        </div>
+      }
     </div>
   </header>
 

@@ -1,4 +1,4 @@
-import { CARD_PEEK_HEIGHT, COLUMN_PITCH, SUITS } from './config';
+import { CARD_PEEK_HEIGHT, COLUMN_PITCH, SUITS, TOP_ROW_Y, columnCentre } from './config';
 import { Card } from './deck';
 import { Move, PileRef } from './piles';
 import { Handedness } from './settings-types';
@@ -114,10 +114,13 @@ export function freecellTable(): TableGame<FreeCellState> {
       return { free: freeCells(state) };
     },
 
+    drops: true,
+    showsMoves: true,
+
     // Out of the middle of the top row: there is no stock to deal from, so
     // the cards arrive from the dealer's hand rather than off a pile.
     dealOrigin() {
-      return { column: (COLUMN_COUNT - 1) / 2, row: 'top' as const };
+      return { x: columnCentre((COLUMN_COUNT - 1) / 2, WIDTH, COLUMN_COUNT), y: TOP_ROW_Y };
     },
   };
 }

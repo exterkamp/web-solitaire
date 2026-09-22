@@ -4,6 +4,8 @@ import {
   FOUNDATION_COUNT,
   SUITS,
   TABLEAU_COUNT,
+  TOP_ROW_Y,
+  columnCentre,
 } from './config';
 import { Card } from './deck';
 import { Move, PileRef } from './piles';
@@ -101,10 +103,13 @@ export function yukonTable(): TableGame<YukonState> {
       return { hidden: hiddenCards(state) };
     },
 
+    drops: true,
+    showsMoves: true,
+
     // Out of the middle of the top row. There is no stock to deal from, and
     // the foundations are somebody's destination rather than a dealer's hand.
     dealOrigin() {
-      return { column: (TABLEAU_COUNT - 1) / 2, row: 'top' as const };
+      return { x: columnCentre((TABLEAU_COUNT - 1) / 2, 480, TABLEAU_COUNT), y: TOP_ROW_Y };
     },
   };
 }

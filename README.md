@@ -1,6 +1,7 @@
 # web-solitaire
 
-Two solitaires, in a browser, for one person: **Klondike** and **FreeCell**.
+Four solitaires, in a browser, for one person: **Klondike**, **FreeCell**,
+**Yukon** and **Tri Peaks**.
 No account, no server, no network - the game is a directory of static files,
 and everything it remembers about you is in your browser's own storage.
 
@@ -114,6 +115,19 @@ answering it at all means the installed app can be opened cold rather than
 merely resumed.
 
 ## The games
+
+**Tri Peaks** is the odd one out and is here for that reason. Three peaks of
+cards, one card face up beside the deck, and any card you can see that is one
+rank either side of it can be taken — the ranks go round the corner, so an ace
+follows a king. Nothing is built and nothing is sorted; the whole game is
+noticing, and it takes two minutes. Every card taken in a row is worth more
+than the last, and turning the deck puts you back to one.
+
+**Yukon** is Klondike's seven columns with the deck taken away. Any face-up
+card moves along with every card piled on it, in whatever order those happen
+to be — only the bottom one has to fit where it lands. Everything is on the
+table from the first move, so the game is digging: twenty-one cards start face
+down and the board counts them down instead of a score.
 
 **FreeCell** deals all fifty-two face up across eight columns, with four free
 cells to park a card in. Nothing is hidden, so nothing is luck: of the thirty
@@ -238,11 +252,14 @@ card index rather than following the deepest pile exactly, because a table
 that shifted on most moves would be worse than one sitting too high. See
 `MAX_BOARD_DROP` in `config.ts`.
 
-**One board, two games.** The scene in `solitaire-scene.ts` owns everything
+**One board, four games.** The scene in `solitaire-scene.ts` owns everything
 about a screen and a thumb - picking a run up, following it, deciding what a
 release meant, and the fifty-two cards that fall out of a won game - and knows
 nothing about either game. Each game supplies a `TableGame` instead: its rules
-behind one interface, and where its piles are printed. Neither game has heard
+behind one interface, and where its piles are printed. Three of them lay their
+piles out in columns and let the board place them; Tri Peaks places all thirty
+itself, says it does not want the board's thumb-reach drop, and marks its
+board positions as neither printed on the felt nor droppable onto. Neither game has heard
 of the board, and the board has never heard of a stock or a free cell. The
 day that input machinery is written twice is the day the two games start
 behaving differently by accident.

@@ -12,10 +12,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
+import { DrawCount } from '../../game/klondike';
 import { GameId, asGameId } from '../../game/table-game';
 import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
 import { yukonTable } from '../../game/yukon-table';
+import { tripeaksTable } from '../../game/tripeaks-table';
 import { formatDuration } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -47,6 +49,7 @@ export class Play implements AfterViewInit, OnDestroy {
   // another.
   protected readonly view = signal<BoardView>({
     moves: 0,
+    showsMoves: true,
     canUndo: false,
     canFinish: false,
     stuck: false,
@@ -75,12 +78,7 @@ export class Play implements AfterViewInit, OnDestroy {
   // and show something else.
   private readonly gameId: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
   private readonly drawCount = this.settings.drawCount();
-  private readonly table =
-    this.gameId === 'freecell'
-      ? freecellTable()
-      : this.gameId === 'yukon'
-        ? yukonTable()
-        : klondikeTable(this.drawCount);
+  private readonly table = makeTable(this.gameId, this.drawCount);
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
 
@@ -151,4 +149,20 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 
   protected readonly asTime = formatDuration;
+}
+
+// Which game the board is handed. One place that knows the four of them, so
+// adding a fifth is one line here rather than a conditional that grows a limb
+// each time.
+function makeTable(game: GameId, drawCount: DrawCount) {
+  switch (game) {
+    case 'freecell':
+      return freecellTable();
+    case 'yukon':
+      return yukonTable();
+    case 'tripeaks':
+      return tripeaksTable();
+    default:
+      return klondikeTable(drawCount);
+  }
 }

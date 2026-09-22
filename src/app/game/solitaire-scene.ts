@@ -49,6 +49,11 @@ export interface BoardView {
   waste?: number;
   free?: number;
   hidden?: number;
+  run?: number;
+  left?: number;
+  // Whether this game thinks its move count is worth the room. See
+  // TableGame.showsMoves.
+  showsMoves: boolean;
   canUndo: boolean;
   canFinish: boolean;
   // Nothing legal left to do. Not the same as lost - the game is still there
@@ -226,12 +231,15 @@ export class SolitaireScene extends Phaser.Scene {
     this.backColor = data.backColor;
     this.handedness = data.handedness;
     this.report = data.events;
+    this.drop = this.table.drops ? MAX_BOARD_DROP : 0;
     this.slotMap.clear();
     for (const slot of this.table.slots(this.handedness)) {
       this.slotMap.set(pileKey(slot.ref), {
         slot,
-        x: this.columnX(slot.column),
-        y: slot.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2,
+        // A game that lays itself out in columns says which column; one whose
+        // board is not a grid gives the place outright.
+        x: slot.x ?? this.columnX(slot.column),
+        y: slot.y ?? (slot.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2),
       });
     }
   }
@@ -327,6 +335,21 @@ export class SolitaireScene extends Phaser.Scene {
    * pileBase a moment later, in the same render.
    */
   private updateDrop(animate: boolean): void {
+    // A game that placed every pile itself has already decided where the
+    // bottom of its board is, and sliding its layout down would only push it
+    // off the felt.
+    //
+    // Set to nothing rather than left alone: the field starts at the full
+    // drop, so returning early here left such a game drawing its cards 260
+    // units below its own printing - which for TriPeaks put the deck off the
+    // bottom edge of the board, where no press could reach it.
+    if (!this.table.drops) {
+      if (this.drop !== 0) {
+        this.drop = 0;
+        this.markings.setY(0);
+      }
+      return;
+    }
     const depths = this.table
       .piles(this.session.state)
       // Only the piles that hang downward: a pile that fans up out of its
@@ -386,7 +409,9 @@ export class SolitaireScene extends Phaser.Scene {
 
     for (const slot of this.table.slots(this.handedness)) {
       const at = this.slotPosition(slot.ref);
-      put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
+      // Most piles are marked on the felt. A position on a peak is not: once
+      // its card is taken it is table again, not a place something belongs.
+      if (slot.printed !== false) put([drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT)]);
 
       // A foundation carries a ghost of the suit it is reserved for. That
       // reservation is a real rule - a spade cannot be sent to whichever pile
@@ -422,7 +447,7 @@ export class SolitaireScene extends Phaser.Scene {
     // object built in the middle of a gesture is a stutter in the middle of a
     // gesture.
     for (const slot of this.table.slots(this.handedness)) {
-      if (slot.ref.kind === 'stock' || slot.ref.kind === 'waste') continue;
+      if (!isTarget(slot)) continue;
       const at = this.slotPosition(slot.ref);
       const g = this.add.graphics();
       g.lineStyle(2.5, HIGHLIGHT_COLOR, 0.95);
@@ -452,10 +477,7 @@ export class SolitaireScene extends Phaser.Scene {
     // when the dealing stops, which is what it looks like when somebody deals
     // a hand in front of you.
     const origin = this.table.dealOrigin(this.handedness);
-    const from = {
-      x: this.columnX(origin.column),
-      y: (origin.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2) + this.drop,
-    };
+    const from = { x: origin.x, y: origin.y + this.drop };
     const dealt: { sprite: CardSprite; to: { x: number; y: number }; faceUp: boolean }[] = [];
 
     for (const pile of this.table.piles(this.session.state)) {
@@ -596,6 +618,7 @@ export class SolitaireScene extends Phaser.Scene {
       // Whatever this game keeps: a score and a stock, or free cells.
       ...this.table.view(this.session.state),
       moves: this.session.moves,
+      showsMoves: this.table.showsMoves,
       canUndo: this.session.canUndo,
       canFinish: this.session.canFinish && !this.locked,
       stuck: this.session.stuck,
@@ -756,6 +779,9 @@ export class SolitaireScene extends Phaser.Scene {
     const velocity = pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime });
     if (!isUpwardFlick(velocity)) return undefined;
 
+    // A game with no foundations has nowhere to throw a card, so there is no
+    // such gesture in it.
+    if (!this.table.homeFor) return undefined;
     const cards = this.table.liftable(this.session.state, drag.from, 1);
     if (!cards) return undefined;
     const home = this.table.homeFor(cards[0]);
@@ -948,7 +974,10 @@ export class SolitaireScene extends Phaser.Scene {
     // sixty units wide and printed in an order that mirrors with handedness,
     // and a card has exactly one home - so asking the player to hit the right
     // one is asking them to aim at something the rules already know.
-    const to: PileRef = best.ref.kind === 'foundation' ? this.table.homeFor(cards[0]) : best.ref;
+    const to: PileRef =
+      best.ref.kind === 'foundation' && this.table.homeFor
+        ? this.table.homeFor(cards[0])
+        : best.ref;
 
     // Legality is settled here rather than left to the move, because this
     // answer is also what the highlight draws: a pile lit up under a card has
@@ -961,9 +990,7 @@ export class SolitaireScene extends Phaser.Scene {
     const cards = new Map(this.table.piles(this.session.state).map((p) => [pileKey(p.ref), p.cards]));
 
     for (const slot of this.table.slots(this.handedness)) {
-      // Neither of these takes a card: the stock is turned, and the waste is
-      // dealt onto rather than played onto.
-      if (slot.ref.kind === 'stock' || slot.ref.kind === 'waste') continue;
+      if (!isTarget(slot)) continue;
       const at = this.pileBase(slot.ref);
       const pile = cards.get(pileKey(slot.ref)) ?? [];
       // A column wide, so the gutters between slots are not dead ground -
@@ -1092,4 +1119,17 @@ export class SolitaireScene extends Phaser.Scene {
       return !gone;
     });
   }
+}
+
+/**
+ * Whether a pile takes cards.
+ *
+ * The default is every pile but the stock and the waste, which is right for
+ * the games that build on their piles: a stock is turned and a waste is dealt
+ * onto. TriPeaks is the other way round - its board positions are only ever
+ * emptied, and its waste is the one place a card can go - so its slots say so
+ * outright.
+ */
+function isTarget(slot: PileSlot): boolean {
+  return slot.target ?? (slot.ref.kind !== 'stock' && slot.ref.kind !== 'waste');
 }

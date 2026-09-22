@@ -46,6 +46,10 @@
 // as well as set what these look like.
 .hud__button {
   @include display-type;
+  // Two words, one line. "New deal" wrapped on a narrow phone once the games
+  // with five stats arrived, and a button that changes height changes the
+  // height of the bar the board is measured against.
+  white-space: nowrap;
   font-size: 0.85rem;
   color: #cfead0;
   text-decoration: none;
@@ -65,9 +69,11 @@
   }
 }
 
+// Three numbers in most games and five in TriPeaks, on a screen four hundred
+// pixels wide. The gap gives way before the digits do.
 .hud__stats {
   display: flex;
-  gap: 1.25rem;
+  gap: clamp(0.5rem, 3vw, 1.25rem);
 }
 
 .hud__stat {

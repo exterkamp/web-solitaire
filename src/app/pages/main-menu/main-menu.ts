@@ -28,6 +28,7 @@ export class MainMenu {
     klondike: 'Draw one or three · the classic',
     freecell: 'Nothing hidden · almost always winnable',
     yukon: 'No deck to turn · dig for what is buried',
+    tripeaks: 'Quick · clear the peaks a card at a time',
   };
 
   protected line(game: GameId): string {

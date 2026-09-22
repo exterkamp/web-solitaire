@@ -55,6 +55,20 @@
     </tbody>
   </table>
 
+  <h2 class="record__game">Tri Peaks</h2>
+  <table class="record">
+    <tbody>
+      @for (row of tripeaksRows; track row.label) {
+        <tr>
+          <th scope="row">{{ row.label }}</th>
+          @for (variant of tripeaks; track variant) {
+            <td>{{ row.value(mode(variant)) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
   @if (confirming()) {
     <p class="record__note record__note--warn">
       This cannot be undone, and it clears both games. Nothing else goes with

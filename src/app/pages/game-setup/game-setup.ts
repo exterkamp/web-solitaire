@@ -46,6 +46,18 @@ const GUIDES: Record<GameId, Guide> = {
       'from the first move. What is left is digging: twenty-one cards start ' +
       'face down, and every one you turn over you earned.',
   },
+  tripeaks: {
+    title: 'Tri Peaks',
+    summary:
+      'Three peaks of cards, one card face up beside the deck, and two minutes.',
+    detail:
+      'Take any card you can see that is one rank above or below the card ' +
+      'beside the deck - and the ranks go round the corner, so an ace follows ' +
+      'a king and a king follows an ace. A card is yours once the two cards ' +
+      'lying over it have gone. Nothing is built and nothing is sorted; the ' +
+      'whole game is noticing. Every card you take in a row is worth more ' +
+      'than the last, and turning the deck starts you back at one.',
+  },
   freecell: {
     title: 'FreeCell',
     summary:

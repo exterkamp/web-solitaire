@@ -27,6 +27,7 @@ export class StatsPage {
   protected readonly klondike: Variant[] = ['klondike-1', 'klondike-3'];
   protected readonly freecell: Variant[] = ['freecell'];
   protected readonly yukon: Variant[] = ['yukon'];
+  protected readonly tripeaks: Variant[] = ['tripeaks'];
   protected readonly labels = VARIANT_LABELS;
 
   private readonly common: Row[] = [
@@ -55,6 +56,13 @@ export class StatsPage {
   ];
   // FreeCell and Yukon are both scoreless, so they take the same rows.
   protected readonly scorelessRows: Row[] = [...this.common, ...this.tail];
+  // TriPeaks keeps a score like Klondike does, and it is the only thing worth
+  // comparing two games of it by - it takes two minutes either way.
+  protected readonly tripeaksRows: Row[] = [
+    ...this.common,
+    { label: 'Best score', value: (m) => formatBest(m.bestScore) },
+    ...this.tail,
+  ];
 
   protected mode(variant: Variant): ModeRecord {
     return this.stats.mode(variant);
