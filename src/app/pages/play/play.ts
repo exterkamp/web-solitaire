@@ -23,6 +23,8 @@ import { scorpionTable } from '../../game/scorpion-table';
 import { pyramidTable } from '../../game/pyramid-table';
 import { golfTable } from '../../game/golf-table';
 import { acesUpTable } from '../../game/acesup-table';
+import { canfieldTable } from '../../game/canfield-table';
+import { seahavenTable } from '../../game/seahaven-table';
 import { formatDuration } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -156,8 +158,8 @@ export class Play implements AfterViewInit, OnDestroy {
   protected readonly asTime = formatDuration;
 }
 
-// Which game the board is handed. One place that knows all nine of them, so
-// adding a tenth is one line here rather than a conditional that grows a limb
+// Which game the board is handed. One place that knows all eleven of them, so
+// adding a twelfth is one line here rather than a conditional that grows a limb
 // each time - and the switch is exhaustive over GameId, so leaving a game out
 // is a compile error rather than a board that quietly deals Klondike.
 function makeTable(game: GameId, drawCount: DrawCount) {
@@ -166,8 +168,12 @@ function makeTable(game: GameId, drawCount: DrawCount) {
       return freecellTable();
     case 'yukon':
       return yukonTable();
+    case 'canfield':
+      return canfieldTable();
     case 'spiderette':
       return spideretteTable();
+    case 'seahaven':
+      return seahavenTable();
     case 'scorpion':
       return scorpionTable();
     case 'tripeaks':

@@ -70,6 +70,35 @@ const GUIDES: Record<GameId, Guide> = {
       'thousand Microsoft shipped, only one cannot - so a loss here is a loss ' +
       'rather than a bad hand.',
   },
+  canfield: {
+    title: 'Canfield',
+    summary:
+      'Thirteen cards in reserve, four columns, and foundations that start wherever the first card did.',
+    detail:
+      'The gambling one: Richard Canfield sold a deck for fifty dollars and ' +
+      'paid five a card for whatever you got home, and a hand goes out about ' +
+      'one time in thirty. The card turned up first sets the rank all four ' +
+      'foundations build from, and both sequences go round the corner - a ' +
+      'foundation counts on past the king to the ace, and a king goes on an ' +
+      'ace in the columns. The reserve is the game: thirteen cards you ' +
+      'cannot see, only the top one is yours, and any column you manage to ' +
+      'empty refills from it before you can use it. Three cards a turn, and ' +
+      'as many passes through the deck as you like.',
+  },
+  seahaven: {
+    title: 'Seahaven Towers',
+    summary:
+      'FreeCell\u2019s furniture, built down in suit, and only a king may take an empty column.',
+    detail:
+      'Ten columns of five, four cells with two of them already full, and ' +
+      'nothing hidden. The two changes from FreeCell are what make it: ' +
+      'columns build down in suit rather than in alternating colours, and an ' +
+      'empty column takes a king and nothing else. So an empty column is ' +
+      'worth nothing unless you are holding a king, a run can never be ' +
+      'shuffled through one, and the only room you have is those four ' +
+      'squares. Ten columns across a phone means smaller cards - the price ' +
+      'of seeing all fifty-two at once.',
+  },
   spiderette: {
     title: 'Spiderette',
     summary:

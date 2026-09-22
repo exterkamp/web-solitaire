@@ -21,8 +21,10 @@ export type GameId =
   | 'klondike'
   | 'freecell'
   | 'yukon'
+  | 'canfield'
   | 'spiderette'
   | 'scorpion'
+  | 'seahaven'
   // Match what you can see and clear it away.
   | 'tripeaks'
   | 'pyramid'
@@ -30,7 +32,7 @@ export type GameId =
   | 'acesup';
 
 const GAME_IDS: readonly GameId[] = [
-  'klondike', 'freecell', 'yukon', 'spiderette', 'scorpion',
+  'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
   'tripeaks', 'pyramid', 'golf', 'acesup',
 ];
 
@@ -79,6 +81,16 @@ export interface GameView {
   // heuristic and does not show it; Spiderette's four remaining rows are the
   // clock the whole hand is run against.
   deck?: number;
+  // Cards left in a reserve. Canfield's thirteen, which it is playing against
+  // in the same way - except that this pile is face down, cannot be refused,
+  // and fills any column you manage to empty.
+  reserve?: number;
+  // The rank the foundations build from, for the one game where that is not
+  // the ace. The only piece of this display that is not a count: in Canfield
+  // it is decided by the deal, it applies to all four foundations, and once
+  // they have a card on them there is nothing on the board that still says
+  // what it was.
+  base?: string;
   waste?: number;
   free?: number;
   // Cards still face down. Yukon's only measure of progress, and the one

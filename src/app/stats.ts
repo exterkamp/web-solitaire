@@ -24,8 +24,10 @@ export type Variant =
   | 'klondike-3'
   | 'freecell'
   | 'yukon'
+  | 'canfield'
   | 'spiderette'
   | 'scorpion'
+  | 'seahaven'
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
@@ -44,8 +46,10 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   'klondike-3': 'Draw three',
   freecell: 'FreeCell',
   yukon: 'Yukon',
+  canfield: 'Canfield',
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
+  seahaven: 'Seahaven Towers',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
@@ -53,8 +57,8 @@ export const VARIANT_LABELS: Record<Variant, string> = {
 };
 
 const VARIANTS: Variant[] = [
-  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'spiderette', 'scorpion',
-  'tripeaks', 'pyramid', 'golf', 'acesup',
+  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion',
+  'seahaven', 'tripeaks', 'pyramid', 'golf', 'acesup',
 ];
 
 // v2 because the shape changed when the second game arrived: what used to be
@@ -102,8 +106,10 @@ function emptyStats(): StatsRecord {
       'klondike-3': emptyMode(),
       freecell: emptyMode(),
       yukon: emptyMode(),
+      canfield: emptyMode(),
       spiderette: emptyMode(),
       scorpion: emptyMode(),
+      seahaven: emptyMode(),
       tripeaks: emptyMode(),
       pyramid: emptyMode(),
       golf: emptyMode(),

@@ -33,6 +33,23 @@
           <span class="hud__value">{{ view().hidden }}</span>
         </div>
       }
+      <!-- Canfield builds its foundations from whatever rank turned up
+           first, and after the first card lands there is nothing left on the
+           board that says which rank that was. -->
+      @if (view().base !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Base</span>
+          <span class="hud__value">{{ view().base }}</span>
+        </div>
+      }
+      <!-- Canfield's thirteen, counting down. The one number that says how a
+           hand of that game is actually going. -->
+      @if (view().reserve !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Reserve</span>
+          <span class="hud__value">{{ view().reserve }}</span>
+        </div>
+      }
       <!-- And the Spider family plays against the deck: how many rows are
            left to deal is the shape of the rest of the hand. -->
       @if (view().deck !== undefined) {

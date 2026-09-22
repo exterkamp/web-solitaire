@@ -1,6 +1,6 @@
 # web-solitaire
 
-Nine solitaires, in a browser, for one person. No account, no server, no
+Eleven solitaires, in a browser, for one person. No account, no server, no
 network — the game is a directory of static files, and everything it remembers
 about you is in your browser's own storage.
 
@@ -10,11 +10,16 @@ about you is in your browser's own storage.
 
 <table>
 <tr>
-<td width="20%" align="center"><img src="docs/screenshots/klondike.webp" alt="Klondike, part way through a hand"><br><b>Klondike</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/freecell.webp" alt="FreeCell, freshly dealt"><br><b>FreeCell</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/yukon.webp" alt="Yukon, part way through a hand"><br><b>Yukon</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/spiderette.webp" alt="Spiderette, part way through a hand"><br><b>Spiderette</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/klondike.webp" alt="Klondike, part way through a hand"><br><b>Klondike</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/freecell.webp" alt="FreeCell, freshly dealt"><br><b>FreeCell</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/yukon.webp" alt="Yukon, part way through a hand"><br><b>Yukon</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/canfield.webp" alt="Canfield, part way through a hand"><br><b>Canfield</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/spiderette.webp" alt="Spiderette, part way through a hand"><br><b>Spiderette</b></td>
+<td align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
+<td align="center"><img src="docs/screenshots/seahaven.webp" alt="Seahaven Towers, freshly dealt"><br><b>Seahaven Towers</b></td>
+<td></td>
 </tr>
 </table>
 
@@ -22,11 +27,10 @@ about you is in your browser's own storage.
 
 <table>
 <tr>
-<td width="20%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/pyramid.webp" alt="Pyramid, part way through a hand"><br><b>Pyramid</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
-<td width="20%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
-<td width="20%"></td>
+<td width="25%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/pyramid.webp" alt="Pyramid, part way through a hand"><br><b>Pyramid</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
+<td width="25%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
 </tr>
 </table>
 
@@ -58,6 +62,15 @@ to be; only the bottom one has to fit where it lands. Everything is on the
 table from the first move, so the game is digging — twenty-one cards start
 face down and the board counts them down instead of a score.
 
+**Canfield** is the gambling one — Richard Canfield sold a deck for fifty
+dollars and paid five a card for whatever you got home, which worked out in
+his favour: a hand goes out about one time in thirty. The card turned up first
+sets the rank all four foundations build from, and both sequences go round the
+corner, so a foundation counts past the king to the ace and a king goes on an
+ace. The reserve is the game: thirteen cards you cannot see, only the top one
+is yours, and any column you manage to empty refills from it before you can
+use it.
+
 **Spiderette** is Spider's game on one deck and seven columns. Build down by
 rank ignoring suit, but pick up only a run that is all one suit — so every
 convenient placement is a card buried on purpose, and that argument is the
@@ -71,6 +84,13 @@ with everything piled on it, in whatever state those cards are in, and may
 only be put down on the same suit one rank higher — so a nine of hearts has
 exactly one home in the whole deck, and it is very probably buried. The
 hardest game here.
+
+**Seahaven Towers** is FreeCell's furniture with two rules changed: columns
+build down in *suit*, and an empty column takes a king and nothing else. So an
+empty column is worth nothing unless you are holding a king, a run can never
+be shuffled through one, and the only room you have is the four cells — two of
+which start full. Ten columns across a phone means smaller cards; that is the
+price of seeing all fifty-two at once.
 
 **Tri Peaks** is the odd one out among the first lot and is here for that
 reason. Three peaks of cards, one card face up beside the deck, and any card
@@ -162,11 +182,11 @@ That is Klondike's, and Klondike is the only game here with a score in that
 sense. Tri Peaks keeps its own: every card taken without turning the deck is
 worth more than the last, and clearing a peak is worth fifteen.
 
-The other seven have never had a score, and none is invented for them. What
+The other nine have never had a score, and none is invented for them. What
 the board shows instead is whichever number that game's players actually
-watch — free cells in FreeCell, cards still face down in Yukon and the Spider
-family, rows left in the deck in Spiderette, cards still standing in Pyramid,
-Golf and Aces Up. A score bolted onto a game that does not have one is a
+watch — free cells in FreeCell and Seahaven, cards still face down in Yukon
+and the Spider family, rows left in the deck in Spiderette, cards left in the
+reserve in Canfield, cards still standing in Pyramid, Golf and Aces Up. A score bolted onto a game that does not have one is a
 number that measures nothing.
 
 ## What is remembered
@@ -201,9 +221,9 @@ in a waiting room.
 ## Building it
 
 Angular for the pages, Phaser for the board, and a hard line between them. One
-board runs all nine games; each game is a rules module of pure functions plus
-a description of where its piles are printed. Adding the ninth touched two
-shared files and added three of its own.
+board runs all eleven games; each game is a rules module of pure functions
+plus a description of where its piles are printed. Adding the eleventh touched
+two shared files and added three of its own.
 
 ```bash
 npm install

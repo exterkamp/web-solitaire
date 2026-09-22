@@ -124,8 +124,9 @@ src/app/game/
   table-game.ts      the interface a game implements for the board
   klondike.ts        the rules. no Phaser, no Angular, no DOM
   klondike.spec.ts   and their tests
-  freecell.ts  yukon.ts  spiderette.ts  scorpion.ts        the same,
-  tripeaks.ts  pyramid.ts  golf.ts  acesup.ts              eight more times
+  freecell.ts  yukon.ts  canfield.ts  spiderette.ts        the same,
+  scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         ten more
+  golf.ts  acesup.ts                                        times
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock
@@ -153,7 +154,7 @@ animates the answer. Where the two could disagree — what a tap means, which
 pile a dropped card is nearest — the scene decides, because those are facts
 about a thumb rather than about Klondike.
 
-**One board, nine games.** `solitaire-scene.ts` owns everything about a screen
+**One board, eleven games.** `solitaire-scene.ts` owns everything about a screen
 and a thumb — picking a run up, following it, deciding what a release meant,
 and the fifty-two cards that fall out of a won game — and knows nothing about
 any particular game. Each game supplies a `TableGame` instead: its rules behind
@@ -171,12 +172,25 @@ be dropped onto. Those three flags — `x`/`y` instead of `column`/`row`,
 and a wall on a board built for columns.
 
 Those flags arrived with Tri Peaks, along with `homeFor` becoming optional for
-a game with no foundations to flick a card to. Adding the five games after it -
-Spiderette, Scorpion, Pyramid, Golf and Aces Up - needed **one** further field
-on the interface, `GameView.deck`, and otherwise touched only the lists that
-have to name every game: the id union, the factory in `play.ts`, the record
-book's variants and the menu. Each game is three new files and nothing else,
-which is the measure of whether the shape was right.
+a game with no foundations to flick a card to. Everything added since has cost
+the interface three fields between seven games, all of them on `GameView` and
+all of them numbers for the bar: `deck` for the Spider family's row counter,
+`reserve` for Canfield's thirteen, and `base` for the one game whose
+foundations do not start on an ace. Otherwise a new game touches only the lists
+that have to name every game - the id union, the factory in `play.ts`, the
+record book's variants and the menu - and is three new files. That is the
+measure of whether the shape was right.
+
+Two of those games are worth knowing about because they push at the edges.
+**Canfield** keeps the reserve in a `cell` pile, which is what it is as far as
+the board is concerned: a stack off to one side that gives up its top card. Its
+foundations start on a rank the deal picks and both its sequences wrap, so it
+cannot use `card-rules.ts` for either and says so with its own `rankAbove` and
+`rankBelow`. **Seahaven** is the widest table here - ten columns is 677 units
+against Klondike's 480, so its cards come out about 37 CSS pixels across on a
+412-pixel phone where Klondike's are 51. That is the arithmetic that keeps
+Spider off this menu; Seahaven survives it because its piles are five deep and
+everything is visible at a glance.
 
 Those lists are worth keeping exhaustive rather than defaulted. `GameId` is a
 union and `makeTable` switches over it, so a game left out of the factory is a
@@ -267,6 +281,9 @@ with this game: Nertz's board measures the same on the same machine.
 ./deploy.sh --now                  # or point --host at a dev server
 node tools/screenshots.mjs         # --only=freecell,menu to retake some
 ```
+
+Eleven games at eleven boards plus the menu and a game page is about seven
+minutes of headless Chrome, which is why `--only` exists.
 
 Same headless Chrome, at a phone's size and pixel ratio, writing webp into
 `docs/screenshots/`. It taps its way through a few real moves first, because a
