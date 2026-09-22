@@ -364,23 +364,4 @@ describe('a game in progress', () => {
     expect(game.play({ kind: 'play', from: foundation(0), to: tableau(0), count: 1 })).toBeUndefined();
     expect(game.canUndo).toBe(false);
   });
-
-  it('offers the move that turns a card over before a rearrangement', () => {
-    const game = new Solitaire(1, seeded(1));
-    // Rigged rather than played into: what matters is the order of the
-    // answers, not that this position is reachable.
-    (game as unknown as { current: GameState }).current = board({
-      tableau: [
-        [card('5', 'clubs', false), card('9', 'hearts')],
-        [card('10', 'spades')],
-        [card('10', 'clubs')],
-        [],
-        [],
-        [],
-        [],
-      ],
-    });
-    const hints = game.hints();
-    expect(hints[0]).toMatchObject({ from: tableau(0) });
-  });
 });

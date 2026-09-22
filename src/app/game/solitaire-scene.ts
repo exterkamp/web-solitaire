@@ -208,8 +208,6 @@ export class SolitaireScene extends Phaser.Scene {
   // on top of the printing rather than under it.
   private markings!: Phaser.GameObjects.Container;
   private cardLayer!: Phaser.GameObjects.Container;
-  // Above the cards: the hint flash, and nothing else.
-  private effectLayer!: Phaser.GameObjects.Container;
 
   // One sprite per card, kept for the life of the deal and moved rather than
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
@@ -270,8 +268,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.root = this.add.container(0, 0).setScale(this.pixelRatio);
     this.markings = this.add.container(0, 0);
     this.cardLayer = this.add.container(0, 0);
-    this.effectLayer = this.add.container(0, 0);
-    this.root.add([this.markings, this.cardLayer, this.effectLayer]);
+    this.root.add([this.markings, this.cardLayer]);
 
     this.printLayout();
 
@@ -902,42 +899,6 @@ export class SolitaireScene extends Phaser.Scene {
     this.stopCascade();
     this.renderBoard(true);
     this.publish();
-  }
-
-  /**
-   * Flashes the best move available, without making it.
-   *
-   * Two flashes, the destination a beat behind the card: one outline on its
-   * own says "look here" and leaves you to find the other half yourself,
-   * which for a hint is most of the work.
-   */
-  hint(): void {
-    if (this.locked) return;
-    const [move] = this.session.hints();
-    if (!move || move.kind !== 'play') return;
-
-    const head = liftable(this.session.state, move.from, move.count)?.[0];
-    const sprite = head && this.sprites.get(head.id);
-    if (sprite) this.flash(sprite.x, sprite.y);
-    const to = this.pileBase(move.to);
-    this.flash(to.x, to.y, 120);
-  }
-
-  // A gold outline that grows and fades where something is worth looking at.
-  private flash(x: number, y: number, delay = 0): void {
-    const g = this.add.graphics();
-    g.lineStyle(3, HIGHLIGHT_COLOR, 1);
-    g.strokeRoundedRect(x - CARD_WIDTH / 2, y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 6);
-    this.effectLayer.add(g);
-    this.tweens.add({
-      targets: g,
-      alpha: 0,
-      scale: 1.12,
-      delay,
-      duration: 620,
-      ease: 'Quad.easeOut',
-      onComplete: () => g.destroy(),
-    });
   }
 
   /**

@@ -111,10 +111,6 @@ perhaps one hand in ten.
 * **Undo** as far back as you like, including past a win. Undoing costs
   nothing: a score is a measure of the game you played, and an undone move is
   a game that did not happen.
-* **Hint** flashes one move, then the pile it should go to a beat later. It
-  offers a card going home first, then the move that turns a card over — the
-  only kind of move that adds information — then getting something out of the
-  waste.
 * **Finish** appears once every card is face up and the rest of the game is a
   formality, and plays it out. The cards then fall out of the foundations and
   bounce off the bottom of the screen, which is the oldest piece of

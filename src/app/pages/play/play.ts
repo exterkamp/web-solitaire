@@ -94,10 +94,6 @@ export class Play implements AfterViewInit, OnDestroy {
     this.scene()?.undo();
   }
 
-  protected hint(): void {
-    this.scene()?.hint();
-  }
-
   protected finish(): void {
     this.scene()?.finish();
   }

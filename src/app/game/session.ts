@@ -98,32 +98,4 @@ export class Solitaire {
     this.stoppedAt = undefined;
     return true;
   }
-
-  /**
-   * The moves worth suggesting, best first.
-   *
-   * "Best" is not a solver - it is the order a person would look in. A card
-   * going home is always worth seeing; after that, the move that turns over
-   * a face-down card, because that is the only kind of move that adds
-   * information to the game; then getting something out of the waste, which
-   * is the pile that runs out of chances. Everything else is a rearrangement
-   * and goes last.
-   */
-  hints(): Move[] {
-    const state = this.current;
-    const plays = legalMoves(state).filter(
-      (move): move is Extract<Move, { kind: 'play' }> => move.kind === 'play',
-    );
-    const rank = (move: Extract<Move, { kind: 'play' }>): number => {
-      if (move.to.kind === 'foundation') return 0;
-      if (move.from.kind === 'tableau') {
-        const pile = state.tableau[move.from.index];
-        const under = pile[pile.length - move.count - 1];
-        if (under && !under.faceUp) return 1;
-      }
-      if (move.from.kind === 'waste') return 2;
-      return 3;
-    };
-    return plays.sort((a, b) => rank(a) - rank(b));
-  }
 }

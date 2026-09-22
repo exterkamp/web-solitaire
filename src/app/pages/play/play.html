@@ -33,7 +33,6 @@
     <button type="button" class="action" [disabled]="!view().canUndo" (click)="undo()">
       Undo
     </button>
-    <button type="button" class="action" (click)="hint()">Hint</button>
     @if (view().canFinish) {
       <!-- Only once the game is already decided: every card face up, nothing
            hidden, and the rest of it a formality. -->

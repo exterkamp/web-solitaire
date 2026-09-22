@@ -390,12 +390,16 @@ export function autoTarget(state: GameState, from: PileRef, count = 1): PileRef 
 }
 
 /**
- * Every move available right now, for the hint button and for noticing that
- * there are none.
+ * Every move available right now, which is asked for one reason: noticing
+ * when there are none, so the board can say so.
  *
  * Deliberately does not include foundation-to-tableau moves. They are legal,
- * and there are positions that need them, but they are always available and
- * offering one as a hint is how a hint button comes to be useless.
+ * and there are positions that need them, but a card can almost always be
+ * pulled back off a foundation - so counting those would mean a game was
+ * never quite stuck and the board could never tell you that you are out of
+ * moves. The cost is worth stating: "nothing left that can be played" means
+ * nothing on the table, and does not count fetching back a card you have
+ * already sent home.
  */
 export function legalMoves(state: GameState): Move[] {
   const moves: Move[] = [];
