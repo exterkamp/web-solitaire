@@ -157,8 +157,16 @@ export function canDrop(
   if (to.kind === 'foundation') return isKing(card);
 
   if (to.kind === 'waste') {
+    // The card beside the deck, paired with something from the pyramid - or
+    // with the card underneath it, which is the standard rule and is why this
+    // looks past the top when the top is the card being played. Two cards
+    // turned one after the other that happen to make thirteen come off
+    // together; without that a winnable deal can be unwinnable.
     const top = topOf(state.waste);
-    return !!top && top.id !== card.id && pairs(card, top);
+    if (!top) return false;
+    if (top.id !== card.id) return pairs(card, top);
+    const under = state.waste[state.waste.length - 2];
+    return !!under && pairs(card, under);
   }
   if (to.kind !== 'tableau') return false;
 
@@ -197,6 +205,9 @@ export function apply(state: PyramidState, move: Move): MoveResult | undefined {
 }
 
 function take(state: PyramidState, ref: PileRef): Card | undefined {
+  // Popping twice from the waste is how a pair of waste cards leaves: the
+  // move names the waste as both where the card came from and what it is
+  // being paired with, and each call takes whatever is on top now.
   if (ref.kind === 'waste') return state.waste.pop();
   if (ref.kind === 'tableau') return state.pyramid[ref.index].pop();
   return undefined;
@@ -254,7 +265,10 @@ export function legalMoves(state: PyramidState): Move[] {
       continue;
     }
     for (const to of sources) {
-      if (to.kind === from.kind && to.index === from.index) continue;
+      // The waste paired with itself is a real move - the top two cards - and
+      // the only place on this table where the same pile is both ends of one.
+      const samePile = to.kind === from.kind && to.index === from.index;
+      if (samePile && from.kind !== 'waste') continue;
       if (canDrop(state, cards, to)) moves.push({ kind: 'play', from, to, count: 1 });
     }
   }
@@ -290,8 +304,10 @@ export function autoTarget(state: PyramidState, from: PileRef, count = 1): PileR
   if (!cards) return undefined;
   if (isKing(cards[0])) return DISCARD;
   const waste: PileRef = { kind: 'waste', index: 0 };
-  if (from.kind !== 'waste' && canDrop(state, cards, waste)) return waste;
-  return undefined;
+  // From the pyramid, onto the card beside the deck. And from the waste onto
+  // itself, which is the pair of turned cards: tapping the top one is the
+  // only gesture that can mean it, since there is nowhere to drag it to.
+  return canDrop(state, cards, waste) ? waste : undefined;
 }
 
 // No finish to play out: every pair has to be spotted, and the last one is as

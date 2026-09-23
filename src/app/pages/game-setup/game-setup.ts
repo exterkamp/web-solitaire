@@ -16,149 +16,244 @@ import { Stats, variantOf } from '../../stats';
 // hand and guessing, and somebody who has should be one button from playing.
 interface Guide {
   title: string;
-  // What the game is, in a sentence somebody can read while deciding.
+  // What the game is, in a sentence somebody can read while deciding. The
+  // only part of this that is a pitch rather than a rule.
   summary: string;
-  // And what makes it itself, for somebody who wants to know before they
-  // start rather than after they lose.
-  detail: string;
+  // And then the rules, in the order somebody meets them: what is on the
+  // table, what may be done with it, and what counts as having done it.
+  //
+  // Three short sections rather than one paragraph, because a paragraph is
+  // what you write when you are describing a game to somebody who already
+  // knows it. A person who has heard of Scorpion and never played it needs
+  // the deal before the moves, and the moves before the object, and they
+  // need to be able to come back and find one of the three without reading
+  // the other two.
+  //
+  // Checked against Wikipedia's articles and, where it has them, Bicycle's
+  // rulebook. Where this version differs from the standard game - and it
+  // does, in four places - the difference is named here rather than left for
+  // somebody to discover. A tutorial that quietly describes a different game
+  // is worse than no tutorial.
+  setup: string;
+  play: string;
+  winning: string;
 }
 
 const GUIDES: Record<GameId, Guide> = {
   klondike: {
     title: 'Klondike',
-    summary:
-      'Seven piles, a deck to turn, and four foundations to build up from ace to king.',
-    detail:
-      'Build the piles down in alternating colours, and move a run of them at ' +
-      'once when it fits. Only a king starts an empty column. Two thirds of the ' +
-      'deck begins face down, so the game is as much about what you have not ' +
-      'seen as about what you have - which is why a deal can simply be a bad one.',
-  },
-  yukon: {
-    title: 'Yukon',
-    summary:
-      'Klondike\u2019s seven columns with no deck to turn, and a handful of cards moves at once.',
-    detail:
-      'Any card that is face up comes away with every card sitting on it, in ' +
-      'whatever order those happen to be - only the bottom one has to fit ' +
-      'where it lands. Build down in alternating colours, kings into empty ' +
-      'columns, and everything you will ever be dealt is already on the table ' +
-      'from the first move. What is left is digging: twenty-one cards start ' +
-      'face down, and every one you turn over you earned.',
-  },
-  tripeaks: {
-    title: 'Tri Peaks',
-    summary:
-      'Three peaks of cards, one card face up beside the deck, and two minutes.',
-    detail:
-      'Take any card you can see that is one rank above or below the card ' +
-      'beside the deck - and the ranks go round the corner, so an ace follows ' +
-      'a king and a king follows an ace. A card is yours once the two cards ' +
-      'lying over it have gone. Nothing is built and nothing is sorted; the ' +
-      'whole game is noticing. Every card you take in a row is worth more ' +
-      'than the last, and turning the deck starts you back at one.',
+    summary: 'The one everybody means by solitaire: seven piles, a deck to turn, and four foundations to fill.',
+    setup:
+      'Seven piles, the first of one card and the last of seven, each with ' +
+      'only its top card face up - twenty-eight cards in all. The other ' +
+      'twenty-four stay in the deck, and the four foundations start empty.',
+    play:
+      'Build the piles down in alternating colours: a black five goes on a ' +
+      'red six. Any run of face-up cards moves as a unit, and only a king ' +
+      'starts an empty column. Turn the deck when you run out of moves, as ' +
+      'often as you like. Aces go up to the foundations as they appear, and ' +
+      'each foundation then builds up in its own suit.',
+    winning:
+      'All fifty-two cards home, ace to king in four suits. Two thirds of ' +
+      'the deck starts face down, so a deal can simply be a bad one: ' +
+      'somewhere between a fifth and two fifths of them go out, depending on ' +
+      'how many cards a draw turns.',
   },
   freecell: {
     title: 'FreeCell',
-    summary:
-      'All fifty-two face up across eight columns, with four cells to park a card in.',
-    detail:
-      'Build down in alternating colours as usual, but an empty column takes ' +
-      'any card, and a run only moves as far as there is room to shuffle it: ' +
-      'one card, plus one for every free cell, doubled for every empty column. ' +
-      'Nothing is hidden and almost every deal can be won - of the thirty-two ' +
-      'thousand Microsoft shipped, only one cannot - so a loss here is a loss ' +
-      'rather than a bad hand.',
+    summary: 'All fifty-two face up across eight columns, with four cells to park a card in.',
+    setup:
+      'Eight columns, four of seven cards and four of six, every card face ' +
+      'up from the start. Four empty cells at one end of the top row and ' +
+      'four empty foundations at the other.',
+    play:
+      'Build down in alternating colours, and send cards home in suit from ' +
+      'the ace. A cell holds any one card, and an empty column takes ' +
+      'anything at all. A run moves as far as there is room to shuffle it ' +
+      'through: one card, plus one for each free cell, doubled for every ' +
+      'empty column.',
+    winning:
+      'All fifty-two home. Nothing is hidden, so nothing is luck - of the ' +
+      'thirty-two thousand deals Microsoft shipped, every one can be won but ' +
+      '#11982. A loss here is a loss rather than a bad hand.',
+  },
+  yukon: {
+    title: 'Yukon',
+    summary: 'Klondike\u2019s seven columns with no deck to turn, and a handful of cards moves at once.',
+    setup:
+      'Seven columns holding one, six, seven, eight, nine, ten and eleven ' +
+      'cards. The top five of each are face up and the rest are buried: ' +
+      'twenty-one cards face down, and no deck at all.',
+    play:
+      'Any face-up card comes away with every card sitting on it, in ' +
+      'whatever order those happen to be - only the bottom one has to fit ' +
+      'where it lands, on a card of the other colour and one rank higher. ' +
+      'Kings go into empty columns. Foundations build up in suit from the ' +
+      'ace, as usual.',
+    winning:
+      'All fifty-two home. Everything you will ever be dealt is on the table ' +
+      'from the first move, so the game is digging: every one of those ' +
+      'twenty-one buried cards is turned by a move you found.',
   },
   canfield: {
     title: 'Canfield',
-    summary:
-      'Thirteen cards in reserve, four columns, and foundations that start wherever the first card did.',
-    detail:
-      'The gambling one: Richard Canfield sold a deck for fifty dollars and ' +
-      'paid five a card for whatever you got home, and a hand goes out about ' +
-      'one time in thirty. The card turned up first sets the rank all four ' +
-      'foundations build from, and both sequences go round the corner - a ' +
-      'foundation counts on past the king to the ace, and a king goes on an ' +
-      'ace in the columns. The reserve is the game: thirteen cards you ' +
-      'cannot see, only the top one is yours, and any column you manage to ' +
-      'empty refills from it before you can use it. Three cards a turn, and ' +
-      'as many passes through the deck as you like.',
-  },
-  seahaven: {
-    title: 'Seahaven Towers',
-    summary:
-      'FreeCell\u2019s furniture, built down in suit, and only a king may take an empty column.',
-    detail:
-      'Ten columns of five, four cells with two of them already full, and ' +
-      'nothing hidden. The two changes from FreeCell are what make it: ' +
-      'columns build down in suit rather than in alternating colours, and an ' +
-      'empty column takes a king and nothing else. So an empty column is ' +
-      'worth nothing unless you are holding a king, a run can never be ' +
-      'shuffled through one, and the only room you have is those four ' +
-      'squares. Ten columns across a phone means smaller cards - the price ' +
-      'of seeing all fifty-two at once.',
+    summary: 'Thirteen cards in reserve, and foundations that start wherever the first card did.',
+    setup:
+      'Thirteen cards face down in the reserve with the top one turned up, ' +
+      'four columns of one card each, and one card to a foundation - ' +
+      'whatever rank that card is, all four foundations start there. The ' +
+      'remaining thirty-four are the deck.',
+    play:
+      'Foundations build up in suit from the base rank and go round the ' +
+      'corner - on past the king to the ace and onward. The columns build ' +
+      'down in alternating colours and turn the same corner, so a king goes ' +
+      'on an ace. The reserve gives up its top card, and refills any column ' +
+      'you empty before you can use the space yourself; once it is gone, an ' +
+      'empty column takes any card. Three cards a turn from the deck, and as ' +
+      'many passes as you like.',
+    winning:
+      'All fifty-two home. Richard Canfield sold a deck for fifty dollars ' +
+      'and paid five a card for whatever you got up - two thousand six ' +
+      'hundred if you got them all - which is a business rather than a ' +
+      'charity: a hand goes out perhaps one time in thirty.',
   },
   spiderette: {
     title: 'Spiderette',
-    summary:
-      'Spider on one deck: build down by rank, but carry only a run of one suit.',
-    detail:
-      'Any card goes on one a rank higher, whatever the suits - and only a ' +
-      'run that is all one suit can be picked up and moved. So every ' +
-      'convenient place to put a card is a card buried on purpose, and that ' +
-      'argument is the whole game. Nothing goes home one card at a time: a ' +
-      'suit leaves the table as a finished king-to-ace run, all thirteen at ' +
-      'once. The deck deals a card onto every column when you ask it, four ' +
-      'times, and an empty column will hold anything.',
+    summary: 'Spider on one deck: build down by rank, but carry only a run of one suit.',
+    setup:
+      'Seven piles in a staircase, the first of one card and the last of ' +
+      'seven, each with its top card face up. The other twenty-four cards ' +
+      'stay in the deck, to be dealt a row at a time.',
+    play:
+      'Build down by rank and ignore suit entirely - any nine goes on any ' +
+      'ten. But only a run that is all one suit can be picked up and moved, ' +
+      'so every convenient placement is a card buried on purpose. An empty ' +
+      'column takes anything. The deck deals one card onto every column at ' +
+      'once, four times; the last row is three cards and goes to the first ' +
+      'three columns.',
+    winning:
+      'Four complete suits, king down to ace. Nothing goes home a card at a ' +
+      'time: a suit leaves the table the moment it is finished, all thirteen ' +
+      'together. Spider proper refuses to deal while any column is empty and ' +
+      'this does not - with only four rows in the deck, that rule mostly ' +
+      'punishes the player for having earned a space.',
   },
   scorpion: {
     title: 'Scorpion',
-    summary:
-      'Yukon\u2019s grip and Spider\u2019s order: a handful moves at once, onto its own suit.',
-    detail:
-      'Any face-up card comes away with everything piled on it, in whatever ' +
+    summary: 'Yukon\u2019s grip and Spider\u2019s order: a handful moves at once, onto its own suit.',
+    setup:
+      'Seven columns of seven. The first four have three cards face down ' +
+      'under four face up; the last three are face up all the way. Three ' +
+      'cards are held back.',
+    play:
+      'Any face-up card comes away with everything piled on it, whatever ' +
       'state those cards are in - and it may only be put down on the same ' +
       'suit, one rank higher. A nine of hearts has exactly one home in the ' +
-      'whole deck, and it is very probably buried. Kings start empty ' +
-      'columns, a finished suit goes home by itself, and three cards are ' +
-      'held back to be dealt when you want them. The hardest game here.',
+      'whole deck, and it is very probably buried. Kings go into empty ' +
+      'columns. The three held back are dealt onto the first three columns ' +
+      'when you ask for them, once.',
+    winning:
+      'Four complete suits, king down to ace. Traditionally they are left ' +
+      'lying in four columns; here a finished run goes home by itself, ' +
+      'which changes nothing about the play and gives the cards somewhere ' +
+      'to fall from. The hardest game here by some distance.',
+  },
+  seahaven: {
+    title: 'Seahaven Towers',
+    summary: 'FreeCell\u2019s furniture, built down in suit, and only a king may take an empty column.',
+    setup:
+      'Ten columns of five cards, all face up, and four cells - two of them ' +
+      'already holding the two cards that would not fit the columns. Four ' +
+      'empty foundations.',
+    play:
+      'Build down in suit rather than in colour, and send cards home in suit ' +
+      'from the ace. A cell holds any one card. An empty column takes a king ' +
+      'and nothing else, which is the rule the game turns on: a run can ' +
+      'never be shuffled through a space, so the only room you have is the ' +
+      'cells, and a run moves one card plus one for each cell still free.',
+    winning:
+      'All fifty-two home. The suit rule makes it harder than FreeCell and ' +
+      'ten short columns make it easier; good players win most of their ' +
+      'hands. Ten columns across a phone means smaller cards, which is the ' +
+      'price of seeing all fifty-two at once.',
+  },
+  tripeaks: {
+    title: 'Tri Peaks',
+    summary: 'Three peaks of cards, one card face up beside the deck, and two minutes.',
+    setup:
+      'Three peaks of six cards each over a shared row of ten - twenty-eight ' +
+      'in all, and only the bottom row face up. One card is turned face up ' +
+      'beside the deck to start from, and twenty-three are left in it.',
+    play:
+      'Take any card you can see that is one rank above or below the card ' +
+      'beside the deck, and it becomes the new card to match. The ranks go ' +
+      'round the corner, so an ace follows a king and a king follows an ace. ' +
+      'A card is yours once the two cards lying over it have gone; anything ' +
+      'that uncovers turns face up. Turn the deck when you cannot see a ' +
+      'move - there is no second pass.',
+    winning:
+      'All three peaks cleared. Nine in ten deals can be won by somebody who ' +
+      'sees everything, which is the game: every card you take in a row is ' +
+      'worth more than the last, and turning the deck starts you back at one.',
   },
   pyramid: {
     title: 'Pyramid',
-    summary:
-      'Twenty-eight cards stacked in a pyramid, taken away in pairs that add to thirteen.',
-    detail:
+    summary: 'Twenty-eight cards stacked in a pyramid, taken away in pairs that add to thirteen.',
+    setup:
+      'A pyramid of seven rows, one card at the top and seven along the ' +
+      'bottom, all face up and each row covering the one above. The other ' +
+      'twenty-four cards are the deck.',
+    play:
       'An ace is one, a jack eleven, a queen twelve - and a king is thirteen ' +
-      'on his own, so kings leave alone. A card is yours once the two cards ' +
-      'lying on it have gone. Drag one card onto another to take the pair, ' +
-      'or tap a card to pair it with the one beside the deck; finding the ' +
-      'other half is the game, so nothing here goes looking for it. Three ' +
-      'passes through the deck, and then the hand is over.',
+      'on his own, so kings leave alone. Any two uncovered cards adding to ' +
+      'thirteen come off together: two in the pyramid, or one in the pyramid ' +
+      'and the card beside the deck, or that card and the one turned before ' +
+      'it. A card is yours once the two lying on it have gone. Three passes ' +
+      'through the deck, one card at a time.',
+    winning:
+      'The pyramid bare. Under the strict rules - one pass through the deck ' +
+      'and no second look - it goes out about once in fifty; the three ' +
+      'passes here are the usual kindness. Every pair you take uncovers ' +
+      'something, so taking the wrong six early is how a hand stops being ' +
+      'winnable twenty moves before you find out.',
   },
   golf: {
     title: 'Golf',
-    summary:
-      'A wall of thirty-five cards, cleared one rank up or down onto the card in play.',
-    detail:
+    summary: 'A wall of thirty-five cards, cleared one rank up or down onto the card in play.',
+    setup:
+      'Seven columns of five cards, all face up - thirty-five in the wall. ' +
+      'One card is turned up beside the deck to play onto, and sixteen are ' +
+      'left in it.',
+    play:
       'Take any card at the foot of a column that is one rank above or below ' +
-      'the card beside the deck, over and over, and turn the deck when you ' +
-      'run out. The ranks do not go round the corner here - a king takes ' +
-      'only a queen and an ace only a two - which is what makes a king on ' +
-      'the wall a problem rather than a card. Sixteen turns of the deck and ' +
-      'no second pass. Ninety seconds, and about one hand in ten goes out.',
+      'the card beside the deck, and it becomes the card to match. The ranks ' +
+      'do not go round the corner here: a king takes only a queen, an ace ' +
+      'only a two. Turn the deck when nothing fits - one card at a time, and ' +
+      'no second pass. The strict game will not let anything at all be ' +
+      'played onto a king; here a queen still may.',
+    winning:
+      'The wall cleared before the deck runs out, which happens about one ' +
+      'hand in ten. A full game is traditionally nine of them - nine holes, ' +
+      'a point for every card you leave behind, and the lowest score wins.',
   },
   acesup: {
     title: 'Aces Up',
-    summary:
-      'Four piles, four cards at a time, and the lower card of a suit is thrown away.',
-    detail:
-      'Deal four, throw away any card that has a higher card of its own suit ' +
-      'showing elsewhere, and deal four more. An ace beats everything and ' +
-      'can never be thrown away, which is where the game gets its name and ' +
-      'its difficulty. The only decision is what to move into an empty ' +
-      'column, because that uncovers what was underneath. You win by getting ' +
-      'down to the four aces, which happens about one hand in twenty.',
+    summary: 'Four piles, four cards at a time, and the lower card of a suit is thrown away.',
+    setup:
+      'Four cards face up in a row, one to each pile. The other forty-eight ' +
+      'stay in the deck.',
+    play:
+      'Where two cards showing are of the same suit, the lower one is thrown ' +
+      'away - and an ace is the highest card there is, so no ace can ever be ' +
+      'thrown away. Only the top card of each pile counts as showing. A card ' +
+      'may be moved into an empty pile, which is the only decision in the ' +
+      'game, because it uncovers whatever was underneath. Then deal four ' +
+      'more, one onto every pile, empty ones included.',
+    winning:
+      'The deck gone and only the four aces left - about one hand in thirty ' +
+      'five. Most hands you will lose while playing perfectly, which is ' +
+      'worth knowing before you start: it is a two-minute game and the ' +
+      'shortest one here.',
   },
 };
 

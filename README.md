@@ -47,9 +47,8 @@ browser still has the files — and it keeps them.
 *The games of arrangement, in the order the menu lists them:*
 
 **Klondike**, drawing one card or three. Both are offered and are scored and
-recorded separately, because they are not the same game: draw-one is won most
-of the time by anybody paying attention, and draw-three perhaps one hand in
-ten.
+recorded separately, because they are not the same game — between a fifth and
+two fifths of deals go out, depending which one you are playing and how well.
 
 **FreeCell** deals all fifty-two face up across eight columns, with four free
 cells to park a card in. Nothing is hidden, so nothing is luck: of the thirty
@@ -104,20 +103,22 @@ minutes.
 
 **Pyramid** is twenty-eight cards stacked up and taken away in pairs that add
 to thirteen. An ace is one, a queen twelve, and a king is thirteen on his own,
-so kings leave alone. Drag one card onto another to take a pair — finding the
-other half is the game, so nothing here goes looking for it on your behalf.
+so kings leave alone. Pair two cards in the pyramid by dragging one onto the
+other, or the card beside the deck with either a pyramid card or the one
+turned before it. Finding the other half is the game, so nothing here goes
+looking for it on your behalf.
 
 **Golf** is a wall of thirty-five cards cleared one rank up or down onto the
 card beside the deck. The ranks do **not** go round the corner here, which is
 the one rule separating it from Tri Peaks and the reason a king on the wall is
 a problem rather than a card. Sixteen turns of the deck, no second pass, about
-ninety seconds.
+ninety seconds, and about one hand in ten goes out.
 
 **Aces Up** deals four cards at a time onto four piles and throws away the
 lower card whenever two of a suit are showing. An ace beats everything and can
 never be thrown away, which is where the name and the difficulty come from.
 The only decision in it is what to move into an empty column. You win about
-one hand in twenty.
+one hand in thirty-five.
 
 </td>
 <td width="50%" valign="top">
@@ -125,7 +126,7 @@ one hand in twenty.
 <img src="docs/screenshots/menu.webp" width="47%" alt="The menu: eleven games in two families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
-<p align="center"><i>Every game gets a page before the board — what it is,<br>and whatever it needs to ask.</i></p>
+<p align="center"><i>Every game gets a page before the board: what it is, how<br>it is dealt, how it is played, and what winning means.</i></p>
 </td>
 </tr>
 </table>

@@ -1,7 +1,25 @@
 <div class="menu">
   <h1>{{ guide.title }}</h1>
   <p class="setup__summary">{{ guide.summary }}</p>
-  <p class="setup__detail">{{ guide.detail }}</p>
+
+  <!-- The rules, in the order somebody meets them: what is on the table,
+       what may be done with it, and what counts as having done it. Headed
+       rather than run together, so a player who knows the game can find the
+       one thing they came back to check. -->
+  <div class="rules">
+    <section class="rules__part">
+      <h2 class="rules__heading">Setup</h2>
+      <p class="rules__text">{{ guide.setup }}</p>
+    </section>
+    <section class="rules__part">
+      <h2 class="rules__heading">Play</h2>
+      <p class="rules__text">{{ guide.play }}</p>
+    </section>
+    <section class="rules__part">
+      <h2 class="rules__heading">Winning</h2>
+      <p class="rules__text">{{ guide.winning }}</p>
+    </section>
+  </div>
 
   <!-- How you move a card, which is the same in both games and is the one
        thing a first-time player here cannot guess: the flick especially. -->

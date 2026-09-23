@@ -107,6 +107,30 @@ describe('what pairs with what', () => {
     const state = board({ 21: card('6', 'hearts') }, { waste: [card('7', 'clubs')] });
     expect(canDrop(state, [card('6', 'hearts')], waste)).toBe(true);
   });
+
+  // Two cards turned one after the other that happen to make thirteen come
+  // off together. The standard rule, and without it a winnable deal can be
+  // unwinnable.
+  it('pairs the card beside the deck with the one underneath it', () => {
+    const state = board({ 21: card('2', 'spades') }, { waste: [card('7', 'clubs'), card('6', 'hearts')] });
+    expect(canDrop(state, [card('6', 'hearts')], waste)).toBe(true);
+    expect(autoTarget(state, waste)).toEqual(waste);
+
+    const result = apply(state, { kind: 'play', from: waste, to: waste, count: 1 })!;
+    expect(result.state.waste).toEqual([]);
+    expect(result.state.discard.map((c) => c.id).sort()).toEqual(['clubs-7', 'hearts-6']);
+  });
+
+  it('will not pair two waste cards that do not add up', () => {
+    const state = board({}, { waste: [card('7', 'clubs'), card('7', 'hearts')] });
+    expect(canDrop(state, [card('7', 'hearts')], waste)).toBe(false);
+    expect(apply(state, { kind: 'play', from: waste, to: waste, count: 1 })).toBeUndefined();
+  });
+
+  it('has nothing to pair with when the waste holds one card', () => {
+    const state = board({}, { waste: [card('6', 'hearts')] });
+    expect(canDrop(state, [card('6', 'hearts')], waste)).toBe(false);
+  });
 });
 
 describe('taking cards', () => {
