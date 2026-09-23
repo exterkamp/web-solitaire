@@ -155,13 +155,13 @@ export function canPlaceOnTableau(
 }
 
 /**
- * Whether the cards from `index` up are a run this game will carry: face up,
- * descending, alternating colour, wrapping past the ace.
+ * Whether the cards from `index` up are a run: face up, descending,
+ * alternating colour, wrapping past the ace.
  *
- * Strict Canfield moves a whole column and nothing less. This moves any
- * properly built run, which is how the game is played nearly everywhere it is
- * played on a screen, and is the more forgiving of two rules in a game that
- * is already brutal.
+ * Every column is one of these by construction - a column starts as a single
+ * card from the reserve and is only ever built on legally - so this is a
+ * check on a rigged position rather than on a real one. It earns its keep in
+ * the tests.
  */
 function isWrappingRun(pile: readonly Card[], index: number): boolean {
   if (index < 0 || index >= pile.length) return false;
@@ -192,8 +192,14 @@ export function liftable(
   }
   if (from.kind !== 'tableau') return undefined;
 
-  const index = pile.length - count;
-  return isWrappingRun(pile, index) ? pile.slice(index) : undefined;
+  // A column moves whole or not at all. That is Canfield's rule and it is a
+  // sharp one: the six of clubs under two other cards is not available, and
+  // getting at it means finding somewhere the three of them will go
+  // together. Taking "individually" to mean the top card of a pile - as
+  // nearly every software Canfield does - would make a different and much
+  // easier game.
+  if (count !== pile.length) return undefined;
+  return isWrappingRun(pile, 0) ? pile.slice() : undefined;
 }
 
 export function canDrop(
@@ -337,10 +343,9 @@ export function legalMoves(state: CanfieldState): Move[] {
     }
   };
 
+  // Whole columns only, which is what liftable will give up anyway.
   state.tableau.forEach((pile, column) => {
-    for (let count = 1; count <= pile.length; count++) {
-      consider({ kind: 'tableau', index: column }, count);
-    }
+    if (pile.length) consider({ kind: 'tableau', index: column }, pile.length);
   });
   consider(RESERVE_REF, 1);
   consider({ kind: 'waste', index: 0 }, 1);

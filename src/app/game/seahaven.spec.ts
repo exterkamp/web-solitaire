@@ -48,7 +48,7 @@ describe('deal', () => {
   it('lays ten columns of five and puts the odd two in cells', () => {
     const state = deal(seeded(5));
     expect(state.tableau.map((p) => p.length)).toEqual([5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
-    expect(state.cells.map((c) => c.length)).toEqual([1, 1, 0, 0]);
+    expect(state.cells.map((c) => c.length)).toEqual([0, 1, 1, 0]);
     expect(freeCells(state)).toBe(2);
     const all = [...state.tableau.flat(), ...state.cells.flat()];
     expect(all).toHaveLength(52);

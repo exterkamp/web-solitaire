@@ -1058,13 +1058,19 @@ export class SolitaireScene extends Phaser.Scene {
 
     // Off the top of each foundation in turn, so the four piles come apart
     // together rather than one at a time.
-    const foundations = this.table
-      .piles(this.session.state)
-      .filter((pile) => pile.ref.kind === 'foundation')
+    //
+    // Falling back to whatever piles still hold cards, for the game that has
+    // no foundations: Scorpion is won with its four suits lying in four
+    // columns, and a win with nothing to throw is a win with no cascade -
+    // which is the one part of finishing a hand anybody actually watches.
+    const piles = this.table.piles(this.session.state);
+    const homes = piles.filter((pile) => pile.ref.kind === 'foundation');
+    const source = (homes.length ? homes : piles.filter((pile) => pile.cards.length))
       .map((pile) => pile.cards);
+    const deepest = Math.max(0, ...source.map((pile) => pile.length));
     const queue: Card[] = [];
-    for (let depth = 12; depth >= 0; depth--) {
-      for (const pile of foundations) if (pile[depth]) queue.push(pile[depth]);
+    for (let depth = deepest - 1; depth >= 0; depth--) {
+      for (const pile of source) if (pile[depth]) queue.push(pile[depth]);
     }
 
     queue.forEach((card, i) => {

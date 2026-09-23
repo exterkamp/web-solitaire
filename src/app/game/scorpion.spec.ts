@@ -24,7 +24,6 @@ function card(rank: Rank, suit: Suit, faceUp = true): Card {
 
 function board(partial: Partial<ScorpionState> = {}): ScorpionState {
   return {
-    foundations: [[], [], [], []],
     tableau: Array.from({ length: COLUMN_COUNT }, () => [] as Card[]),
     stock: [],
     moves: 0,
@@ -109,20 +108,34 @@ describe('moves', () => {
     expect(apply(state, { kind: 'play', from: at(0), to: at(1), count: 1 })).toBeUndefined();
   });
 
-  it('sends a finished suit home by itself', () => {
+  // Nothing leaves the table in this game. A finished suit stays in the
+  // column it was built in, and that column is not coming back.
+  it('leaves a finished suit lying where it was built', () => {
     const run = fullRun('spades');
-    const state = board({
-      tableau: columns([...run.slice(0, 12)], [run[12]]),
-    });
+    const state = board({ tableau: columns([...run.slice(0, 12)], [run[12]]) });
     const result = apply(state, { kind: 'play', from: at(1), to: at(0), count: 1 })!;
-    expect(result.state.foundations[0]).toHaveLength(13);
-    expect(result.state.tableau[0]).toHaveLength(0);
+    expect(result.state.tableau[0]).toHaveLength(13);
+    expect(result.state.tableau[1]).toHaveLength(0);
   });
 
-  it('is won when all four suits have gone home', () => {
+  it('is won when the four suits are lying in four columns', () => {
+    const won = board({
+      tableau: columns(fullRun('spades'), fullRun('hearts'), fullRun('diamonds'), fullRun('clubs')),
+    });
+    expect(hasWon(won)).toBe(true);
+  });
+
+  it('is not won while a run is out of order or a card is still in hand', () => {
+    const jumbled = fullRun('spades');
+    [jumbled[3], jumbled[4]] = [jumbled[4], jumbled[3]];
     expect(hasWon(board({
-      foundations: [fullRun('spades'), fullRun('hearts'), fullRun('diamonds'), fullRun('clubs')],
-    }))).toBe(true);
+      tableau: columns(jumbled, fullRun('hearts'), fullRun('diamonds'), fullRun('clubs')),
+    }))).toBe(false);
+
+    expect(hasWon(board({
+      tableau: columns(fullRun('spades'), fullRun('hearts'), fullRun('diamonds'), fullRun('clubs')),
+      stock: [card('2', 'clubs', false)],
+    }))).toBe(false);
   });
 });
 

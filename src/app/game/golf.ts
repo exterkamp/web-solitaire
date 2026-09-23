@@ -11,13 +11,12 @@ import { topOf } from './card-rules';
 // deck, and go again. Seventeen cards in the deck and no second pass: that is
 // the whole game, and a hand takes about ninety seconds.
 //
-// It is Tri Peaks' mechanic on a wall instead of three peaks, with one rule
-// changed, and the changed rule is the game. Here the ranks do **not** go
-// round the corner: a king takes only a queen, an ace takes only a two, and
-// the twenty-four cards at the two ends of the sequence are therefore half as
-// useful as the ones in the middle. Tri Peaks lets an ace follow a king and
-// is a game of long runs; Golf does not and is a game of husbanding a wall
-// where the kings are walls of their own.
+// It is Tri Peaks' mechanic on a wall instead of three peaks, with two rules
+// changed, and the changed rules are the game. The ranks do **not** go round
+// the corner - a king takes only a queen, an ace only a two - and nothing
+// whatsoever may be played onto a king, so a king turned off the deck ends
+// the sequence there and then. Tri Peaks lets an ace follow a king and is a
+// game of long runs; Golf is a game of a wall with four dead ends in it.
 
 export const COLUMN_COUNT = TABLEAU_COUNT;
 export const COLUMN_DEPTH = 5;
@@ -99,7 +98,13 @@ export function liftable(state: GolfState, from: PileRef, count: number): Card[]
 export function canDrop(state: GolfState, cards: readonly Card[], to: PileRef): boolean {
   if (cards.length !== 1 || to.kind !== 'waste') return false;
   const top = topOf(state.waste);
-  return !!top && isNeighbour(cards[0], top);
+  if (!top) return false;
+  // A king stops the game dead: nothing at all may be played onto one, not
+  // even the queen the rank rule would allow. It is the other half of the
+  // no-wrapping rule and the reason a hand of Golf ends when it does - turn
+  // up a king and the only move left is another card off the deck.
+  if (top.rank === 'K') return false;
+  return isNeighbour(cards[0], top);
 }
 
 // --- making moves ---------------------------------------------------------

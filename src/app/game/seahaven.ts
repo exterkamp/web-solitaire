@@ -46,11 +46,13 @@ export interface MoveResult {
 // --- dealing --------------------------------------------------------------
 
 /**
- * Ten columns of five, and the two cards left over into the first two cells.
+ * Ten columns of five, and the two cards left over into the middle two cells.
  *
  * Fifty into ten piles is where the deal's shape comes from; the odd two have
  * to go somewhere, and starting with two cells already occupied is the
- * handicap this game opens with.
+ * handicap this game opens with. The middle two because that is where the
+ * game is usually dealt, and because it leaves a free cell at each end rather
+ * than both of them at one.
  */
 export function deal(random: () => number = Math.random): SeahavenState {
   const deck = shuffle(buildDeck(), random);
@@ -60,8 +62,9 @@ export function deal(random: () => number = Math.random): SeahavenState {
     deck.slice(column * COLUMN_DEPTH, (column + 1) * COLUMN_DEPTH),
   );
   const spare = deck.slice(COLUMN_COUNT * COLUMN_DEPTH);
+  const middle = Math.floor((CELL_COUNT - spare.length) / 2);
   const cells: Card[][] = Array.from({ length: CELL_COUNT }, (_, i) =>
-    spare[i] ? [spare[i]] : [],
+    spare[i - middle] ? [spare[i - middle]] : [],
   );
 
   return {

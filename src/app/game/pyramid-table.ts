@@ -101,7 +101,9 @@ export function pyramidTable(): TableGame<PyramidState> {
             target: true,
           };
         }),
-        { ref: { kind: 'stock', index: 0 }, column: 0, row: 'top', x: stockX, y: HAND_Y, recycle: true },
+        // No recycle arrow: one pass, and an arrow on the empty slot would
+        // be an invitation to press something that does nothing.
+        { ref: { kind: 'stock', index: 0 }, column: 0, row: 'top', x: stockX, y: HAND_Y, recycle: false },
         { ref: { kind: 'waste', index: 0 }, column: 0, row: 'top', x: middle, y: HAND_Y, target: true },
         {
           ref: { kind: 'foundation', index: 0 },

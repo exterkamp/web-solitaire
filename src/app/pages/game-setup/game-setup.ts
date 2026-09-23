@@ -30,10 +30,10 @@ interface Guide {
   // the other two.
   //
   // Checked against Wikipedia's articles and, where it has them, Bicycle's
-  // rulebook. Where this version differs from the standard game - and it
-  // does, in four places - the difference is named here rather than left for
-  // somebody to discover. A tutorial that quietly describes a different game
-  // is worse than no tutorial.
+  // rulebook. These are the standard rules, strictly: the four places this
+  // used to be more forgiving than the real game were all tightened rather
+  // than explained away, so what is written here is what the board does and
+  // what the books say.
   setup: string;
   play: string;
   winning: string;
@@ -128,15 +128,16 @@ const GUIDES: Record<GameId, Guide> = {
       'Build down by rank and ignore suit entirely - any nine goes on any ' +
       'ten. But only a run that is all one suit can be picked up and moved, ' +
       'so every convenient placement is a card buried on purpose. An empty ' +
-      'column takes anything. The deck deals one card onto every column at ' +
-      'once, four times; the last row is three cards and goes to the first ' +
-      'three columns.',
+      'column takes anything - but the deck will not deal while one is open, ' +
+      'so a space is a decision rather than a prize. Dealing puts one card ' +
+      'onto every column at once, four times; the last row is three cards ' +
+      'and goes to the first three columns.',
     winning:
       'Four complete suits, king down to ace. Nothing goes home a card at a ' +
       'time: a suit leaves the table the moment it is finished, all thirteen ' +
-      'together. Spider proper refuses to deal while any column is empty and ' +
-      'this does not - with only four rows in the deck, that rule mostly ' +
-      'punishes the player for having earned a space.',
+      'together. With four rows in the deck and a rule against dealing over ' +
+      'a space, most hands come down to whether you can keep every column ' +
+      'alive long enough to see the last of them.',
   },
   scorpion: {
     title: 'Scorpion',
@@ -151,20 +152,22 @@ const GUIDES: Record<GameId, Guide> = {
       'suit, one rank higher. A nine of hearts has exactly one home in the ' +
       'whole deck, and it is very probably buried. Kings go into empty ' +
       'columns. The three held back are dealt onto the first three columns ' +
-      'when you ask for them, once.',
+      'when you ask for them, once. There are no foundations: nothing is ' +
+      'ever sent anywhere.',
     winning:
-      'Four complete suits, king down to ace. Traditionally they are left ' +
-      'lying in four columns; here a finished run goes home by itself, ' +
-      'which changes nothing about the play and gives the cards somewhere ' +
-      'to fall from. The hardest game here by some distance.',
+      'The four suits lying in four columns, king down to ace, and the other ' +
+      'three columns empty. A finished suit stays where it was built and ' +
+      'goes on occupying its column for the rest of the hand, which is most ' +
+      'of why this is the hardest game here: three empty columns is all the ' +
+      'room there will ever be.',
   },
   seahaven: {
     title: 'Seahaven Towers',
     summary: 'FreeCell\u2019s furniture, built down in suit, and only a king may take an empty column.',
     setup:
-      'Ten columns of five cards, all face up, and four cells - two of them ' +
-      'already holding the two cards that would not fit the columns. Four ' +
-      'empty foundations.',
+      'Ten columns of five cards, all face up, and four cells - the middle ' +
+      'two already holding the pair of cards that would not fit the columns. ' +
+      'Four empty foundations.',
     play:
       'Build down in suit rather than in colour, and send cards home in suit ' +
       'from the ace. A cell holds any one card. An empty column takes a king ' +
@@ -208,14 +211,14 @@ const GUIDES: Record<GameId, Guide> = {
       'on his own, so kings leave alone. Any two uncovered cards adding to ' +
       'thirteen come off together: two in the pyramid, or one in the pyramid ' +
       'and the card beside the deck, or that card and the one turned before ' +
-      'it. A card is yours once the two lying on it have gone. Three passes ' +
-      'through the deck, one card at a time.',
+      'it. A card is yours once the two lying on it have gone. The deck is ' +
+      'turned one card at a time and does not come round again, so a card ' +
+      'passed over is a card gone.',
     winning:
-      'The pyramid bare. Under the strict rules - one pass through the deck ' +
-      'and no second look - it goes out about once in fifty; the three ' +
-      'passes here are the usual kindness. Every pair you take uncovers ' +
-      'something, so taking the wrong six early is how a hand stops being ' +
-      'winnable twenty moves before you find out.',
+      'The pyramid bare, which happens about once in fifty hands - this is ' +
+      'the strict game, one pass and no second look. Every pair you take ' +
+      'uncovers something, so taking the wrong six early is how a hand stops ' +
+      'being winnable twenty moves before you find out.',
   },
   golf: {
     title: 'Golf',
@@ -227,10 +230,10 @@ const GUIDES: Record<GameId, Guide> = {
     play:
       'Take any card at the foot of a column that is one rank above or below ' +
       'the card beside the deck, and it becomes the card to match. The ranks ' +
-      'do not go round the corner here: a king takes only a queen, an ace ' +
-      'only a two. Turn the deck when nothing fits - one card at a time, and ' +
-      'no second pass. The strict game will not let anything at all be ' +
-      'played onto a king; here a queen still may.',
+      'do not go round the corner: an ace takes only a two, and nothing at ' +
+      'all may be played onto a king - a king turned off the deck ends the ' +
+      'sequence there and then. Turn the deck when nothing fits, one card at ' +
+      'a time, and there is no second pass.',
     winning:
       'The wall cleared before the deck runs out, which happens about one ' +
       'hand in ten. A full game is traditionally nine of them - nine holes, ' +

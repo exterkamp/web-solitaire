@@ -144,17 +144,27 @@ export function apply(state: SpideretteState, move: Move): MoveResult | undefine
 }
 
 /**
+ * Whether the deck may be dealt: there is something left in it, and every
+ * column has a card on it.
+ *
+ * The empty-column rule is the Spider family's, and it is the reason an empty
+ * column is a decision rather than a prize - clear one and you cannot deal
+ * again until you have filled it. Worth stating as its own function because
+ * the dead end depends on it: a player with a space, no moves and cards still
+ * in the deck is stuck, and the board has to be able to say so.
+ */
+export function canDeal(state: SpideretteState): boolean {
+  return state.stock.length > 0 && state.tableau.every((pile) => pile.length > 0);
+}
+
+/**
  * A row off the deck: one card, face up, onto every column.
  *
- * Spider proper refuses this while any column is empty, and that rule is left
- * out here on purpose. With seven columns and twenty-four cards in the deck,
- * enforcing it mostly produces a player who has earned an empty column and is
- * punished by being unable to deal - which is a rule doing the opposite of
- * what it was written for. The last row is three cards, because twenty-four
- * does not divide by seven, and they go to the leftmost columns.
+ * The last row is three cards, because twenty-four does not divide by seven,
+ * and they go to the leftmost columns.
  */
 function applyDeal(state: SpideretteState): MoveResult | undefined {
-  if (!state.stock.length) return undefined;
+  if (!canDeal(state)) return undefined;
   const next = cloneState(state);
   const drawn: Card[] = [];
   for (let column = 0; column < COLUMN_COUNT && next.stock.length; column++) {
@@ -222,7 +232,7 @@ export function legalMoves(state: SpideretteState): Move[] {
 
 export function isDeadEnd(state: SpideretteState): boolean {
   if (hasWon(state)) return false;
-  return !state.stock.length && legalMoves(state).length === 0;
+  return !canDeal(state) && legalMoves(state).length === 0;
 }
 
 /**

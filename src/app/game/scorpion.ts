@@ -1,7 +1,7 @@
-import { FOUNDATION_COUNT, TABLEAU_COUNT } from './config';
+import { TABLEAU_COUNT } from './config';
 import { Card, buildDeck, shuffle } from './deck';
 import { Move, PileRef } from './piles';
-import { buildsDownInSuit, completedSuit, foundationIndexOf, topOf } from './card-rules';
+import { buildsDownInSuit, completedSuit, topOf } from './card-rules';
 
 // Scorpion, as rules rather than as a screen.
 //
@@ -27,7 +27,12 @@ const COLUMN_SIZE = 7;
 export const RESERVE = 3;
 
 export interface ScorpionState {
-  foundations: Card[][];
+  // No foundations. This is the one game here that is won without sending a
+  // card anywhere: the four suits are assembled in the columns and left
+  // lying there, which is how Scorpion has always been played and is not a
+  // detail - a finished run occupies its column for the rest of the hand
+  // rather than freeing it, and a free column is the scarcest thing in the
+  // game.
   tableau: Card[][];
   // The three cards held back, dealt in one go when they are asked for.
   stock: Card[];
@@ -58,22 +63,12 @@ export function deal(random: () => number = Math.random): ScorpionState {
   const stock = deck.slice(next);
   for (const card of stock) card.faceUp = false;
 
-  return {
-    foundations: Array.from({ length: FOUNDATION_COUNT }, () => []),
-    tableau,
-    stock,
-    moves: 0,
-  };
+  return { tableau, stock, moves: 0 };
 }
 
 export function cloneState(state: ScorpionState): ScorpionState {
   const copy = (pile: readonly Card[]) => pile.map((card) => ({ ...card }));
-  return {
-    ...state,
-    foundations: state.foundations.map(copy),
-    tableau: state.tableau.map(copy),
-    stock: copy(state.stock),
-  };
+  return { ...state, tableau: state.tableau.map(copy), stock: copy(state.stock) };
 }
 
 export function hiddenCards(state: ScorpionState): number {
@@ -134,7 +129,6 @@ export function apply(state: ScorpionState, move: Move): MoveResult | undefined 
   next.tableau[to.index].push(...lifted);
 
   const flipped = turnUp(next, from.index);
-  collect(next);
   next.moves = state.moves + 1;
   return { state: next, move, moved: lifted, flipped };
 }
@@ -156,7 +150,6 @@ function applyReserve(state: ScorpionState): MoveResult | undefined {
     next.tableau[column].push(card);
     drawn.push(card);
   }
-  collect(next);
   next.moves = state.moves + 1;
   return { state: next, move: { kind: 'draw' }, drawn };
 }
@@ -168,27 +161,20 @@ function turnUp(state: ScorpionState, column: number): Card | undefined {
   return uncovered;
 }
 
-// A finished suit leaves the table, as in Spiderette. Traditionally Scorpion
-// is won with the four runs still lying in four columns and nothing is ever
-// picked up - but a completed king-to-ace run cannot be wanted again by
-// either game, and sending it away says so plainly, keeps the board's own
-// idea of a win in one shape across every game on it, and gives the cards
-// somewhere to fall from at the end.
-function collect(state: ScorpionState): void {
-  for (let column = 0; column < COLUMN_COUNT; column++) {
-    const pile = state.tableau[column];
-    const run = completedSuit(pile);
-    if (!run) continue;
-    pile.splice(pile.length - run.length, run.length);
-    state.foundations[foundationIndexOf(run[0].suit)] = run.map((card) => ({ ...card }));
-    turnUp(state, column);
-  }
-}
-
 // --- reading the board ----------------------------------------------------
 
+/**
+ * Won when the four suits are lying in four columns, king down to ace, and
+ * there is nothing anywhere else.
+ *
+ * Nothing leaves the table in this game. A column holding a finished suit is
+ * still a column holding thirteen cards, and the three empty ones are all the
+ * room there will ever be - which is most of why it is as hard as it is.
+ */
 export function hasWon(state: ScorpionState): boolean {
-  return state.foundations.every((pile) => pile.length === 13);
+  if (state.stock.length) return false;
+  const finished = state.tableau.filter((pile) => pile.length === 13 && completedSuit(pile));
+  return finished.length === 4 && state.tableau.every((pile) => !pile.length || pile.length === 13);
 }
 
 export function legalMoves(state: ScorpionState): Move[] {

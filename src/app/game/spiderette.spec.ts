@@ -6,6 +6,7 @@ import {
   COLUMN_COUNT,
   SpideretteState,
   apply,
+  canDeal,
   autoTarget,
   canDrop,
   canPlaceOnTableau,
@@ -145,26 +146,44 @@ describe('moves', () => {
 });
 
 describe('dealing a row', () => {
+  // Every column occupied, which the rule below requires.
+  const occupied = () => columns(...Array.from({ length: COLUMN_COUNT }, (_, i) =>
+    [card(i % 2 ? '9' : '4', i < 4 ? 'hearts' : 'spades')]));
+
   it('puts one card face up on every column', () => {
     const state = board({
-      tableau: columns([card('4', 'clubs')], [card('9', 'hearts')]),
-      stock: Array.from({ length: 7 }, (_, i) => card(String(i + 2) as Rank, 'spades', false)),
+      tableau: occupied(),
+      stock: Array.from({ length: 7 }, (_, i) => card(String(i + 2) as Rank, 'clubs', false)),
     });
     const result = apply(state, { kind: 'draw' })!;
     expect(result.drawn).toHaveLength(7);
-    expect(result.state.tableau.map((p) => p.length)).toEqual([2, 2, 1, 1, 1, 1, 1]);
+    expect(result.state.tableau.map((p) => p.length)).toEqual([2, 2, 2, 2, 2, 2, 2]);
     expect(result.state.tableau.every((pile) => pile.every((c) => c.faceUp))).toBe(true);
   });
 
   it('deals the short last row to the leftmost columns', () => {
-    const state = board({ stock: [card('2', 'spades', false), card('3', 'spades', false)] });
+    const state = board({
+      tableau: occupied(),
+      stock: [card('2', 'clubs', false), card('3', 'clubs', false)],
+    });
     const result = apply(state, { kind: 'draw' })!;
-    expect(result.state.tableau.map((p) => p.length)).toEqual([1, 1, 0, 0, 0, 0, 0]);
+    expect(result.state.tableau.map((p) => p.length)).toEqual([2, 2, 1, 1, 1, 1, 1]);
     expect(result.state.stock).toHaveLength(0);
   });
 
+  // The Spider family's rule, and the reason an empty column is a decision
+  // rather than a prize: clear one and the deck is shut until you fill it.
+  it('refuses to deal while any column is empty', () => {
+    const state = board({
+      tableau: columns([card('4', 'clubs')], [card('9', 'hearts')]),
+      stock: Array.from({ length: 7 }, (_, i) => card(String(i + 2) as Rank, 'clubs', false)),
+    });
+    expect(canDeal(state)).toBe(false);
+    expect(apply(state, { kind: 'draw' })).toBeUndefined();
+  });
+
   it('refuses when the deck is done', () => {
-    expect(apply(board(), { kind: 'draw' })).toBeUndefined();
+    expect(apply(board({ tableau: occupied() }), { kind: 'draw' })).toBeUndefined();
   });
 });
 
@@ -206,5 +225,17 @@ describe('the end of a game', () => {
       stock: [card('2', 'spades', false)],
     });
     expect(isDeadEnd(state)).toBe(false);
+  });
+
+  // A space, no moves, and cards still in the deck: the deck is shut, so
+  // this is over even though it does not look it.
+  it('is over with a space it cannot fill and a deck it cannot deal', () => {
+    const state = board({
+      tableau: columns([card('4', 'clubs')], [card('4', 'hearts')], [card('4', 'spades')],
+                       [card('4', 'diamonds')], [card('9', 'hearts')], [card('9', 'spades')]),
+      stock: [card('2', 'spades', false)],
+    });
+    expect(legalMoves(state)).toEqual([]);
+    expect(isDeadEnd(state)).toBe(true);
   });
 });

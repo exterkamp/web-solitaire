@@ -68,23 +68,25 @@ dollars and paid five a card for whatever you got home, which worked out in
 his favour: a hand goes out about one time in thirty. The card turned up first
 sets the rank all four foundations build from, and both sequences go round the
 corner, so a foundation counts past the king to the ace and a king goes on an
-ace. The reserve is the game: thirteen cards you cannot see, only the top one
-is yours, and any column you manage to empty refills from it before you can
-use it.
+ace. A column moves whole or not at all. The reserve is the game: thirteen
+cards you cannot see, only the top one is yours, and any column you manage to
+empty refills from it before you can use it.
 
 **Spiderette** is Spider's game on one deck and seven columns. Build down by
 rank ignoring suit, but pick up only a run that is all one suit — so every
-convenient placement is a card buried on purpose, and that argument is the
-whole game. Nothing goes home one card at a time: a suit leaves as a finished
-king-to-ace run, all thirteen at once. It is here rather than Spider because
-ten columns of a double deck come out at about thirty-six pixels a card on a
-phone, and the cards are the game.
+convenient placement is a card buried on purpose. A suit leaves as a finished
+king-to-ace run, all thirteen at once, and the deck will not deal while any
+column stands empty. It is here rather than Spider because ten columns of a
+double deck come out at about thirty-six pixels a card on a phone, and the
+cards are the game.
 
 **Scorpion** is Yukon's grip with Spider's order. A face-up card comes away
 with everything piled on it, in whatever state those cards are in, and may
 only be put down on the same suit one rank higher — so a nine of hearts has
-exactly one home in the whole deck, and it is very probably buried. The
-hardest game here.
+exactly one home in the whole deck, and it is very probably buried. There are
+no foundations: the four suits are assembled in the columns and left lying
+there, so a finished one goes on occupying its column and three empty columns
+is all the room there will ever be. The hardest game here.
 
 **Seahaven Towers** is FreeCell's furniture with two rules changed: columns
 build down in *suit*, and an empty column takes a king and nothing else. So an
@@ -106,13 +108,15 @@ to thirteen. An ace is one, a queen twelve, and a king is thirteen on his own,
 so kings leave alone. Pair two cards in the pyramid by dragging one onto the
 other, or the card beside the deck with either a pyramid card or the one
 turned before it. Finding the other half is the game, so nothing here goes
-looking for it on your behalf.
+looking for it on your behalf. One pass through the deck and no second look,
+which is why it goes out about once in fifty hands.
 
 **Golf** is a wall of thirty-five cards cleared one rank up or down onto the
-card beside the deck. The ranks do **not** go round the corner here, which is
-the one rule separating it from Tri Peaks and the reason a king on the wall is
-a problem rather than a card. Sixteen turns of the deck, no second pass, about
-ninety seconds, and about one hand in ten goes out.
+card beside the deck. Two rules separate it from Tri Peaks and both are about
+kings: the ranks do **not** go round the corner, and nothing at all may be
+played onto a king, so one turned off the deck ends the sequence there and
+then. Sixteen turns of the deck, no second pass, about ninety seconds, and
+about one hand in ten goes out.
 
 **Aces Up** deals four cards at a time onto four piles and throws away the
 lower card whenever two of a suit are showing. An ace beats everything and can

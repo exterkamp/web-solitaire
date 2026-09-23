@@ -46,12 +46,10 @@ export const COVERED_BY: number[][] = POSITIONS.map(({ row, slot }) =>
   row === ROW_COUNT - 1 ? [] : [indexOf(row + 1, slot), indexOf(row + 1, slot + 1)],
 );
 
-// Three times through the deck, which is the usual arrangement and is what
-// makes the game a game: with unlimited passes the only question left is
-// whether the pyramid blocks itself, and with one pass most hands are decided
-// by the order of twenty-four cards you never chose.
-export const PASSES = 3;
-
+// One pass through the deck, which is the strict rule and is what the odds
+// quoted for this game are quoted against: about one hand in fifty goes out.
+// The deck is turned a card at a time and does not come round again, so a
+// card passed over is a card gone.
 const PAIR = 13;
 
 export interface PyramidState {
@@ -61,9 +59,6 @@ export interface PyramidState {
   stock: Card[];
   waste: Card[];
   discard: Card[];
-  // How many times the deck has been turned over. Starts at one - the deal
-  // itself is the first pass through it.
-  pass: number;
   moves: number;
 }
 
@@ -72,7 +67,6 @@ export interface MoveResult {
   move: Move;
   moved?: Card[];
   drawn?: Card[];
-  recycled?: boolean;
 }
 
 export const DISCARD: PileRef = { kind: 'foundation', index: 0 };
@@ -98,7 +92,7 @@ export function deal(random: () => number = Math.random): PyramidState {
   const stock = deck.slice(BOARD_SIZE);
   for (const card of stock) card.faceUp = false;
 
-  return { pyramid, stock, waste: [], discard: [], pass: 1, moves: 0 };
+  return { pyramid, stock, waste: [], discard: [], moves: 0 };
 }
 
 export function cloneState(state: PyramidState): PyramidState {
@@ -214,23 +208,15 @@ function take(state: PyramidState, ref: PileRef): Card | undefined {
 }
 
 /**
- * Turns a card, or turns the waste back into a deck.
+ * Turns the next card of the deck, once each.
  *
- * Three passes in all, and the last one is one-way: when the deck runs out
- * for the third time the hand is over, whatever is still standing.
+ * There is no second pass. When the deck is out the hand is over, whatever is
+ * still standing - which is the strict rule and is most of why this game is
+ * as hard as it is.
  */
 function applyDraw(state: PyramidState): MoveResult | undefined {
+  if (!state.stock.length) return undefined;
   const next = cloneState(state);
-
-  if (!next.stock.length) {
-    if (!next.waste.length || next.pass >= PASSES) return undefined;
-    next.stock = next.waste.reverse().map((card) => ({ ...card, faceUp: false }));
-    next.waste = [];
-    next.pass = state.pass + 1;
-    next.moves = state.moves + 1;
-    return { state: next, move: { kind: 'draw' }, recycled: true };
-  }
-
   const card = next.stock.pop()!;
   card.faceUp = true;
   next.waste.push(card);
@@ -244,10 +230,9 @@ export function hasWon(state: PyramidState): boolean {
   return cardsLeft(state) === 0;
 }
 
-/** Whether the deck can still be turned or turned over. */
+/** Whether there is a card left to turn. */
 export function canDraw(state: PyramidState): boolean {
-  if (state.stock.length) return true;
-  return state.waste.length > 0 && state.pass < PASSES;
+  return state.stock.length > 0;
 }
 
 export function legalMoves(state: PyramidState): Move[] {

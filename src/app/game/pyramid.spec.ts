@@ -6,7 +6,6 @@ import {
   BOARD_SIZE,
   COVERED_BY,
   DISCARD,
-  PASSES,
   POSITIONS,
   PyramidState,
   ROW_COUNT,
@@ -36,7 +35,6 @@ function board(cards: Record<number, Card>, rest: Partial<PyramidState> = {}): P
     stock: [],
     waste: [],
     discard: [],
-    pass: 1,
     moves: 0,
     ...rest,
   };
@@ -177,17 +175,11 @@ describe('the deck', () => {
     expect(result.state.stock).toHaveLength(1);
   });
 
-  it('turns the waste back into a deck, three passes in all', () => {
-    let state = board({}, { waste: [card('2', 'clubs'), card('3', 'clubs')], pass: 1 });
-    const second = apply(state, { kind: 'draw' })!;
-    expect(second.recycled).toBe(true);
-    expect(second.state.pass).toBe(2);
-    expect(second.state.stock).toHaveLength(2);
-    expect(second.state.stock.every((c) => !c.faceUp)).toBe(true);
-
-    state = board({}, { waste: [card('2', 'clubs')], pass: PASSES });
-    expect(apply(state, { kind: 'draw' })).toBeUndefined();
+  // One pass, and the strict rule: the deck does not come round again.
+  it('does not turn the waste back into a deck', () => {
+    const state = board({}, { waste: [card('2', 'clubs'), card('3', 'clubs')] });
     expect(canDraw(state)).toBe(false);
+    expect(apply(state, { kind: 'draw' })).toBeUndefined();
   });
 });
 
@@ -197,8 +189,8 @@ describe('the end of a hand', () => {
     expect(hasWon(board({ 21: card('6', 'hearts') }))).toBe(false);
   });
 
-  it('is over when nothing pairs and the deck cannot be turned again', () => {
-    const stuck = board({ 21: card('6', 'hearts'), 22: card('4', 'clubs') }, { pass: PASSES });
+  it('is over when nothing pairs and the deck is spent', () => {
+    const stuck = board({ 21: card('6', 'hearts'), 22: card('4', 'clubs') });
     expect(legalMoves(stuck)).toEqual([]);
     expect(isDeadEnd(stuck)).toBe(true);
   });

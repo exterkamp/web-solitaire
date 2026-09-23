@@ -1,8 +1,6 @@
 import {
   CARD_BACK_PEEK_HEIGHT,
   CARD_PEEK_HEIGHT,
-  FOUNDATION_COUNT,
-  SUITS,
   TABLEAU_COUNT,
   TOP_ROW_Y,
   columnCentre,
@@ -29,10 +27,11 @@ const WIDTH = 480;
 
 // Scorpion, as the board sees it.
 //
-// Spiderette's table with a shorter deck on it. Seven columns of seven means
-// the fans here start deep and get deeper - a column can hold most of a suit
-// by the end - so the board's fan squeezing does more work in this game than
-// in any other on it.
+// Seven columns of seven and nothing else - the only board here with no
+// foundations printed on it, because this game never sends a card anywhere.
+// The four suits are assembled in the columns and left lying there, so the
+// fans start deep and end deeper: a finished column is thirteen cards long
+// and the board's fan squeezing does more work here than anywhere else.
 //
 // The stock slot holds three cards and is pressed once in a game. It is kept
 // under the thumb anyway: three cards is not much, but it is the only thing
@@ -54,12 +53,6 @@ export function scorpionTable(): TableGame<ScorpionState> {
           row: 'top',
           recycle: false,
         },
-        ...SUITS.map((suit, i) => ({
-          ref: { kind: 'foundation', index: i } as PileRef,
-          column: right ? i : TABLEAU_COUNT - FOUNDATION_COUNT + i,
-          row: 'top' as const,
-          ghost: suit,
-        })),
         ...Array.from({ length: TABLEAU_COUNT }, (_, i) => ({
           ref: { kind: 'tableau', index: i } as PileRef,
           column: i,
@@ -80,7 +73,6 @@ export function scorpionTable(): TableGame<ScorpionState> {
 
     piles(state: ScorpionState): PileCards[] {
       return [
-        ...state.foundations.map((cards, i) => ({ ref: { kind: 'foundation', index: i } as PileRef, cards })),
         { ref: { kind: 'stock', index: 0 }, cards: state.stock },
         ...state.tableau.map((cards, i) => ({ ref: { kind: 'tableau', index: i } as PileRef, cards })),
       ];
@@ -95,8 +87,8 @@ export function scorpionTable(): TableGame<ScorpionState> {
     canAutoFinish,
     hasWon,
     isDeadEnd,
-    // No homeFor, for Spiderette's reason: a suit goes home finished or not
-    // at all, so no single card ever belongs on a foundation.
+    // No homeFor, and nothing to give it: there are no foundations on this
+    // board at all.
 
     // Twelve cards face down at the deal and three in hand, and those two
     // numbers are the whole of what is not yet decided.
