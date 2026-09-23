@@ -208,7 +208,7 @@ if (wanted('setup-klondike')) {
 for (const [game, rounds] of [
   ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spiderette', 3],
   ['scorpion', 3], ['seahaven', 0],
-  ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['acesup', 3],
+  ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
 ]) {
   if (wanted(game)) await board(game, rounds);
 }

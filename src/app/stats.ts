@@ -31,6 +31,7 @@ export type Variant =
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
+  | 'blackhole'
   | 'acesup';
 
 export function variantOf(game: GameId, drawCount: DrawCount): Variant {
@@ -53,12 +54,13 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
+  blackhole: 'Black Hole',
   acesup: 'Aces Up',
 };
 
 const VARIANTS: Variant[] = [
   'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion',
-  'seahaven', 'tripeaks', 'pyramid', 'golf', 'acesup',
+  'seahaven', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
 /**
@@ -91,6 +93,7 @@ export const VARIANT_GROUPS: readonly VariantGroup[] = [
   { title: 'Tri Peaks', variants: ['tripeaks'], scored: true },
   { title: 'Pyramid', variants: ['pyramid'], scored: false },
   { title: 'Golf', variants: ['golf'], scored: false },
+  { title: 'Black Hole', variants: ['blackhole'], scored: false },
   { title: 'Aces Up', variants: ['acesup'], scored: false },
 ];
 
@@ -149,6 +152,7 @@ function emptyStats(): StatsRecord {
       tripeaks: emptyMode(),
       pyramid: emptyMode(),
       golf: emptyMode(),
+      blackhole: emptyMode(),
       acesup: emptyMode(),
     },
   };

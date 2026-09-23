@@ -29,11 +29,12 @@ export type GameId =
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
+  | 'blackhole'
   | 'acesup';
 
 const GAME_IDS: readonly GameId[] = [
   'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
-  'tripeaks', 'pyramid', 'golf', 'acesup',
+  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
 /** One pile, and what is in it. The board draws piles in the order given. */

@@ -239,6 +239,28 @@ const GUIDES: Record<GameId, Guide> = {
       'hand in ten. A full game is traditionally nine of them - nine holes, ' +
       'a point for every card you leave behind, and the lowest score wins.',
   },
+  blackhole: {
+    title: 'Black Hole',
+    summary:
+      'Seventeen fans of three around one hole, no deck, and nothing hidden anywhere.',
+    setup:
+      'The ace of spades alone in the hole, and the other fifty-one cards ' +
+      'dealt face up into seventeen fans of three. There is no deck and ' +
+      'nothing in reserve: what you can see is the whole game.',
+    play:
+      'Play the top card of any fan onto the hole if it is one rank above or ' +
+      'below the card lying there - suit never matters. The ranks go round ' +
+      'the corner, so an ace follows a king and a king follows an ace. Cards ' +
+      'never move between fans and nothing ever comes back out of the hole. ' +
+      'There is no deck to turn when you are stuck, which means there is no ' +
+      'luck left after the deal.',
+    winning:
+      'All fifty-one cards into the hole. Something like eight or nine deals ' +
+      'in ten can be won by somebody who plans the whole thing, so a hand ' +
+      'you lose is a hand you misplayed - which is the opposite of Golf, ' +
+      'where the deck decides half of it. David Parlett invented it, and it ' +
+      'is the best thinking game here.',
+  },
   acesup: {
     title: 'Aces Up',
     summary: 'Four piles, four cards at a time, and the lower card of a suit is thrown away.',

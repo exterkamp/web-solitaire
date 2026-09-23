@@ -35,6 +35,7 @@ export class MainMenu {
     tripeaks: 'Quick · clear the peaks a card at a time',
     pyramid: 'Pairs that add to thirteen',
     golf: 'One rank up or down · ninety seconds',
+    blackhole: 'Nothing hidden, no deck · every move a choice',
     acesup: 'Four piles · the aces cannot be beaten',
   };
 

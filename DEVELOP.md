@@ -125,8 +125,8 @@ src/app/game/
   klondike.ts        the rules. no Phaser, no Angular, no DOM
   klondike.spec.ts   and their tests
   freecell.ts  yukon.ts  canfield.ts  spiderette.ts        the same,
-  scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         ten more
-  golf.ts  acesup.ts                                        times
+  scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         eleven more
+  golf.ts  blackhole.ts  acesup.ts                          times
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock
@@ -154,7 +154,7 @@ animates the answer. Where the two could disagree — what a tap means, which
 pile a dropped card is nearest — the scene decides, because those are facts
 about a thumb rather than about Klondike.
 
-**One board, eleven games.** `solitaire-scene.ts` owns everything about a screen
+**One board, twelve games.** `solitaire-scene.ts` owns everything about a screen
 and a thumb — picking a run up, following it, deciding what a release meant,
 and the fifty-two cards that fall out of a won game — and knows nothing about
 any particular game. Each game supplies a `TableGame` instead: its rules behind
@@ -164,7 +164,8 @@ machinery is written twice is the day the games start behaving differently by
 accident.
 
 Most of them lay their piles out in columns and two rows and let the board
-place them. Three do not: Tri Peaks, Pyramid and Golf give exact coordinates
+place them. Four do not: Tri Peaks, Pyramid, Golf and Black Hole give exact
+coordinates
 for every pile, say they do not want the board's thumb-reach drop, and decide
 for themselves which of their positions are printed on the felt and which can
 be dropped onto. Those three flags — `x`/`y` instead of `column`/`row`,
@@ -312,8 +313,8 @@ with this game: Nertz's board measures the same on the same machine.
 node tools/screenshots.mjs         # --only=freecell,menu to retake some
 ```
 
-Eleven games at eleven boards plus the menu and a game page is about seven
-minutes of headless Chrome, which is why `--only` exists.
+Twelve games at twelve boards, plus the menu, a game page and the pause menu,
+is about eight minutes of headless Chrome - which is why `--only` exists.
 
 Same headless Chrome, at a phone's size and pixel ratio, writing webp into
 `docs/screenshots/`. It taps its way through a few real moves first, because a

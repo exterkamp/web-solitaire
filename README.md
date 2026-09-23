@@ -1,6 +1,6 @@
 # web-solitaire
 
-Eleven solitaires, in a browser, for one person. No account, no server, no
+Twelve solitaires, in a browser, for one person. No account, no server, no
 network — the game is a directory of static files, and everything it remembers
 about you is in your browser's own storage.
 
@@ -27,10 +27,11 @@ about you is in your browser's own storage.
 
 <table>
 <tr>
-<td width="25%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/pyramid.webp" alt="Pyramid, part way through a hand"><br><b>Pyramid</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
-<td width="25%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/tripeaks.webp" alt="Tri Peaks, part way through a hand"><br><b>Tri Peaks</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/pyramid.webp" alt="Pyramid, part way through a hand"><br><b>Pyramid</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/blackhole.webp" alt="Black Hole, part way through a hand"><br><b>Black Hole</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
 </tr>
 </table>
 
@@ -118,6 +119,15 @@ played onto a king, so one turned off the deck ends the sequence there and
 then. Sixteen turns of the deck, no second pass, about ninety seconds, and
 about one hand in ten goes out.
 
+**Black Hole** is David Parlett's, and it is the best thinking game here.
+Seventeen fans of three around a single hole that starts on the ace of spades;
+play any card you can see that is one rank either side of the card lying
+there, wrapping past the king to the ace. There is no deck, nothing hidden and
+no way to move a card between fans — so after the deal there is no luck left
+at all. Eight or nine deals in ten can be won by somebody who plans the whole
+thing, which makes it the opposite of Golf: a hand you lose is a hand you
+misplayed.
+
 **Aces Up** deals four cards at a time onto four piles and throws away the
 lower card whenever two of a suit are showing. An ace beats everything and can
 never be thrown away, which is where the name and the difficulty come from.
@@ -127,7 +137,7 @@ one hand in thirty-five.
 </td>
 <td width="50%" valign="top">
 <p align="center">
-<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: eleven games in two families, then Record and Settings">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: twelve games in two families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
 <p align="center"><i>Every game gets a page before the board: what it is, how<br>it is dealt, how it is played, and what winning means.</i></p>
@@ -200,7 +210,7 @@ That is Klondike's, and Klondike is the only game here with a score in that
 sense. Tri Peaks keeps its own: every card taken without turning the deck is
 worth more than the last, and clearing a peak is worth fifteen.
 
-The other nine have never had a score, and none is invented for them. What
+The other ten have never had a score, and none is invented for them. What
 the board shows instead is whichever number that game's players actually
 watch — free cells in FreeCell and Seahaven, cards still face down in Yukon
 and the Spider family, rows left in the deck in Spiderette, cards left in the
@@ -239,8 +249,8 @@ in a waiting room.
 ## Building it
 
 Angular for the pages, Phaser for the board, and a hard line between them. One
-board runs all eleven games; each game is a rules module of pure functions
-plus a description of where its piles are printed. Adding the eleventh touched
+board runs all twelve games; each game is a rules module of pure functions
+plus a description of where its piles are printed. Adding the twelfth touched
 two shared files and added three of its own.
 
 ```bash

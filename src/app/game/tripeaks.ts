@@ -1,7 +1,6 @@
-import { RANKS, rankValue } from './config';
 import { Card, buildDeck, shuffle } from './deck';
 import { Move, PileRef } from './piles';
-import { topOf } from './card-rules';
+import { isNeighbourWrapping, topOf } from './card-rules';
 
 // TriPeaks, as rules rather than as a screen.
 //
@@ -136,12 +135,10 @@ export function isUncovered(state: TriPeaksState, index: number): boolean {
  *
  * An ace follows a king and a king follows an ace: the sequence is a ring,
  * not a line. Forgetting that is the difference between a game that ends
- * halfway and one that ends.
+ * halfway and one that ends. Shared with Black Hole, which turns on the same
+ * rule - see card-rules.ts.
  */
-export function isNeighbour(a: Card, b: Card): boolean {
-  const gap = Math.abs(rankValue(a.rank) - rankValue(b.rank));
-  return gap === 1 || gap === RANKS.length - 1;
-}
+export const isNeighbour = isNeighbourWrapping;
 
 export function liftable(
   state: TriPeaksState, from: PileRef, count: number,

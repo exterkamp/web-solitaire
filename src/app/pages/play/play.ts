@@ -26,6 +26,7 @@ import { golfTable } from '../../game/golf-table';
 import { acesUpTable } from '../../game/acesup-table';
 import { canfieldTable } from '../../game/canfield-table';
 import { seahavenTable } from '../../game/seahaven-table';
+import { blackHoleTable } from '../../game/blackhole-table';
 import { formatDuration } from '../../format';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
@@ -249,8 +250,8 @@ export class Play implements AfterViewInit, OnDestroy {
   protected readonly asTime = formatDuration;
 }
 
-// Which game the board is handed. One place that knows all eleven of them, so
-// adding a twelfth is one line here rather than a conditional that grows a limb
+// Which game the board is handed. One place that knows all twelve of them, so
+// adding a thirteenth is one line here rather than a conditional that grows a limb
 // each time - and the switch is exhaustive over GameId, so leaving a game out
 // is a compile error rather than a board that quietly deals Klondike.
 function makeTable(game: GameId, drawCount: DrawCount) {
@@ -273,6 +274,8 @@ function makeTable(game: GameId, drawCount: DrawCount) {
       return pyramidTable();
     case 'golf':
       return golfTable();
+    case 'blackhole':
+      return blackHoleTable();
     case 'acesup':
       return acesUpTable();
     default:

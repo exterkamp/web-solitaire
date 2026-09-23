@@ -88,6 +88,19 @@ export function isSuitRun(pile: readonly Card[], index: number): boolean {
 }
 
 /**
+ * Whether two cards are neighbours by rank, going round the corner.
+ *
+ * An ace follows a king and a king follows an ace: the sequence is a ring,
+ * not a line. Tri Peaks and Black Hole both turn on it - and Golf turns on
+ * its absence, which is why that one keeps its own straight-line version
+ * rather than passing a flag to this.
+ */
+export function isNeighbourWrapping(a: Card, b: Card): boolean {
+  const gap = Math.abs(rankValue(a.rank) - rankValue(b.rank));
+  return gap === 1 || gap === RANK_COUNT - 1;
+}
+
+/**
  * Whether a pile ends in a complete king-to-ace run of one suit - the thing
  * Spiderette and Scorpion are played to produce, and which leaves the table
  * the moment it exists.
