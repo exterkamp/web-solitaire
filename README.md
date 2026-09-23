@@ -44,6 +44,8 @@ browser still has the files — and it keeps them.
 <tr>
 <td width="50%" valign="top">
 
+*The games of arrangement, in the order the menu lists them:*
+
 **Klondike**, drawing one card or three. Both are offered and are scored and
 recorded separately, because they are not the same game: draw-one is won most
 of the time by anybody paying attention, and draw-three perhaps one hand in
@@ -92,11 +94,13 @@ be shuffled through one, and the only room you have is the four cells — two of
 which start full. Ten columns across a phone means smaller cards; that is the
 price of seeing all fifty-two at once.
 
-**Tri Peaks** is the odd one out among the first lot and is here for that
-reason. Three peaks of cards, one card face up beside the deck, and any card
-you can see that is one rank either side of it can be taken — the ranks go
-round the corner, so an ace follows a king. Nothing is built and nothing is
-sorted; the whole game is noticing, and it takes two minutes.
+*And the quick ones, which build nothing and sort nothing:*
+
+**Tri Peaks** was the first of these and is the reason there are four. Three
+peaks of cards, one card face up beside the deck, and any card you can see
+that is one rank either side of it can be taken — the ranks go round the
+corner, so an ace follows a king. The whole game is noticing, and it takes two
+minutes.
 
 **Pyramid** is twenty-eight cards stacked up and taken away in pairs that add
 to thirteen. An ace is one, a queen twelve, and a king is thirteen on his own,
@@ -118,7 +122,7 @@ one hand in twenty.
 </td>
 <td width="50%" valign="top">
 <p align="center">
-<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: nine games in two families, then Record and Settings">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: eleven games in two families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
 <p align="center"><i>Every game gets a page before the board — what it is,<br>and whatever it needs to ask.</i></p>
