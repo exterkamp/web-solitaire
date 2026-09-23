@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatBest, formatBestTime, formatPercent } from '../../format';
-import { ModeRecord, Stats, VARIANT_LABELS, Variant } from '../../stats';
+import { ModeRecord, Stats, VARIANT_GROUPS, VARIANT_LABELS, Variant, VariantGroup } from '../../stats';
 
 // One row of the book. The label is the question, and each variant answers it
 // in its own column - which is the whole reason this is a table rather than a
@@ -21,13 +21,15 @@ export class StatsPage {
   protected readonly stats = inject(Stats);
   protected readonly confirming = signal(false);
 
-  // Two tables rather than three columns of one. Klondike's two variants
-  // belong beside each other; FreeCell is a different game and comparing its
-  // win rate with theirs would be comparing a puzzle with a gamble.
-  protected readonly klondike: Variant[] = ['klondike-1', 'klondike-3'];
-  protected readonly freecell: Variant[] = ['freecell'];
-  protected readonly yukon: Variant[] = ['yukon'];
-  protected readonly tripeaks: Variant[] = ['tripeaks'];
+  // A table per game rather than one table of eleven columns. Klondike's two
+  // variants belong beside each other because they are the same game played
+  // two ways; the rest are different games, and putting their win rates in
+  // one row would invite a comparison between a puzzle and a gamble.
+  //
+  // The list comes from stats.ts, which is the one place that knows every
+  // variant there is. This page used to keep its own and fell four games
+  // behind.
+  protected readonly groups = VARIANT_GROUPS;
   protected readonly labels = VARIANT_LABELS;
 
   private readonly common: Row[] = [
@@ -47,25 +49,33 @@ export class StatsPage {
     { label: 'Best streak', value: (m) => String(m.bestStreak) },
   ];
 
-  // Klondike keeps a score; FreeCell has never had one, so that row would be
-  // a column of dashes rather than a fact about the game.
-  protected readonly klondikeRows: Row[] = [
+  // Klondike and Tri Peaks keep a score; the other nine never have, so that
+  // row would be a line of dashes rather than a fact about the game.
+  private readonly scoredRows: Row[] = [
     ...this.common,
     { label: 'Best score', value: (m) => formatBest(m.bestScore) },
     ...this.tail,
   ];
-  // FreeCell and Yukon are both scoreless, so they take the same rows.
-  protected readonly scorelessRows: Row[] = [...this.common, ...this.tail];
-  // TriPeaks keeps a score like Klondike does, and it is the only thing worth
-  // comparing two games of it by - it takes two minutes either way.
-  protected readonly tripeaksRows: Row[] = [
-    ...this.common,
-    { label: 'Best score', value: (m) => formatBest(m.bestScore) },
-    ...this.tail,
-  ];
+  private readonly scorelessRows: Row[] = [...this.common, ...this.tail];
+
+  protected rows(group: VariantGroup): Row[] {
+    return group.scored ? this.scoredRows : this.scorelessRows;
+  }
 
   protected mode(variant: Variant): ModeRecord {
     return this.stats.mode(variant);
+  }
+
+  /**
+   * Whether this game has anything to show.
+   *
+   * A game nobody has played is a heading and a line saying so, rather than
+   * eight rows of dashes. With eleven games the difference is most of the
+   * page: an empty book should be a list of games to try, and a full one
+   * should be the numbers.
+   */
+  protected played(group: VariantGroup): boolean {
+    return group.variants.some((variant) => this.mode(variant).played > 0);
   }
 
   protected clear(): void {

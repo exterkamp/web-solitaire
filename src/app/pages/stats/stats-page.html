@@ -5,73 +5,47 @@
     means clearing your browser's storage clears this.
   </p>
 
-  <h2 class="record__game">Klondike</h2>
-  <table class="record">
-    <thead>
-      <tr>
-        <th scope="col"><span class="record__corner">Draw</span></th>
-        @for (variant of klondike; track variant) {
-          <th scope="col">{{ labels[variant] }}</th>
+  @for (group of groups; track group.title) {
+    <!-- A game and its numbers, kept together in one block so the column's
+         gap falls between games rather than between a heading and the thing
+         it is heading. Eleven of those gaps was most of an empty book. -->
+    <section class="record__group">
+    <h2 class="record__game">{{ group.title }}</h2>
+
+    @if (played(group)) {
+      <table class="record">
+        <!-- Klondike is the only game with two columns, and the only one that
+             needs the heading row that names them. -->
+        @if (group.variants.length > 1) {
+          <thead>
+            <tr>
+              <th scope="col"><span class="record__corner">Draw</span></th>
+              @for (variant of group.variants; track variant) {
+                <th scope="col">{{ labels[variant] }}</th>
+              }
+            </tr>
+          </thead>
         }
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of klondikeRows; track row.label) {
-        <tr>
-          <th scope="row">{{ row.label }}</th>
-          @for (variant of klondike; track variant) {
-            <td>{{ row.value(mode(variant)) }}</td>
+        <tbody>
+          @for (row of rows(group); track row.label) {
+            <tr>
+              <th scope="row">{{ row.label }}</th>
+              @for (variant of group.variants; track variant) {
+                <td>{{ row.value(mode(variant)) }}</td>
+              }
+            </tr>
           }
-        </tr>
-      }
-    </tbody>
-  </table>
-
-  <h2 class="record__game">FreeCell</h2>
-  <table class="record">
-    <tbody>
-      @for (row of scorelessRows; track row.label) {
-        <tr>
-          <th scope="row">{{ row.label }}</th>
-          @for (variant of freecell; track variant) {
-            <td>{{ row.value(mode(variant)) }}</td>
-          }
-        </tr>
-      }
-    </tbody>
-  </table>
-
-  <h2 class="record__game">Yukon</h2>
-  <table class="record">
-    <tbody>
-      @for (row of scorelessRows; track row.label) {
-        <tr>
-          <th scope="row">{{ row.label }}</th>
-          @for (variant of yukon; track variant) {
-            <td>{{ row.value(mode(variant)) }}</td>
-          }
-        </tr>
-      }
-    </tbody>
-  </table>
-
-  <h2 class="record__game">Tri Peaks</h2>
-  <table class="record">
-    <tbody>
-      @for (row of tripeaksRows; track row.label) {
-        <tr>
-          <th scope="row">{{ row.label }}</th>
-          @for (variant of tripeaks; track variant) {
-            <td>{{ row.value(mode(variant)) }}</td>
-          }
-        </tr>
-      }
-    </tbody>
-  </table>
+        </tbody>
+      </table>
+    } @else {
+      <p class="record__unplayed">Not played yet</p>
+    }
+    </section>
+  }
 
   @if (confirming()) {
     <p class="record__note record__note--warn">
-      This cannot be undone, and it clears both games. Nothing else goes with
+      This cannot be undone, and it clears every game. Nothing else goes with
       it - your deck and your settings stay as they are.
     </p>
     <button type="button" class="button button--danger" (click)="clear()">

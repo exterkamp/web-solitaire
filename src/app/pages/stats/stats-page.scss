@@ -24,15 +24,31 @@ h1 {
   margin: 0 0 0.5rem;
 }
 
-// The game a table belongs to. Two tables, because Klondike's two variants
-// belong beside each other and FreeCell is a different game - putting its win
-// rate in the same row as theirs would invite a comparison between a puzzle
-// and a gamble.
+// One block per game, because these are eleven different games - putting
+// their win rates in one row would invite a comparison between a puzzle and
+// a gamble.
+.record__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
 .record__game {
   @include display-type;
   font-size: 1rem;
   color: #ffd166;
-  margin: 0.75rem 0 0;
+  margin: 0;
+}
+
+// A game not played yet: named, so the book is a complete list of what there
+// is, but not given eight rows of dashes to say nothing with.
+.record__unplayed {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: #7fae86;
+  margin: 0;
 }
 
 .record__note--warn {

@@ -61,6 +61,42 @@ const VARIANTS: Variant[] = [
   'seahaven', 'tripeaks', 'pyramid', 'golf', 'acesup',
 ];
 
+/**
+ * How the record book is laid out: one block per game, in the order the menu
+ * lists them, with Klondike's two ways of playing side by side.
+ *
+ * Here rather than in the page because this is the list that has to be
+ * complete. The page used to name four games by hand and seven were being
+ * recorded and never shown - the numbers were all there in storage, and there
+ * was simply nowhere on the screen that said so. A spec now checks that every
+ * variant appears in exactly one group, so the next game to arrive cannot go
+ * missing the same way.
+ */
+export interface VariantGroup {
+  title: string;
+  variants: Variant[];
+  // Whether this game keeps a score. Only two do, and for the other nine that
+  // row would be a column of dashes pretending to be a fact about the game.
+  scored: boolean;
+}
+
+export const VARIANT_GROUPS: readonly VariantGroup[] = [
+  { title: 'Klondike', variants: ['klondike-1', 'klondike-3'], scored: true },
+  { title: 'FreeCell', variants: ['freecell'], scored: false },
+  { title: 'Yukon', variants: ['yukon'], scored: false },
+  { title: 'Canfield', variants: ['canfield'], scored: false },
+  { title: 'Spiderette', variants: ['spiderette'], scored: false },
+  { title: 'Scorpion', variants: ['scorpion'], scored: false },
+  { title: 'Seahaven Towers', variants: ['seahaven'], scored: false },
+  { title: 'Tri Peaks', variants: ['tripeaks'], scored: true },
+  { title: 'Pyramid', variants: ['pyramid'], scored: false },
+  { title: 'Golf', variants: ['golf'], scored: false },
+  { title: 'Aces Up', variants: ['acesup'], scored: false },
+];
+
+/** Every variant the book keeps, in order. For the spec, and for `game`. */
+export const ALL_VARIANTS: readonly Variant[] = VARIANTS;
+
 // v2 because the shape changed when the second game arrived: what used to be
 // keyed by how many cards a draw turned is now keyed by which game was being
 // played. A v1 record is read once and carried over - see load() - because
