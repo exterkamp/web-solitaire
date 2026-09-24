@@ -8,6 +8,7 @@
 // Re-exported under the old name so nothing else in the app has to care.
 export {
   BACK_COLORS,
+  DECK_STOCK,
   DECK_THEMES,
   DECK_THEME_LABELS,
   DEFAULT_BACK_COLOR,

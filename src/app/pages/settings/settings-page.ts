@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   BACK_COLORS,
+  DECK_STOCK,
   DECK_THEMES,
   DECK_THEME_LABELS,
   DeckTheme,
@@ -146,10 +147,26 @@ export class SettingsPage {
   ];
 
   // The back is ink on transparency, so a preview is that image over the
-  // chosen colour - which is exactly how the board draws it, and the reason
-  // the two cannot disagree about what a deck looks like.
+  // colour under it - which is exactly how the board draws it, and the
+  // reason the two cannot disagree about what a deck looks like.
   protected backImage(theme: DeckTheme): string {
     return `url(${deckThemePath(theme, 'back.webp')})`;
+  }
+
+  /**
+   * The colour a tile draws its pattern over.
+   *
+   * The deck you are holding shows the colour you actually chose; the rest
+   * show their own. Two questions, and a tile answers whichever one it is
+   * being asked: "what does my deck look like" for the selected one, and
+   * "what would that deck look like" for the other five. Drawing all six on
+   * the current colour answered neither - with Matrix selected, every tile
+   * on the page was on near-black.
+   */
+  protected tileColor(theme: DeckTheme): string {
+    return backColorCss(
+      this.settings.deckTheme() === theme ? this.settings.backColor() : DECK_STOCK[theme].back,
+    );
   }
 
   protected readonly css = backColorCss;
@@ -172,6 +189,23 @@ export class SettingsPage {
   /** The dialog closing by itself - a click outside it, or Escape. */
   protected dyeClosed(key: string): void {
     if (this.openDye() === key) this.openDye.set(null);
+  }
+
+  /**
+   * Picking a deck, which now brings its back colour with it.
+   *
+   * A deck is a whole deck in the package - stock, inks, courts and the
+   * colour its back wants to be printed over - and two of the six are
+   * screens rather than cards. Handing somebody a terminal deck on the teal
+   * back they had for Press is handing them half of it.
+   *
+   * It overwrites a back colour they chose, which is the cost. It is one tap
+   * to put back, the control is directly below this one, and the alternative
+   * is a deck that never looks like itself until they find that out.
+   */
+  protected pickDeck(theme: DeckTheme): void {
+    this.settings.deckTheme.set(theme);
+    this.settings.backColor.set(DECK_STOCK[theme].back);
   }
 
   // Turning the custom deck off destroys the swatches under any open dialog,

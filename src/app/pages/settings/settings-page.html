@@ -13,12 +13,12 @@
           type="button"
           class="deck"
           [class.deck--active]="settings.deckTheme() === theme"
-          (click)="settings.deckTheme.set(theme)"
+          (click)="pickDeck(theme)"
         >
           <span
             class="deck__back"
             [style.background-image]="backImage(theme)"
-            [style.background-color]="css(settings.backColor())"
+            [style.background-color]="tileColor(theme)"
           ></span>
           <span class="deck__label">{{ labels[theme] }}</span>
         </button>

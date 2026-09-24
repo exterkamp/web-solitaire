@@ -1,17 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { COURT_PALETTES, DECK_THEMES, defaultInk } from 'phaser-card-engine';
+import { COURT_PALETTES, DECK_STOCK, DECK_THEMES } from 'phaser-card-engine';
 import {
   DEFAULT_EDGE, DEFAULT_HIGHLIGHT, DEFAULT_PAPER, colorCss, courtStart, cssColor, customStyle,
   themeStyle,
 } from './deck-style';
 
 describe('themeStyle', () => {
-  it('draws every theme on the same stock, in the same ink', () => {
+  // A deck is a whole deck in the package now - stock and inks as well as
+  // courts - and two of the six are screens rather than cards. Reading only
+  // the court palette would put a matrix portrait on a white card.
+  it('takes every deck its own stock and inks, from the package', () => {
     for (const theme of DECK_THEMES) {
       const style = themeStyle(theme);
-      expect(style.paper).toBe(DEFAULT_PAPER);
-      expect(style.ink['hearts']).toBe(defaultInk('hearts'));
-      expect(style.ink['spades']).toBe(defaultInk('spades'));
+      const stock = DECK_STOCK[theme];
+      expect(style.paper).toBe(stock.paper);
+      expect(style.ink['hearts']).toBe(stock.red);
+      expect(style.ink['diamonds']).toBe(stock.red);
+      expect(style.ink['spades']).toBe(stock.black);
+      expect(style.ink['clubs']).toBe(stock.black);
+    }
+  });
+
+  it('still prints the decks that are cards on near-white paper', () => {
+    for (const theme of ['classic', 'press', 'millionaire'] as const) {
+      expect(themeStyle(theme).paper).toBe(DEFAULT_PAPER);
     }
   });
 
@@ -26,6 +38,15 @@ describe('themeStyle', () => {
   it('gives every theme a highlight, palette or not', () => {
     for (const theme of DECK_THEMES) {
       expect(themeStyle(theme).court.highlight).toBeTruthy();
+    }
+  });
+
+  // The same rule the custom decks follow: a portrait on different paper
+  // from the card under it reads as a sticker.
+  it('prints every deck\'s portraits on that deck\'s own stock', () => {
+    for (const theme of DECK_THEMES) {
+      const style = themeStyle(theme);
+      expect(style.court.paper).toBe(colorCss(style.paper));
     }
   });
 });
@@ -69,6 +90,14 @@ describe('courtStart', () => {
     expect(courtStart('press').ink).toBe(COURT_PALETTES['press'].ink);
     expect(courtStart('press').highlight).toBe(DEFAULT_HIGHLIGHT);
   });
+
+  // A dark deck states its own, and it must not be overwritten with white -
+  // that field is the difference between a king and a crown floating over
+  // nothing.
+  it('keeps a dark deck\'s own highlight rather than whitening it', () => {
+    expect(courtStart('matrix').highlight).toBe(COURT_PALETTES['matrix'].highlight);
+    expect(courtStart('matrix').highlight).not.toBe(DEFAULT_HIGHLIGHT);
+  });
 });
 
 // The colour pickers speak CSS and the renderer speaks numbers, so every
@@ -90,9 +119,18 @@ describe('the trip between a picker and a renderer', () => {
 // round its bottom. The package draws it from the stock when nobody names
 // one, which is the whole fix.
 describe('the hairline round a card', () => {
-  it('is this board\'s own grey on the seven', () => {
-    for (const theme of DECK_THEMES) {
+  it('is this board\'s own grey on a deck printed on near-white', () => {
+    for (const theme of ['classic', 'press', 'millionaire'] as const) {
       expect(themeStyle(theme).edge).toBe(DEFAULT_EDGE);
+    }
+  });
+
+  // Same rule as a deck the player mixed, and for the same reason: a grey
+  // rule round a black card is a frame.
+  it('is left to the package on a deck that is not printed on near-white', () => {
+    for (const theme of DECK_THEMES) {
+      if (DECK_STOCK[theme].paper === DEFAULT_PAPER) continue;
+      expect(themeStyle(theme).edge).toBeUndefined();
     }
   });
 

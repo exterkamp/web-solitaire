@@ -1,10 +1,10 @@
 import {
   COURT_PALETTES,
   CourtPalette,
+  DECK_STOCK,
   DeckTheme,
   colorCss,
   cssColor,
-  defaultInk,
 } from 'phaser-card-engine';
 
 // What a deck looks like, as the package wants it.
@@ -45,15 +45,24 @@ export const DEFAULT_HIGHLIGHT = '#fdfdfd';
 export const DEFAULT_EDGE = 0xc9c9c9;
 
 /**
- * The deck as one of the seven, which is what a player gets until they go
- * looking for the sliders.
+ * The deck as one of the six, which is what a player gets until they go
+ * looking for the pickers.
+ *
+ * Every value comes from the package now. A deck used to be a court palette
+ * over a white card; two of the six are screens rather than cards and carry
+ * their own stock and inks, so reading only the courts would give a matrix
+ * portrait on white paper.
  */
 export function themeStyle(theme: DeckTheme): DeckStyle {
+  const stock = DECK_STOCK[theme];
   return {
-    paper: DEFAULT_PAPER,
-    ink: inkPair(defaultInk('hearts'), defaultInk('spades')),
-    court: { ...COURT_PALETTES[theme], highlight: DEFAULT_HIGHLIGHT },
-    edge: DEFAULT_EDGE,
+    paper: stock.paper,
+    ink: inkPair(stock.red, stock.black),
+    court: courtStart(theme),
+    // The board's own grey hairline, but only where it is a hairline. On
+    // anything but near-white stock a grey rule round a card is a frame, so
+    // those decks get the package's version - a shade of their own stock.
+    edge: stock.paper === DEFAULT_PAPER ? DEFAULT_EDGE : undefined,
   };
 }
 
@@ -93,9 +102,20 @@ function inkPair(red: number, black: number): Record<string, number> {
   return { hearts: red, diamonds: red, spades: black, clubs: black };
 }
 
-/** A theme's court palette, as the starting point for a custom one. */
+/**
+ * A deck's court palette, as the starting point for a custom one.
+ *
+ * The stock comes with it. A portrait on different paper from the card under
+ * it reads as a sticker, and on the decks that are not white that is the
+ * difference between a deck and a mistake.
+ */
 export function courtStart(theme: DeckTheme): CourtPalette {
-  return { ...COURT_PALETTES[theme], highlight: DEFAULT_HIGHLIGHT };
+  const court = COURT_PALETTES[theme];
+  return {
+    ...court,
+    paper: court.paper ?? colorCss(DECK_STOCK[theme].paper),
+    highlight: court.highlight ?? DEFAULT_HIGHLIGHT,
+  };
 }
 
 export { colorCss, cssColor };
