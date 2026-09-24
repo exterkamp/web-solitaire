@@ -90,8 +90,34 @@
   </header>
 
   <!-- Phaser builds its canvas into this and scales it to fit, so the element
-       needs a size of its own before the board exists. See play.scss. -->
-  <div class="board" #board></div>
+       needs a size of its own before the board exists. See play.scss.
+       The canvas is a silent image to a screen reader; the label says what
+       game is on it and the numbers a sighted player watches. -->
+  <div class="board" #board role="img" [attr.aria-label]="boardLabel()"></div>
+
+  <!-- Move announcements and state changes, for screen readers. Visually
+       hidden; the sighted equivalent is the board itself. -->
+  <div class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</div>
+
+  @if (konamiActive()) {
+    <!-- The Konami code was entered: thirty cards rain from the top, one for
+         each of the thirty lives. Pure theatre - the game underneath is
+         untouched. -->
+    <div class="konami-rain" aria-hidden="true">
+      @for (suit of konamiCards(); track $index) {
+        <span
+          class="konami-card"
+          [class.konami-card--red]="suit === '♥' || suit === '♦'"
+          [style.left.%]="$index * (100 / 30)"
+          [style.animation-delay.ms]="($index % 10) * 150"
+          [style.animation-duration.ms]="2500 + (($index * 137) % 1500)"
+        >{{ suit }}</span>
+      }
+    </div>
+    <div class="konami-toast" role="status">
+      ↑↑↓↓←→←→BA — the cards rain down!
+    </div>
+  }
 
   @if (gamepadActive() && focusPos(); as pos) {
     <!-- The controller's focus ring: which pile the D-pad is pointing at. A

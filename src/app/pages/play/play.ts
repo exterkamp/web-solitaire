@@ -5,16 +5,18 @@ import {
   HostListener,
   OnDestroy,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
 import { DrawCount } from '../../game/klondike';
-import { GameId, asGameId } from '../../game/table-game';
+import { GameId, asGameId, GAME_TITLES } from '../../game/table-game';
 import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
 import { yukonTable } from '../../game/yukon-table';
@@ -120,6 +122,45 @@ export class Play implements AfterViewInit, OnDestroy {
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
 
+  constructor() {
+    // The tab says which game is on the felt, not just the site name.
+    inject(Title).setTitle(`${GAME_TITLES[this.gameId]} · Solitaire`);
+    // The two state changes that matter to someone who cannot see the
+    // board: winning it, and running out of moves. Announced through the
+    // live region in the template.
+    effect(() => {
+      const summary = this.win();
+      if (summary) {
+        this.announcement.set(
+          `You won ${GAME_TITLES[this.gameId]}! Score ${summary.score.toLocaleString()}, ` +
+            `time ${formatDuration(summary.seconds)}, ${summary.moves} moves.`,
+        );
+      }
+    });
+    effect(() => {
+      if (this.showStuck()) {
+        this.announcement.set('No moves left. Nothing on the table can be played.');
+      }
+    });
+  }
+
+  // What a screen reader says about the canvas: the game, and the numbers
+  // a sighted player watches. The cards themselves are not in the
+  // accessibility tree - describing twelve different boards card by card
+  // is a project of its own - but nobody should meet a silent image.
+  protected readonly boardLabel = computed(() => {
+    const v = this.view();
+    const parts = [`${GAME_TITLES[this.gameId]} board`];
+    if (v.showsMoves) parts.push(`move ${v.moves}`);
+    if (v.score !== undefined) parts.push(`score ${v.score.toLocaleString()}`);
+    parts.push(`time ${formatDuration(this.elapsed())}`);
+    return parts.join('. ') + '.';
+  });
+
+  // The live region's text. Cleared when a new hand starts so the next
+  // announcement is not swallowed as a duplicate.
+  protected readonly announcement = signal('');
+
   ngAfterViewInit(): void {
     this.game = createBoardGame(this.host().nativeElement, {
       table: this.table,
@@ -207,6 +248,47 @@ export class Play implements AfterViewInit, OnDestroy {
     this.setPaused(!this.paused());
   }
 
+  // The Konami code: up up down down left right left right B A. A thirty-
+  // year-old handshake, and this board knows it. Get it right and the cards
+  // rain.
+  private readonly konamiSequence = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'b', 'a',
+  ];
+  private konamiIndex = 0;
+  // The falling cards. Each is a suit glyph with a random drift, so the
+  // rain never falls the same way twice.
+  protected readonly konamiCards = signal<string[]>([]);
+  protected readonly konamiActive = signal(false);
+
+  @HostListener('window:keydown', ['$event'])
+  protected onKeydown(event: KeyboardEvent): void {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const want = this.konamiSequence[this.konamiIndex];
+    const wantKey = want.length === 1 ? want : want;
+    if (key === wantKey) {
+      this.konamiIndex++;
+      if (this.konamiIndex === this.konamiSequence.length) {
+        this.konamiIndex = 0;
+        this.triggerKonami();
+      }
+    } else {
+      // A wrong key resets, unless it is the start of a new attempt.
+      this.konamiIndex = key === this.konamiSequence[0] ? 1 : 0;
+    }
+  }
+
+  private triggerKonami(): void {
+    // Thirty cards, for the thirty lives. Shuffled suits, random drift.
+    const suits = ['♠', '♥', '♦', '♣'];
+    const cards = Array.from({ length: 30 }, () => suits[Math.floor(Math.random() * suits.length)]);
+    this.konamiCards.set(cards);
+    this.konamiActive.set(true);
+    // The rain lasts five seconds, then the felt is clear again.
+    setTimeout(() => this.konamiActive.set(false), 5000);
+  }
+
   protected resume(): void {
     this.setPaused(false);
   }
@@ -250,6 +332,7 @@ export class Play implements AfterViewInit, OnDestroy {
     this.win.set(undefined);
     this.waved.set(undefined);
     this.elapsed.set(0);
+    this.announcement.set('');
     this.scene()?.newGame();
   }
 
