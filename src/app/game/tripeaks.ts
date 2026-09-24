@@ -1,4 +1,4 @@
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { isNeighbourWrapping, topOf } from './card-rules';
 
@@ -93,7 +93,7 @@ export const PEAK_BONUS = 15;
 // --- dealing --------------------------------------------------------------
 
 export function deal(random: () => number = Math.random): TriPeaksState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const board: Card[][] = [];
   for (let i = 0; i < BOARD_SIZE; i++) {
     const card = deck[i];

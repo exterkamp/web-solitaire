@@ -1,5 +1,5 @@
 import { FOUNDATION_COUNT } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import {
   buildsDownInSuit,
@@ -55,7 +55,7 @@ export interface MoveResult {
  * than both of them at one.
  */
 export function deal(random: () => number = Math.random): SeahavenState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   for (const card of deck) card.faceUp = true;
 
   const tableau: Card[][] = Array.from({ length: COLUMN_COUNT }, (_, column) =>

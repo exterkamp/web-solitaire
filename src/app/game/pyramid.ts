@@ -1,5 +1,5 @@
 import { Rank, rankValue } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { topOf } from './card-rules';
 
@@ -79,7 +79,7 @@ export function value(rank: Rank): number {
 // --- dealing --------------------------------------------------------------
 
 export function deal(random: () => number = Math.random): PyramidState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const pyramid: Card[][] = [];
   for (let i = 0; i < BOARD_SIZE; i++) {
     const card = deck[i];

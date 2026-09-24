@@ -1,5 +1,5 @@
 import { FOUNDATION_COUNT, RANKS, Rank, rankValue, sameColor } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { foundationIndexOf, topOf } from './card-rules';
 
@@ -74,7 +74,7 @@ function foundationWants(base: Rank, height: number): Rank {
 // --- dealing --------------------------------------------------------------
 
 export function deal(random: () => number = Math.random): CanfieldState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   let next = 0;
 
   // Thirteen to the reserve, face down but for the top.

@@ -12,6 +12,8 @@
 //
 // The one thing that changed is `shuffle`, which no longer copies each card
 // on its way through - it copies the array, like any other shuffle. Every
-// caller here passes a freshly built deck, so there was nothing to protect.
-export { buildDeck, cardName, shuffle } from 'phaser-card-engine';
+// caller here passed a freshly built deck, so there was nothing to protect -
+// and every one of them says `shuffledDeck(random)` now, which is the same
+// two calls with the seam taken out.
+export { buildDeck, cardName, shuffle, shuffledDeck } from 'phaser-card-engine';
 export type { Card } from 'phaser-card-engine';

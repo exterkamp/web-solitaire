@@ -1,5 +1,5 @@
 import { FOUNDATION_COUNT, TABLEAU_COUNT, rankValue } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { completedSuit, foundationIndexOf, isSuitRun, topOf } from './card-rules';
 
@@ -43,7 +43,7 @@ export interface MoveResult {
 // --- dealing --------------------------------------------------------------
 
 export function deal(random: () => number = Math.random): SpideretteState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const tableau: Card[][] = Array.from({ length: COLUMN_COUNT }, () => []);
   let next = 0;
   for (let column = 0; column < COLUMN_COUNT; column++) {

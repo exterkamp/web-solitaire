@@ -1,5 +1,5 @@
 import { FOUNDATION_COUNT, TABLEAU_COUNT, rankValue, sameColor } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { PileRef } from './piles';
 import {
   buildsDown,
@@ -90,7 +90,7 @@ export function timeBonus(seconds: number): number {
  * turned up, and the remaining twenty-four left as the stock.
  */
 export function deal(drawCount: DrawCount, random: () => number = Math.random): GameState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const tableau: Card[][] = [];
   let next = 0;
   for (let pile = 0; pile < TABLEAU_COUNT; pile++) {

@@ -1,4 +1,4 @@
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { isNeighbourWrapping, topOf } from './card-rules';
 
@@ -45,7 +45,7 @@ export function deal(random: () => number = Math.random): BlackHoleState {
   // over it. Any card would do - Parlett's rules say so - but the ace of
   // spades is the one everybody pictures, and a fixed starting card means two
   // players comparing a deal are comparing the same game.
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const start = deck.findIndex((card) => card.suit === 'spades' && card.rank === 'A');
   const [hole] = deck.splice(start, 1);
   for (const card of deck) card.faceUp = true;

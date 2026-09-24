@@ -1,5 +1,5 @@
 import { FOUNDATION_COUNT } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { PileRef } from './piles';
 import { buildsDown, canPlaceOnFoundation, foundationIndexOf, isRun, topOf } from './card-rules';
 
@@ -49,7 +49,7 @@ export interface MoveResult {
  * and four of six, and nothing hidden anywhere.
  */
 export function deal(random: () => number = Math.random): FreeCellState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const tableau: Card[][] = Array.from({ length: COLUMN_COUNT }, () => []);
   // Round robin, the way a person deals: one card to each column, then round
   // again. Fifty-two over eight leaves the first four columns a card longer,

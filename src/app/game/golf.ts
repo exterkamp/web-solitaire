@@ -1,5 +1,5 @@
 import { TABLEAU_COUNT, rankValue } from './config';
-import { Card, buildDeck, shuffle } from './deck';
+import { Card, shuffledDeck } from './deck';
 import { Move, PileRef } from './piles';
 import { topOf } from './card-rules';
 
@@ -39,7 +39,7 @@ export interface MoveResult {
 // --- dealing --------------------------------------------------------------
 
 export function deal(random: () => number = Math.random): GolfState {
-  const deck = shuffle(buildDeck(), random);
+  const deck = shuffledDeck(random);
   const tableau: Card[][] = Array.from({ length: COLUMN_COUNT }, () => []);
   for (let i = 0; i < DEALT; i++) {
     const card = deck[i];
