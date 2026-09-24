@@ -10,11 +10,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
 import { DrawCount } from '../../game/klondike';
-import { GameId, asGameId } from '../../game/table-game';
+import { GameId, asGameId, GAME_TITLES } from '../../game/table-game';
 import { klondikeTable } from '../../game/klondike-table';
 import { freecellTable } from '../../game/freecell-table';
 import { yukonTable } from '../../game/yukon-table';
@@ -105,6 +106,11 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly table = makeTable(this.gameId, this.drawCount);
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
+
+  constructor() {
+    // The tab says which game is on the felt, not just the site name.
+    inject(Title).setTitle(`${GAME_TITLES[this.gameId]} · Solitaire`);
+  }
 
   ngAfterViewInit(): void {
     this.game = createBoardGame(this.host().nativeElement, {
