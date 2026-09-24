@@ -39,8 +39,8 @@ const GAME_IDS: readonly GameId[] = [
 
 /**
  * What each game is called where a person reads it: page titles, the menu,
- * the record book. One place so the board, the setup page, and the browser
- * tab cannot spell a name three different ways.
+ * the record book, screen-reader labels. One place so the board, the setup
+ * page, and the browser tab cannot spell a name three different ways.
  */
 export const GAME_TITLES: Record<GameId, string> = {
   klondike: 'Klondike',

@@ -288,3 +288,18 @@
   color: #9fc4a4;
   margin: -0.4rem 0 0.4rem;
 }
+
+// Offscreen but not gone: screen readers still find it, sighted players
+// do not. The standard clip pattern, so the live region and any other
+// aural-only text has somewhere to live.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
