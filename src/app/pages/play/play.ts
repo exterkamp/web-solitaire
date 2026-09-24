@@ -88,7 +88,11 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly waved = signal<number | undefined>(undefined);
 
   protected readonly showStuck = computed(
-    () => this.view().stuck && !this.win() && this.waved() !== this.view().moves,
+    () =>
+      this.settings.warnStuck() &&
+      this.view().stuck &&
+      !this.win() &&
+      this.waved() !== this.view().moves,
   );
   // The game this board was opened with, held apart from the settings: those
   // can be changed from the menu while a game is still on the table, and a

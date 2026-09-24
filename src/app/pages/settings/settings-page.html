@@ -90,6 +90,27 @@
     </div>
   </div>
 
+  <div class="setting">
+    <span class="setting__label">No-moves warning</span>
+    <p class="setting__note">
+      The panel that appears when a hand has no move left anywhere in it. Turn
+      it off to play on without being told.
+    </p>
+    <div class="setting__options">
+      @for (option of stuckOptions; track option.value) {
+        <button
+          type="button"
+          class="pill"
+          [class.pill--active]="settings.warnStuck() === option.value"
+          (click)="settings.warnStuck.set(option.value)"
+        >
+          <span class="pill__label">{{ option.label }}</span>
+          <span class="pill__hint">{{ option.hint }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
   <a class="button" routerLink="/">Back</a>
 
   <!-- The app updates itself in the background, so this is the answer to "am

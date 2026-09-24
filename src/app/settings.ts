@@ -16,6 +16,7 @@ const DECK_THEME_KEY = 'solitaire.deckTheme';
 const BACK_COLOR_KEY = 'solitaire.backColor';
 const DRAW_COUNT_KEY = 'solitaire.drawCount';
 const HANDEDNESS_KEY = 'solitaire.handedness';
+const WARN_STUCK_KEY = 'solitaire.warnStuck';
 
 @Injectable({ providedIn: 'root' })
 export class Settings {
@@ -33,11 +34,17 @@ export class Settings {
   // from one.
   readonly handedness = signal<Handedness>(read(HANDEDNESS_KEY) === 'left' ? 'left' : 'right');
 
+  // Whether the board speaks up when a hand has no move left anywhere in it.
+  // On by default, matching how the panel has always behaved; this is the
+  // escape hatch for the player who would rather find that out themselves.
+  readonly warnStuck = signal<boolean>(read(WARN_STUCK_KEY) !== 'false');
+
   constructor() {
     effect(() => write(DECK_THEME_KEY, this.deckTheme()));
     effect(() => write(BACK_COLOR_KEY, backColorHex(this.backColor())));
     effect(() => write(DRAW_COUNT_KEY, String(this.drawCount())));
     effect(() => write(HANDEDNESS_KEY, this.handedness()));
+    effect(() => write(WARN_STUCK_KEY, String(this.warnStuck())));
   }
 }
 

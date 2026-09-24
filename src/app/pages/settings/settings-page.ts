@@ -49,6 +49,11 @@ export class SettingsPage {
     { value: 'right', label: 'Right', hint: 'Stock on the right' },
   ];
 
+  protected readonly stuckOptions: { value: boolean; label: string; hint: string }[] = [
+    { value: true, label: 'On', hint: 'Say so when a hand is dead' },
+    { value: false, label: 'Off', hint: 'Never mention it' },
+  ];
+
   // The back is ink on transparency, so a preview is that image over the
   // chosen colour - which is exactly how the board draws it, and the reason
   // the two cannot disagree about what a deck looks like.
