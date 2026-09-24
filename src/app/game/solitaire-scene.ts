@@ -16,7 +16,7 @@ import { DeckTheme } from './deck-theme';
 import {
   CardSprite, ghostSuitKey, preloadCardArt, renderCourtArt, setDeck,
 } from './card-sprite';
-import { Move, PileRef, pileKey } from './piles';
+import { Move, PileRef, pileKey, samePile } from './piles';
 import { GameView, PileSlot, TableGame } from './table-game';
 import { Handedness } from './settings-types';
 import { timeBonus } from './klondike';
@@ -835,6 +835,46 @@ export class SolitaireScene extends Phaser.Scene {
     if (!this.session.play({ kind: 'draw' })) return;
     this.renderBoard(true);
     this.publish();
+  }
+
+  /**
+   * Every pile a controller can point at, with where it is on the board.
+   * The order is the tab order: stock, waste, foundations, then the tableau
+   * left to right. A game with no stock or no waste simply has fewer entries.
+   */
+  focusPiles(): { ref: PileRef; x: number; y: number }[] {
+    return this.table.piles(this.session.state).map((pile) => {
+      const at = this.pileBase(pile.ref);
+      return { ref: pile.ref, x: at.x, y: at.y };
+    });
+  }
+
+  /**
+   * What a tap on a pile means, for a controller with no pointer: the stock
+   * draws, anything else asks the rules where its top card belongs. Returns
+   * true when something happened.
+   */
+  tapPile(ref: PileRef): boolean {
+    if (this.locked) return false;
+    if (ref.kind === 'stock') {
+      this.draw();
+      return true;
+    }
+    const pile = this.table
+      .piles(this.session.state)
+      .find((p) => samePile(p.ref, ref));
+    if (!pile || pile.cards.length === 0) return false;
+    // The top card is what a press would lift.
+    const liftable = this.table.liftable(this.session.state, ref, 1);
+    if (!liftable) return false;
+    const to = this.table.autoTarget(this.session.state, ref, liftable.length);
+    if (!to) return false;
+    return this.play({ kind: 'play', from: ref, to, count: liftable.length });
+  }
+
+  /** The board's own dimensions, for placing DOM over it. */
+  gameSize(): { width: number; height: number } {
+    return { width: this.width, height: GAME_HEIGHT };
   }
 
   /** How long the game in progress has been running, in seconds. */

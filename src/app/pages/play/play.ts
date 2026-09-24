@@ -30,6 +30,8 @@ import { canfieldTable } from '../../game/canfield-table';
 import { seahavenTable } from '../../game/seahaven-table';
 import { blackHoleTable } from '../../game/blackhole-table';
 import { formatDuration } from '../../format';
+import { GamepadController, GamepadDirection } from '../../game/gamepad';
+import { PileRef } from '../../game/piles';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
 
@@ -70,6 +72,18 @@ export class Play implements AfterViewInit, OnDestroy {
 
   protected readonly elapsed = signal(0);
   protected readonly win = signal<WinSummary | undefined>(undefined);
+
+  // A controller, when one is plugged in. The D-pad and left stick move a
+  // focus ring between piles, A taps the focused pile, B undoes, Y draws
+  // from the stock, start pauses. The ring only appears while a gamepad is
+  // actually driving - it never competes with a mouse or a thumb.
+  private gamepad: GamepadController | undefined;
+  protected readonly gamepadActive = signal(false);
+  // Which pile the ring is on, as an index into the scene's focusPiles().
+  private focusIndex = 0;
+  // Where the ring goes on screen, in CSS pixels. Recomputed from the
+  // board's position every time the focus moves or the layout shifts.
+  protected readonly focusPos = signal<{ x: number; y: number } | undefined>(undefined);
 
   // The pause menu, which is also the only way off this page.
   //
@@ -165,11 +179,13 @@ export class Play implements AfterViewInit, OnDestroy {
     // answer instead of one that stopped ticking when the timers did.
     this.clock = setInterval(() => this.elapsed.set(this.scene()?.elapsed() ?? 0), 500);
     this.armBackGuard();
+    this.startGamepad();
   }
 
   ngOnDestroy(): void {
     if (this.clock) clearInterval(this.clock);
     if (this.konamiTimer) clearTimeout(this.konamiTimer);
+    this.stopGamepad();
     window.removeEventListener('popstate', this.onPopState);
     // A game walked away from mid-hand is a game lost, for the same reason it
     // is in every other solitaire: otherwise the win rate is a measure of how
@@ -348,6 +364,166 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 
   protected readonly asTime = formatDuration;
+
+  // --- Gamepad ---
+
+  // The pad polls on its own loop, outside Phaser's pause, and the DOM
+  // overlays that stop a thumb do nothing to a button press. So while the
+  // pause menu or the win panel is up, the game actions no-op; Start stays
+  // live so the pad can bring the game back out.
+  private readonly gamepadBlocked = computed(() => this.paused() || !!this.win());
+
+  private startGamepad(): void {
+    // Only when a controller is actually there. The API is poll-based, so
+    // this asks once now and the controller's loop asks every frame after.
+    const pads = navigator.getGamepads?.() ?? [];
+    if (!Array.from(pads).some((p) => p && p.connected)) {
+      window.addEventListener('gamepadconnected', this.onGamepadConnected);
+      return;
+    }
+    this.gamepad = new GamepadController({
+      move: (dir) => this.gamepadMove(dir),
+      confirm: () => this.gamepadConfirm(),
+      cancel: () => this.gamepadCancel(),
+      secondary: () => this.gamepadDraw(),
+      pause: () => this.togglePause(),
+    });
+    this.gamepad.start();
+    this.gamepadActive.set(true);
+    // Start on the stock, or the first pile when there is none.
+    this.focusIndex = 0;
+    this.updateFocusPos();
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected);
+  }
+
+  private stopGamepad(): void {
+    this.gamepad?.stop();
+    this.gamepad = undefined;
+    this.gamepadActive.set(false);
+    this.focusPos.set(undefined);
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    window.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected);
+  }
+
+  private readonly onResize = (): void => {
+    if (this.gamepadActive()) this.updateFocusPos();
+  };
+
+  // Named so they can be removed in stopGamepad. A routed component that
+  // leaves anonymous listeners on window leaks one per visit.
+  private readonly onGamepadConnected = (): void => {
+    window.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    this.startGamepad();
+  };
+
+  private readonly onGamepadDisconnected = (): void => {
+    this.stopGamepad();
+    // Re-arm the connect listener: stopGamepad removed it, and the no-pad
+    // branch of startGamepad is what registers it. Without this a pad that
+    // went to sleep and woke back up stays dead until the board is left.
+    this.startGamepad();
+  };
+
+  // The piles the ring can sit on, in the scene's tab order.
+  private focusPiles(): { ref: PileRef; x: number; y: number }[] {
+    return this.scene()?.focusPiles() ?? [];
+  }
+
+  private gamepadMove(direction: GamepadDirection): void {
+    if (this.gamepadBlocked()) return;
+    const piles = this.focusPiles();
+    if (piles.length === 0) return;
+    const current = piles[this.focusIndex] ?? piles[0];
+    // Spatial navigation: the nearest pile in the pressed direction.
+    let best = -1;
+    let bestScore = Infinity;
+    piles.forEach((pile, i) => {
+      if (i === this.focusIndex) return;
+      const dx = pile.x - current.x;
+      const dy = pile.y - current.y;
+      let primary = 0;
+      let secondary = 0;
+      switch (direction) {
+        case 'left':
+          primary = -dx;
+          secondary = Math.abs(dy);
+          break;
+        case 'right':
+          primary = dx;
+          secondary = Math.abs(dy);
+          break;
+        case 'up':
+          primary = -dy;
+          secondary = Math.abs(dx);
+          break;
+        case 'down':
+          primary = dy;
+          secondary = Math.abs(dx);
+          break;
+      }
+      if (primary <= 0) return;
+      // Prefer straight lines: the off-axis distance counts triple.
+      const score = primary + secondary * 3;
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    });
+    if (best >= 0) {
+      this.focusIndex = best;
+      this.updateFocusPos();
+    }
+  }
+
+  private gamepadConfirm(): void {
+    if (this.gamepadBlocked()) return;
+    const piles = this.focusPiles();
+    const pile = piles[this.focusIndex];
+    if (pile) this.scene()?.tapPile(pile.ref);
+  }
+
+  private gamepadCancel(): void {
+    if (this.gamepadBlocked()) return;
+    this.undo();
+  }
+
+  private gamepadDraw(): void {
+    if (this.gamepadBlocked()) return;
+    this.scene()?.draw();
+  }
+
+  // Board coordinates to CSS pixels, for the focus ring. The canvas is
+  // letterboxed by Scale.FIT, so this accounts for the scale and the offset.
+  private updateFocusPos(): void {
+    const scene = this.scene();
+    const host = this.host();
+    if (!scene || !host) {
+      this.focusPos.set(undefined);
+      return;
+    }
+    const piles = this.focusPiles();
+    const pile = piles[this.focusIndex];
+    if (!pile) {
+      this.focusPos.set(undefined);
+      return;
+    }
+    const canvas = host.nativeElement.querySelector('canvas');
+    if (!canvas) {
+      this.focusPos.set(undefined);
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const size = scene.gameSize();
+    const scale = Math.min(rect.width / size.width, rect.height / size.height);
+    const offsetX = (rect.width - size.width * scale) / 2;
+    const offsetY = (rect.height - size.height * scale) / 2;
+    this.focusPos.set({
+      x: rect.left + offsetX + pile.x * scale,
+      y: rect.top + offsetY + pile.y * scale,
+    });
+  }
 }
 
 // Which game the board is handed. One place that knows all twelve of them, so
