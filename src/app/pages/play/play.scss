@@ -388,17 +388,24 @@
   margin: -59px 0 0 -42px;
   border: 3px solid rgba(212, 175, 105, 0.95);
   border-radius: 12px;
-  box-shadow: 0 0 18px rgba(212, 175, 105, 0.5), inset 0 0 12px rgba(212, 175, 105, 0.25);
+  box-shadow:
+    0 0 18px rgba(212, 175, 105, 0.5),
+    inset 0 0 12px rgba(212, 175, 105, 0.25);
   pointer-events: none;
   z-index: 55;
   animation: gamepad-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes gamepad-pulse {
-  0%, 100% {
-    box-shadow: 0 0 18px rgba(212, 175, 105, 0.5), inset 0 0 12px rgba(212, 175, 105, 0.25);
+  0%,
+  100% {
+    box-shadow:
+      0 0 18px rgba(212, 175, 105, 0.5),
+      inset 0 0 12px rgba(212, 175, 105, 0.25);
   }
   50% {
-    box-shadow: 0 0 28px rgba(212, 175, 105, 0.8), inset 0 0 18px rgba(212, 175, 105, 0.4);
+    box-shadow:
+      0 0 28px rgba(212, 175, 105, 0.8),
+      inset 0 0 18px rgba(212, 175, 105, 0.4);
   }
 }

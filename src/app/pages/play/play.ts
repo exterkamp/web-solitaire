@@ -252,16 +252,9 @@ export class Play implements AfterViewInit, OnDestroy {
   // year-old handshake, and this board knows it. Get it right and the cards
   // rain.
   private readonly konamiSequence = [
-    'ArrowUp',
-    'ArrowUp',
-    'ArrowDown',
-    'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
-    'ArrowLeft',
-    'ArrowRight',
-    'b',
-    'a',
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'b', 'a',
   ];
   private konamiIndex = 0;
   // The falling cards. Each is a suit glyph with a random drift, so the
@@ -361,6 +354,12 @@ export class Play implements AfterViewInit, OnDestroy {
 
   // --- Gamepad ---
 
+  // The pad polls on its own loop, outside Phaser's pause, and the DOM
+  // overlays that stop a thumb do nothing to a button press. So while the
+  // pause menu or the win panel is up, the game actions no-op; Start stays
+  // live so the pad can bring the game back out.
+  private readonly gamepadBlocked = computed(() => this.paused() || !!this.win());
+
   private startGamepad(): void {
     // Only when a controller is actually there. The API is poll-based, so
     // this asks once now and the controller's loop asks every frame after.
@@ -372,8 +371,8 @@ export class Play implements AfterViewInit, OnDestroy {
     this.gamepad = new GamepadController({
       move: (dir) => this.gamepadMove(dir),
       confirm: () => this.gamepadConfirm(),
-      cancel: () => this.undo(),
-      secondary: () => this.scene()?.draw(),
+      cancel: () => this.gamepadCancel(),
+      secondary: () => this.gamepadDraw(),
       pause: () => this.togglePause(),
     });
     this.gamepad.start();
@@ -408,6 +407,10 @@ export class Play implements AfterViewInit, OnDestroy {
 
   private readonly onGamepadDisconnected = (): void => {
     this.stopGamepad();
+    // Re-arm the connect listener: stopGamepad removed it, and the no-pad
+    // branch of startGamepad is what registers it. Without this a pad that
+    // went to sleep and woke back up stays dead until the board is left.
+    this.startGamepad();
   };
 
   // The piles the ring can sit on, in the scene's tab order.
@@ -416,6 +419,7 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 
   private gamepadMove(direction: GamepadDirection): void {
+    if (this.gamepadBlocked()) return;
     const piles = this.focusPiles();
     if (piles.length === 0) return;
     const current = piles[this.focusIndex] ?? piles[0];
@@ -461,9 +465,20 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 
   private gamepadConfirm(): void {
+    if (this.gamepadBlocked()) return;
     const piles = this.focusPiles();
     const pile = piles[this.focusIndex];
     if (pile) this.scene()?.tapPile(pile.ref);
+  }
+
+  private gamepadCancel(): void {
+    if (this.gamepadBlocked()) return;
+    this.undo();
+  }
+
+  private gamepadDraw(): void {
+    if (this.gamepadBlocked()) return;
+    this.scene()?.draw();
   }
 
   // Board coordinates to CSS pixels, for the focus ring. The canvas is
