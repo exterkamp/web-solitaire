@@ -1,4 +1,4 @@
-import { FOUNDATION_COUNT, TABLEAU_COUNT, rankValue, sameColour } from './config';
+import { FOUNDATION_COUNT, TABLEAU_COUNT, rankValue, sameColor } from './config';
 import { Card, buildDeck, shuffle } from './deck';
 import { PileRef } from './piles';
 import {
