@@ -99,6 +99,26 @@
        hidden; the sighted equivalent is the board itself. -->
   <div class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</div>
 
+  @if (konamiActive()) {
+    <!-- The Konami code was entered: thirty cards rain from the top, one for
+         each of the thirty lives. Pure theatre - the game underneath is
+         untouched. -->
+    <div class="konami-rain" aria-hidden="true">
+      @for (suit of konamiCards(); track $index) {
+        <span
+          class="konami-card"
+          [class.konami-card--red]="suit === '♥' || suit === '♦'"
+          [style.left.%]="$index * (100 / 30)"
+          [style.animation-delay.ms]="($index % 10) * 150"
+          [style.animation-duration.ms]="2500 + (($index * 137) % 1500)"
+        >{{ suit }}</span>
+      }
+    </div>
+    <div class="konami-toast" role="status">
+      ↑↑↓↓←→←→BA — the cards rain down!
+    </div>
+  }
+
   @if (paused()) {
     <!-- Over the whole screen rather than only the board: while this is up,
          nothing a thumb lands on should reach a card. -->

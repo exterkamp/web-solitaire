@@ -289,6 +289,81 @@
   margin: -0.4rem 0 0.4rem;
 }
 
+// The Konami code Easter egg: thirty suit glyphs rain from the top of the
+// screen, one for each of the thirty lives. The container is fixed and
+// pointer-transparent, so the rain never intercepts a tap meant for a card.
+.konami-rain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+
+.konami-card {
+  position: absolute;
+  top: -8%;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: #f5f5f0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  animation-name: konami-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+.konami-card--red {
+  color: #e8a0a8;
+}
+
+@keyframes konami-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(115vh) rotate(340deg);
+    opacity: 0;
+  }
+}
+
+// The toast that names the code. High on the board, in the band of felt
+// nothing is ever dealt onto.
+.konami-toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 61;
+  padding: 0.6rem 1.2rem;
+  background: rgba(7, 36, 31, 0.92);
+  border: 2px solid rgba(212, 175, 105, 0.7);
+  border-radius: 999px;
+  color: #fdfdf5;
+  font-size: 1rem;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: konami-toast-in 0.3s ease-out;
+}
+
+@keyframes konami-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 // Offscreen but not gone: screen readers still find it, sighted players
 // do not. The standard clip pattern, so the live region and any other
 // aural-only text has somewhere to live.
