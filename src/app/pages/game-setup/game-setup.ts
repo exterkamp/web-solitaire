@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
 import { DrawCount } from '../../game/klondike';
@@ -299,6 +300,11 @@ export class GameSetup {
   // every game it knows is the only kind worth having.
   protected readonly game: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
   protected readonly guide = GUIDES[this.game];
+
+  constructor() {
+    // The tab says which game this page introduces, not just the site name.
+    inject(Title).setTitle(`${this.guide.title} Setup · Solitaire`);
+  }
 
   protected readonly drawCounts: DrawCount[] = [1, 3];
   // The chips hold 1 and 3; the row reads One and Three, because a row of
