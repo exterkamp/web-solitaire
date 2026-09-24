@@ -359,7 +359,7 @@ export class Play implements AfterViewInit, OnDestroy {
     // this asks once now and the controller's loop asks every frame after.
     const pads = navigator.getGamepads?.() ?? [];
     if (!Array.from(pads).some((p) => p && p.connected)) {
-      window.addEventListener('gamepadconnected', () => this.startGamepad(), { once: true });
+      window.addEventListener('gamepadconnected', this.onGamepadConnected);
       return;
     }
     this.gamepad = new GamepadController({
@@ -375,7 +375,7 @@ export class Play implements AfterViewInit, OnDestroy {
     this.focusIndex = 0;
     this.updateFocusPos();
     window.addEventListener('resize', this.onResize);
-    window.addEventListener('gamepaddisconnected', () => this.stopGamepad(), { once: true });
+    window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected);
   }
 
   private stopGamepad(): void {
@@ -384,10 +384,23 @@ export class Play implements AfterViewInit, OnDestroy {
     this.gamepadActive.set(false);
     this.focusPos.set(undefined);
     window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    window.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected);
   }
 
   private readonly onResize = (): void => {
     if (this.gamepadActive()) this.updateFocusPos();
+  };
+
+  // Named so they can be removed in stopGamepad. A routed component that
+  // leaves anonymous listeners on window leaks one per visit.
+  private readonly onGamepadConnected = (): void => {
+    window.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    this.startGamepad();
+  };
+
+  private readonly onGamepadDisconnected = (): void => {
+    this.stopGamepad();
   };
 
   // The piles the ring can sit on, in the scene's tab order.
@@ -409,10 +422,22 @@ export class Play implements AfterViewInit, OnDestroy {
       let primary = 0;
       let secondary = 0;
       switch (direction) {
-        case 'left': primary = -dx; secondary = Math.abs(dy); break;
-        case 'right': primary = dx; secondary = Math.abs(dy); break;
-        case 'up': primary = -dy; secondary = Math.abs(dx); break;
-        case 'down': primary = dy; secondary = Math.abs(dx); break;
+        case 'left':
+          primary = -dx;
+          secondary = Math.abs(dy);
+          break;
+        case 'right':
+          primary = dx;
+          secondary = Math.abs(dy);
+          break;
+        case 'up':
+          primary = -dy;
+          secondary = Math.abs(dx);
+          break;
+        case 'down':
+          primary = dy;
+          secondary = Math.abs(dx);
+          break;
       }
       if (primary <= 0) return;
       // Prefer straight lines: the off-axis distance counts triple.
