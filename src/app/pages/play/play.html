@@ -93,6 +93,17 @@
        needs a size of its own before the board exists. See play.scss. -->
   <div class="board" #board></div>
 
+  @if (gamepadActive() && focusPos(); as pos) {
+    <!-- The controller's focus ring: which pile the D-pad is pointing at. A
+         is a tap on it. Only rendered while a gamepad is driving. -->
+    <div
+      class="gamepad-focus"
+      aria-hidden="true"
+      [style.left.px]="pos.x"
+      [style.top.px]="pos.y"
+    ></div>
+  }
+
   @if (paused()) {
     <!-- Over the whole screen rather than only the board: while this is up,
          nothing a thumb lands on should reach a card. -->
