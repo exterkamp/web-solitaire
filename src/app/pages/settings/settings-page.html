@@ -111,6 +111,28 @@
     </div>
   </div>
 
+  <div class="setting">
+    <span class="setting__label">Shuffle</span>
+    <p class="setting__note">
+      A new game opens by riffling the pack &mdash; cut in two, both halves
+      bowed, and the cards sprung back together. Turn it off to be dealt to
+      straight away. Skipped either way if your device asks for less movement.
+    </p>
+    <div class="setting__options">
+      @for (option of shuffleOptions; track option.value) {
+        <button
+          type="button"
+          class="pill"
+          [class.pill--active]="settings.showShuffle() === option.value"
+          (click)="settings.showShuffle.set(option.value)"
+        >
+          <span class="pill__label">{{ option.label }}</span>
+          <span class="pill__hint">{{ option.hint }}</span>
+        </button>
+      }
+    </div>
+  </div>
+
   <a class="button" routerLink="/">Back</a>
 
   <!-- The app updates itself in the background, so this is the answer to "am

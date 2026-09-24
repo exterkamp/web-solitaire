@@ -83,6 +83,8 @@ export interface BoardInit {
   theme: DeckTheme;
   backColor: number;
   handedness: Handedness;
+  /** Whether a new game opens with a riffle. */
+  showShuffle: boolean;
   events: BoardEvents;
 }
 
@@ -177,6 +179,11 @@ export class SolitaireScene extends Phaser.Scene {
   private theme!: DeckTheme;
   private backColor!: number;
   private handedness: Handedness = 'right';
+  private showShuffle = true;
+  // True while the pack is being riffled. A second deal started in the middle
+  // of that would destroy the sprites the first one's meshes are standing in
+  // for, and leave the board holding cards from two packs.
+  private shuffling = false;
   // Where every pile of this game is printed, worked out once from the game's
   // own description of its table.
   private slotMap = new Map<string, { slot: PileSlot; x: number; y: number }>();
@@ -246,6 +253,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.theme = data.theme;
     this.backColor = data.backColor;
     this.handedness = data.handedness;
+    this.showShuffle = data.showShuffle;
     this.report = data.events;
     this.drop = this.table.drops ? MAX_BOARD_DROP : 0;
     this.slotMap.clear();
@@ -486,6 +494,9 @@ export class SolitaireScene extends Phaser.Scene {
 
   /** Deals a new game of whatever game this board is showing. */
   newGame(): void {
+    // Ignored while the pack is still being shuffled - half a second, and
+    // the alternative is two deals sharing a table.
+    if (this.shuffling) return;
     this.stopCascade();
     this.releaseDrag();
     for (const sprite of this.sprites.values()) sprite.destroy();
@@ -587,7 +598,18 @@ export class SolitaireScene extends Phaser.Scene {
    * is about, and the deal reads perfectly well without it.
    */
   private async riffle(sprites: readonly CardSprite[], at: Place): Promise<void> {
+    if (!this.showShuffle) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    this.shuffling = true;
+    try {
+      await this.riffleAndCarry(sprites, at);
+    } finally {
+      this.shuffling = false;
+    }
+  }
+
+  private async riffleAndCarry(sprites: readonly CardSprite[], at: Place): Promise<void> {
 
     // Shuffled in the middle of the table rather than where the deal starts.
     // Klondike deals off the stock, and the stock sits against the edge of
