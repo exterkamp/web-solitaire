@@ -27,6 +27,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/phaser-card-engine/assets/cards",
+                "output": "cards"
               }
             ],
             "styles": [
