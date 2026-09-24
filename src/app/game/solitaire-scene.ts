@@ -899,6 +899,11 @@ export class SolitaireScene extends Phaser.Scene {
     return { width: this.width, height: GAME_HEIGHT };
   }
 
+  /** How long the game in progress has been running, in seconds. */
+  elapsed(): number {
+    return this.session?.elapsed() ?? 0;
+  }
+
   /**
    * Stops the board, for the pause menu.
    *

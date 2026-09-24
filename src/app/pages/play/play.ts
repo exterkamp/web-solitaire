@@ -252,9 +252,16 @@ export class Play implements AfterViewInit, OnDestroy {
   // year-old handshake, and this board knows it. Get it right and the cards
   // rain.
   private readonly konamiSequence = [
-    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
-    'b', 'a',
+    'ArrowUp',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowLeft',
+    'ArrowRight',
+    'b',
+    'a',
   ];
   private konamiIndex = 0;
   // The falling cards. Each is a suit glyph with a random drift, so the
