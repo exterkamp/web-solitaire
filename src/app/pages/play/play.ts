@@ -191,6 +191,47 @@ export class Play implements AfterViewInit, OnDestroy {
     this.setPaused(!this.paused());
   }
 
+  // The Konami code: up up down down left right left right B A. A thirty-
+  // year-old handshake, and this board knows it. Get it right and the cards
+  // rain.
+  private readonly konamiSequence = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'b', 'a',
+  ];
+  private konamiIndex = 0;
+  // The falling cards. Each is a suit glyph with a random drift, so the
+  // rain never falls the same way twice.
+  protected readonly konamiCards = signal<string[]>([]);
+  protected readonly konamiActive = signal(false);
+
+  @HostListener('window:keydown', ['$event'])
+  protected onKeydown(event: KeyboardEvent): void {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const want = this.konamiSequence[this.konamiIndex];
+    const wantKey = want.length === 1 ? want : want;
+    if (key === wantKey) {
+      this.konamiIndex++;
+      if (this.konamiIndex === this.konamiSequence.length) {
+        this.konamiIndex = 0;
+        this.triggerKonami();
+      }
+    } else {
+      // A wrong key resets, unless it is the start of a new attempt.
+      this.konamiIndex = key === this.konamiSequence[0] ? 1 : 0;
+    }
+  }
+
+  private triggerKonami(): void {
+    // Thirty cards, for the thirty lives. Shuffled suits, random drift.
+    const suits = ['♠', '♥', '♦', '♣'];
+    const cards = Array.from({ length: 30 }, () => suits[Math.floor(Math.random() * suits.length)]);
+    this.konamiCards.set(cards);
+    this.konamiActive.set(true);
+    // The rain lasts five seconds, then the felt is clear again.
+    setTimeout(() => this.konamiActive.set(false), 5000);
+  }
+
   protected resume(): void {
     this.setPaused(false);
   }
