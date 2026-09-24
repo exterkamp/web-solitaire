@@ -360,7 +360,12 @@ export class SolitaireScene extends Phaser.Scene {
 
     this.drop = next;
     if (animate) {
-      this.tweens.add({ targets: this.markings, y: next, duration: MOVE_MS, ease: 'Cubic.easeOut' });
+      this.tweens.add({
+        targets: this.markings,
+        y: next,
+        duration: MOVE_MS,
+        ease: 'Cubic.easeOut',
+      });
     } else {
       this.markings.setY(next);
     }
@@ -387,7 +392,11 @@ export class SolitaireScene extends Phaser.Scene {
     return offsets;
   }
 
-  private cardPosition(ref: PileRef, index: number, cards: readonly Card[]): { x: number; y: number } {
+  private cardPosition(
+    ref: PileRef,
+    index: number,
+    cards: readonly Card[],
+  ): { x: number; y: number } {
     const base = this.pileBase(ref);
     const offsets = this.fanOffsets(ref, cards);
     if (!this.table.fansUp(ref)) return { x: base.x, y: base.y + offsets[index] };
@@ -414,7 +423,12 @@ export class SolitaireScene extends Phaser.Scene {
       // happens to be empty - so the board has to say which is which before
       // there is a card on it to say it for them.
       if (slot.ghost) {
-        put([this.add.image(at.x, at.y, ghostSuitKey(this, slot.ghost)).setDisplaySize(30, 30).setAlpha(0.16)]);
+        put([
+          this.add
+            .image(at.x, at.y, ghostSuitKey(this, slot.ghost))
+            .setDisplaySize(30, 30)
+            .setAlpha(0.16),
+        ]);
       }
 
       // The arrow on the stock: the one slot whose meaning is not "put a card
@@ -436,7 +450,9 @@ export class SolitaireScene extends Phaser.Scene {
     // The heading, in the lettering a casino layout is printed in. It sits in
     // the band between the top row and the tableau, which is the only strip
     // of felt on this board that no card ever covers.
-    put(drawSectionLabel(this, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label, this.pixelRatio));
+    put(
+      drawSectionLabel(this, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label, this.pixelRatio),
+    );
 
     // One highlight per pile a card can be dropped on, kept hidden until a
     // run is dragged over it. Made once rather than per drag: a Graphics
@@ -447,7 +463,13 @@ export class SolitaireScene extends Phaser.Scene {
       const at = this.slotPosition(slot.ref);
       const g = this.add.graphics();
       g.lineStyle(2.5, HIGHLIGHT_COLOR, 0.95);
-      g.strokeRoundedRect(at.x - CARD_WIDTH / 2, at.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 6);
+      g.strokeRoundedRect(
+        at.x - CARD_WIDTH / 2,
+        at.y - CARD_HEIGHT / 2,
+        CARD_WIDTH,
+        CARD_HEIGHT,
+        6,
+      );
       g.setVisible(false);
       this.markings.add(g);
       this.slotHighlights.set(pileKey(slot.ref), g);
@@ -566,7 +588,13 @@ export class SolitaireScene extends Phaser.Scene {
         const to = this.cardPosition(pile.ref, index, pile.cards);
         if (sprite.card.faceUp !== card.faceUp) this.flipSprite(sprite, card.faceUp);
         if (animate && (Math.abs(sprite.x - to.x) > 0.5 || Math.abs(sprite.y - to.y) > 0.5)) {
-          this.tweens.add({ targets: sprite, x: to.x, y: to.y, duration: MOVE_MS, ease: 'Cubic.easeOut' });
+          this.tweens.add({
+            targets: sprite,
+            x: to.x,
+            y: to.y,
+            duration: MOVE_MS,
+            ease: 'Cubic.easeOut',
+          });
         } else {
           sprite.setPosition(to.x, to.y);
         }
@@ -673,10 +701,7 @@ export class SolitaireScene extends Phaser.Scene {
     const drag = this.drag;
     if (!drag) return;
     const board = this.toBoard(pointer);
-    if (
-      Math.abs(board.x - drag.startX) > TAP_SLOP ||
-      Math.abs(board.y - drag.startY) > TAP_SLOP
-    ) {
+    if (Math.abs(board.x - drag.startX) > TAP_SLOP || Math.abs(board.y - drag.startY) > TAP_SLOP) {
       drag.moved = true;
     }
 
@@ -689,7 +714,12 @@ export class SolitaireScene extends Phaser.Scene {
       sprite.setPosition(head.x, head.y + lift);
     });
     this.showHighlight(
-      drag.moved ? this.dropTarget(head, drag.sprites.map((sprite) => sprite.card)) : undefined,
+      drag.moved
+        ? this.dropTarget(
+            head,
+            drag.sprites.map((sprite) => sprite.card),
+          )
+        : undefined,
     );
   }
 
@@ -731,15 +761,14 @@ export class SolitaireScene extends Phaser.Scene {
     // it back where it was is not a thing anybody means to do. And something,
     // because when a device stutters the limit is what decides a tap was a
     // slow drag, and the answer to a tap that misses its window is silence.
-    const tapped = landed || thrown || drag.moved
-      ? undefined
-      : this.table.autoTarget(this.session.state, drag.from, drag.count);
+    const tapped =
+      landed || thrown || drag.moved
+        ? undefined
+        : this.table.autoTarget(this.session.state, drag.from, drag.count);
     const to = landed ?? thrown ?? tapped;
 
     this.drag = undefined;
-    const played = to
-      ? this.play({ kind: 'play', from: drag.from, to, count: drag.count })
-      : false;
+    const played = to ? this.play({ kind: 'play', from: drag.from, to, count: drag.count }) : false;
     if (played && thrown) this.landHard(drag.sprites[0]);
     // A refused drop puts the run back where it came from rather than leaving
     // it where the thumb let go. Snapping back is also the only feedback a
@@ -769,7 +798,9 @@ export class SolitaireScene extends Phaser.Scene {
    * to the same place would have.
    */
   private flickTarget(
-    drag: DragState, pointer: Phaser.Input.Pointer, board: { x: number; y: number },
+    drag: DragState,
+    pointer: Phaser.Input.Pointer,
+    board: { x: number; y: number },
   ): PileRef | undefined {
     if (drag.count !== 1 || !drag.moved) return undefined;
     const velocity = pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime });
@@ -835,12 +866,10 @@ export class SolitaireScene extends Phaser.Scene {
    * left to right. A game with no stock or no waste simply has fewer entries.
    */
   focusPiles(): { ref: PileRef; x: number; y: number }[] {
-    return this.table
-      .piles(this.session.state)
-      .map((pile) => {
-        const at = this.pileBase(pile.ref);
-        return { ref: pile.ref, x: at.x, y: at.y };
-      });
+    return this.table.piles(this.session.state).map((pile) => {
+      const at = this.pileBase(pile.ref);
+      return { ref: pile.ref, x: at.x, y: at.y };
+    });
   }
 
   /**
@@ -865,19 +894,9 @@ export class SolitaireScene extends Phaser.Scene {
     return this.play({ kind: 'play', from: ref, to, count: liftable.length });
   }
 
-  /** How long the game in progress has been running, in seconds. */
-  elapsed(): number {
-    return this.session?.elapsed() ?? 0;
-  }
-
   /** The board's own dimensions, for placing DOM over it. */
   gameSize(): { width: number; height: number } {
-    return { width: this.width, height: this.height };
-  }
-
-  /** How long the game in progress has been running, in seconds. */
-  elapsed(): number {
-    return this.session?.elapsed() ?? 0;
+    return { width: this.width, height: GAME_HEIGHT };
   }
 
   /**
@@ -996,7 +1015,9 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   // Where a card is, in terms the rules understand.
-  private locate(cardId: string): { ref: PileRef; pile: readonly Card[]; index: number } | undefined {
+  private locate(
+    cardId: string,
+  ): { ref: PileRef; pile: readonly Card[]; index: number } | undefined {
     for (const pile of this.table.piles(this.session.state)) {
       const index = pile.cards.findIndex((card) => card.id === cardId);
       if (index >= 0) return { ref: pile.ref, pile: pile.cards, index };
@@ -1013,12 +1034,13 @@ export class SolitaireScene extends Phaser.Scene {
    * table does and is not what "the pointer is inside this rectangle" gives
    * you.
    */
-  private dropTarget(
-    head: { x: number; y: number }, cards: readonly Card[],
-  ): PileRef | undefined {
+  private dropTarget(head: { x: number; y: number }, cards: readonly Card[]): PileRef | undefined {
     if (!cards.length) return undefined;
     const card = new Phaser.Geom.Rectangle(
-      head.x - CARD_WIDTH / 2, head.y - CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT,
+      head.x - CARD_WIDTH / 2,
+      head.y - CARD_HEIGHT / 2,
+      CARD_WIDTH,
+      CARD_HEIGHT,
     );
     let best: { ref: PileRef; area: number } | undefined;
     for (const { ref, rect } of this.dropZones()) {
@@ -1047,7 +1069,9 @@ export class SolitaireScene extends Phaser.Scene {
 
   private dropZones(): { ref: PileRef; rect: Phaser.Geom.Rectangle }[] {
     const zones: { ref: PileRef; rect: Phaser.Geom.Rectangle }[] = [];
-    const cards = new Map(this.table.piles(this.session.state).map((p) => [pileKey(p.ref), p.cards]));
+    const cards = new Map(
+      this.table.piles(this.session.state).map((p) => [pileKey(p.ref), p.cards]),
+    );
 
     for (const slot of this.table.slots(this.handedness)) {
       if (!isTarget(slot)) continue;
@@ -1111,8 +1135,9 @@ export class SolitaireScene extends Phaser.Scene {
     // which is the one part of finishing a hand anybody actually watches.
     const piles = this.table.piles(this.session.state);
     const homes = piles.filter((pile) => pile.ref.kind === 'foundation');
-    const source = (homes.length ? homes : piles.filter((pile) => pile.cards.length))
-      .map((pile) => pile.cards);
+    const source = (homes.length ? homes : piles.filter((pile) => pile.cards.length)).map(
+      (pile) => pile.cards,
+    );
     const deepest = Math.max(0, ...source.map((pile) => pile.length));
     const queue: Card[] = [];
     for (let depth = deepest - 1; depth >= 0; depth--) {
