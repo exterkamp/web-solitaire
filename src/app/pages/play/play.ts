@@ -168,6 +168,7 @@ export class Play implements AfterViewInit, OnDestroy {
       backColor: this.settings.backColor(),
       handedness: this.settings.handedness(),
       showShuffle: this.settings.showShuffle(),
+      deckStyle: this.settings.deckStyle(),
       events: {
         changed: (view) => this.view.set(view),
         won: (summary) => this.onWin(summary),

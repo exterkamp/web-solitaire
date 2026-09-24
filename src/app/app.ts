@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ViewContainerRef, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { filter } from 'rxjs';
@@ -16,6 +16,13 @@ import { filter } from 'rxjs';
 })
 export class App {
   private readonly router = inject(Router);
+
+  // Public, and named this, because ngx-color-picker looks for exactly it:
+  // `cpUseRootViewContainer` attaches a colour dialog here rather than inside
+  // the scrolling settings list, where a popup near the foot of the page is
+  // clipped by the list's own overflow. Without it the library warns and
+  // falls back to wherever the swatch happens to live.
+  readonly vcRef = inject(ViewContainerRef);
   // A new version has been downloaded and is waiting for a reload.
   private waiting = false;
 

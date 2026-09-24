@@ -1,0 +1,63 @@
+@use 'type' as *;
+
+:host {
+  display: block;
+}
+
+.dye {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(253, 253, 253, 0.16);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 2px;
+  }
+}
+
+// Marked the way a pressed button is, so that tapping it again to close
+// reads as the obvious thing to do rather than as a guess.
+.dye--open {
+  border-color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+}
+
+// A card rather than a dot: these are colours a card is printed in, and the
+// shape is half of what tells you which one you are about to change.
+.dye__chip {
+  flex: none;
+  width: 26px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.dye__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dye__label {
+  @include display-type;
+  font-size: 0.85rem;
+  color: #fdfdfd;
+}
+
+.dye__hint {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: #cfead0;
+  opacity: 0.85;
+}

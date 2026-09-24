@@ -24,26 +24,74 @@
         </button>
       }
     </div>
+
+    <!-- The colour the pattern is printed over, which used to be six fat
+         circles and its own heading. It is one decision about the deck, so
+         it is one line under the deck, in the same control the custom
+         colours use. -->
+    <app-dye-swatch
+      class="setting__back"
+      label="Back colour"
+      hint="What the pattern is printed over"
+      [color]="css(settings.backColor())"
+      [presets]="presets"
+      [open]="openDye() === 'back'"
+      (toggled)="toggleDye('back')"
+      (closed)="dyeClosed('back')"
+      (picked)="settings.backColor.set(asColor($event))"
+    />
   </div>
 
   <div class="setting">
-    <span class="setting__label">Back colour</span>
+    <span class="setting__label">Your own deck</span>
     <p class="setting__note">
-      What the pattern is printed over. In Nertz this is how you tell four
-      players apart; here it is simply yours.
+      The seven above are palettes, and this is the eighth &mdash; yours. Every
+      colour a card is made of, including the four the portraits are painted
+      with.
     </p>
-    <div class="setting__colors">
-      @for (color of colors; track color) {
+
+    <!-- Not a drawing of a card: the board's own renderer, given the board's
+         own deck. The preview and the table cannot disagree because there is
+         only one of them. -->
+    <app-deck-preview />
+
+    <div class="setting__options">
+      @for (option of customOptions; track option.value) {
         <button
           type="button"
-          class="swatch"
-          [class.swatch--active]="settings.backColor() === color"
-          [style.background-color]="css(color)"
-          [attr.aria-label]="'Card back colour ' + css(color)"
-          (click)="settings.backColor.set(color)"
-        ></button>
+          class="pill"
+          [class.pill--active]="settings.customDeck() === option.value"
+          (click)="setCustom(option.value)"
+        >
+          <span class="pill__label">{{ option.label }}</span>
+          <span class="pill__hint">{{ option.hint }}</span>
+        </button>
       }
     </div>
+
+    @if (settings.customDeck()) {
+      <div class="setting__dyes">
+        @for (dye of dyes; track dye.key) {
+          <app-dye-swatch
+            [label]="dye.label"
+            [hint]="dye.hint"
+            [color]="dye.value()"
+            [presets]="presets"
+            [open]="openDye() === dye.key"
+            (toggled)="toggleDye(dye.key)"
+            (closed)="dyeClosed(dye.key)"
+            (picked)="dye.set($event)"
+          />
+        }
+      </div>
+
+      <!-- The way back from a deck that has gone wrong, which a page of
+           colour pickers needs and which is hardest to find precisely when
+           you most need it - when the cards have stopped being readable. -->
+      <button type="button" class="dye-reset" (click)="resetDeck()">
+        Start again from {{ labels[settings.deckTheme()] }}
+      </button>
+    }
   </div>
 
   <div class="setting">

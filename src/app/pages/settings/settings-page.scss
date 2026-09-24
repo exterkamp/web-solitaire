@@ -118,29 +118,39 @@ h1 {
   margin: 0.5rem 0 0;
 }
 
-.setting__colors {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
+// One swatch, under the deck it belongs to, and no wider than the deck
+// tiles above it.
+.setting__back {
+  width: 100%;
+  max-width: 230px;
+  margin-top: 0.35rem;
 }
 
-// Big enough to hit with a thumb, and round, so a row of them does not read
-// as a row of cards.
-.swatch {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid rgba(253, 253, 253, 0.5);
-  cursor: pointer;
+// The seven colours a custom deck is made of. Two columns on anything but
+// the narrowest phone: seven rows of one is a scroll, and the four court
+// colours belong side by side because they are judged against each other.
+.setting__dyes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
 
-  &--active {
-    border-color: #ffd166;
-    border-width: 3px;
-  }
+// Quieter than the pills above it: it is the undo, not a setting.
+.dye-reset {
+  @include display-type;
+  font-size: 0.8rem;
+  color: #cfead0;
+  background: none;
+  border: 1px solid rgba(207, 234, 208, 0.35);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
 
   &:focus-visible {
     outline: 2px solid #ffd166;
-    outline-offset: 3px;
+    outline-offset: 2px;
   }
 }

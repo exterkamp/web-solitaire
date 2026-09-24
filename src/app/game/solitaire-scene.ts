@@ -14,6 +14,7 @@ import {
 import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
 import { defineStack } from 'phaser-card-engine';
+import { DeckStyle } from './deck-style';
 import { riffleShuffle } from 'phaser-card-engine/phaser';
 import {
   CardSprite, ghostSuitKey, preloadCardArt, renderCourtArt, setDeck,
@@ -85,6 +86,8 @@ export interface BoardInit {
   handedness: Handedness;
   /** Whether a new game opens with a riffle. */
   showShuffle: boolean;
+  /** The deck the player drew, if they drew one. */
+  deckStyle?: DeckStyle;
   events: BoardEvents;
 }
 
@@ -180,6 +183,7 @@ export class SolitaireScene extends Phaser.Scene {
   private backColor!: number;
   private handedness: Handedness = 'right';
   private showShuffle = true;
+  private deckStyle: DeckStyle | undefined;
   // True while the pack is being riffled. A second deal started in the middle
   // of that would destroy the sprites the first one's meshes are standing in
   // for, and leave the board holding cards from two packs.
@@ -254,6 +258,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.backColor = data.backColor;
     this.handedness = data.handedness;
     this.showShuffle = data.showShuffle;
+    this.deckStyle = data.deckStyle;
     this.report = data.events;
     this.drop = this.table.drops ? MAX_BOARD_DROP : 0;
     this.slotMap.clear();
@@ -269,7 +274,7 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   preload(): void {
-    setDeck(this.theme, this.backColor);
+    setDeck(this.theme, this.backColor, this.deckStyle);
     preloadCardArt(this, this.theme);
   }
 

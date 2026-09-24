@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import {
-  COURT_PALETTES,
   DEFAULT_BACK_COLOR,
   DEFAULT_DECK_THEME,
   DeckTheme,
@@ -13,6 +12,7 @@ import {
   suitTexture,
 } from 'phaser-card-engine/phaser';
 import { CARD_WIDTH } from './config';
+import { DeckStyle, themeStyle } from './deck-style';
 import { Card } from './deck';
 
 // How a card is drawn, which is phaser-card-engine's job now.
@@ -32,12 +32,7 @@ import { Card } from './deck';
 // threading it through every call site that makes a card.
 let currentTheme: DeckTheme = DEFAULT_DECK_THEME;
 let currentBackColor: number = DEFAULT_BACK_COLOR;
-
-// Lighter than the package's default, which is the paper darkened a shade.
-// The difference is two values of grey and nobody will ever see it; it is
-// here because this board had its own number and there was no reason to
-// change what the cards look like while changing what draws them.
-const CARD_EDGE_COLOR = 0xc9c9c9;
+let currentStyle: DeckStyle = themeStyle(DEFAULT_DECK_THEME);
 
 // What the courts are rasterised at. A card here is 60 units wide and the
 // densest phone triples that, so 240 is twice what is ever shown and a
@@ -45,9 +40,14 @@ const CARD_EDGE_COLOR = 0xc9c9c9;
 const COURT_RASTER = 240;
 
 /** Which deck every card built after this uses. */
-export function setDeck(theme: DeckTheme, backColor: number): void {
+export function setDeck(theme: DeckTheme, backColor: number, style?: DeckStyle): void {
   currentTheme = theme;
   currentBackColor = backColor;
+  // A deck of the player's own, or the theme's. Held here for the same reason
+  // the theme is: a CardSprite is built one at a time from all over the
+  // scene, and threading a palette through every call site that makes a card
+  // is how one of them ends up with last week's deck.
+  currentStyle = style ?? themeStyle(theme);
 }
 
 /**
@@ -73,7 +73,7 @@ export function preloadCardArt(scene: Phaser.Scene, theme: DeckTheme): void {
  * immediately and the courts catch up.
  */
 export function renderCourtArt(scene: Phaser.Scene): Promise<void> {
-  return renderCourts(scene, COURT_PALETTES[currentTheme], { width: COURT_RASTER });
+  return renderCourts(scene, currentStyle.court, { width: COURT_RASTER });
 }
 
 /**
@@ -92,8 +92,11 @@ export class CardSprite extends EngineCardSprite {
       width: CARD_WIDTH,
       theme: currentTheme,
       backColor: currentBackColor,
-      edge: CARD_EDGE_COLOR,
+      edge: currentStyle.edge,
       courtWidth: COURT_RASTER,
+      paper: currentStyle.paper,
+      ink: currentStyle.ink,
+      courtPalette: currentStyle.court,
     });
     this.setPosition(x, y);
   }
