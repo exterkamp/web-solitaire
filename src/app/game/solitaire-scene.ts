@@ -13,6 +13,8 @@ import {
 } from './config';
 import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
+import { defineStack } from 'phaser-card-engine';
+import { riffleShuffle } from 'phaser-card-engine/phaser';
 import {
   CardSprite, ghostSuitKey, preloadCardArt, renderCourtArt, setDeck,
 } from './card-sprite';
@@ -95,6 +97,10 @@ const DRAW_MS = 150;
 const DEAL_STAGGER_MS = 34;
 const DEAL_MS = 220;
 const FLIP_MS = 110;
+// Carrying the shuffled pack from the middle of the table to wherever the
+// deal comes from. Short: it is a beat between the shuffle and the deal, not
+// a third thing to sit through.
+const CARRY_MS = 190;
 // Between two cards of an automatic finish. Slower than a move you made,
 // because this one is a thing to watch rather than a thing you did.
 const FINISH_STEP_MS = 90;
@@ -149,6 +155,18 @@ interface Faller {
   sprite: CardSprite;
   vx: number;
   vy: number;
+}
+
+/** Somewhere on the board. */
+interface Place { x: number; y: number }
+
+/** A card, and where it is going once the shuffling stops. */
+interface Placement {
+  sprite: CardSprite;
+  to: Place;
+  faceUp: boolean;
+  /** Dealt out card by card, rather than simply put down. */
+  dealt: boolean;
 }
 
 export class SolitaireScene extends Phaser.Scene {
@@ -477,31 +495,55 @@ export class SolitaireScene extends Phaser.Scene {
     this.updateDrop(false);
     this.busy = true;
 
-    // Only the tableau is dealt card by card. Everything else is simply there
-    // when the dealing stops, which is what it looks like when somebody deals
-    // a hand in front of you.
+    // Every card starts in the dealer's hand, face down, because that is
+    // where a shuffle happens. Where each one is going is worked out now and
+    // acted on after the riffle.
     const origin = this.table.dealOrigin(this.handedness);
     const from = { x: origin.x, y: origin.y + this.drop };
-    const dealt: { sprite: CardSprite; to: { x: number; y: number }; faceUp: boolean }[] = [];
+    const going: Placement[] = [];
 
     for (const pile of this.table.piles(this.session.state)) {
       pile.cards.forEach((card, index) => {
-        const to = this.cardPosition(pile.ref, index, pile.cards);
-        if (pile.ref.kind !== 'tableau') {
-          this.makeSprite(card, to.x, to.y);
-          return;
-        }
-        // Dealt face down and turned over on arrival, in a game that has
-        // anything face down at all. FreeCell does not, and fifty-two cards
-        // each flipping on landing is a lot of turning over for a deal where
-        // nothing was ever hidden.
-        const sprite = this.makeSprite(
-          { ...card, faceUp: this.table.dealsFaceDown ? false : card.faceUp },
-          from.x,
-          from.y,
-        );
-        dealt.push({ sprite, to, faceUp: card.faceUp });
+        const sprite = this.makeSprite({ ...card, faceUp: false }, from.x, from.y);
+        going.push({
+          sprite,
+          to: this.cardPosition(pile.ref, index, pile.cards),
+          faceUp: card.faceUp,
+          // Only the tableau is dealt card by card. Everything else is simply
+          // there when the dealing stops, which is what it looks like when
+          // somebody deals a hand in front of you.
+          dealt: pile.ref.kind === 'tableau',
+        });
       });
+    }
+    this.restack();
+    void this.shuffleThenDeal(going, from);
+  }
+
+  /**
+   * The riffle, and then the deal.
+   *
+   * Split out of newGame because it waits and newGame does not: the scene
+   * calls that one from `create`, where nothing can be awaited, and the page
+   * calls it from a button.
+   */
+  private async shuffleThenDeal(going: readonly Placement[], from: Place): Promise<void> {
+    await this.riffle(going.map((entry) => entry.sprite), from);
+
+    const dealt: Placement[] = [];
+    for (const entry of going) {
+      if (!entry.dealt) {
+        // Put down where it belongs, the moment the shuffling stops.
+        entry.sprite.setPosition(entry.to.x, entry.to.y);
+        entry.sprite.setFaceUp(entry.faceUp);
+        continue;
+      }
+      // Dealt face down and turned over on arrival, in a game that has
+      // anything face down at all. FreeCell does not, and fifty-two cards
+      // each flipping on landing is a lot of turning over for a deal where
+      // nothing was ever hidden.
+      if (!this.table.dealsFaceDown) entry.sprite.setFaceUp(entry.faceUp);
+      dealt.push(entry);
     }
     this.restack();
 
@@ -530,6 +572,49 @@ export class SolitaireScene extends Phaser.Scene {
       this.publish();
     });
     this.publish();
+  }
+
+  /**
+   * Shuffles the pack, in front of you.
+   *
+   * The deck is already in its order - the deal decided that before any of
+   * this - so what this shows is a riffle worked backwards from the deck it
+   * has to produce. Brisk on purpose: a shuffle is something to see, not
+   * something to wait through, and this one sits in front of every new game.
+   *
+   * Skipped for anyone who has asked for less movement. A pack of cards
+   * flexing and springing apart is precisely the kind of thing that setting
+   * is about, and the deal reads perfectly well without it.
+   */
+  private async riffle(sprites: readonly CardSprite[], at: Place): Promise<void> {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Shuffled in the middle of the table rather than where the deal starts.
+    // Klondike deals off the stock, and the stock sits against the edge of
+    // the board - a pack cut in half there puts one of the two halves off the
+    // table. The middle is where a pack gets shuffled anyway.
+    const middle = { x: this.width / 2, y: at.y };
+    for (const sprite of sprites) sprite.setPosition(middle.x, middle.y);
+
+    await riffleShuffle(
+      this,
+      this.cardLayer,
+      sprites,
+      defineStack({ id: 'deal', x: middle.x, y: middle.y }),
+      { duration: 140, stagger: 4 },
+    );
+
+    // And carried over to where the deal comes from, squared.
+    await new Promise<void>((settled) => {
+      this.tweens.add({
+        targets: sprites as CardSprite[],
+        x: at.x,
+        y: at.y,
+        duration: CARRY_MS,
+        ease: 'Cubic.easeInOut',
+        onComplete: () => settled(),
+      });
+    });
   }
 
   private makeSprite(card: Card, x: number, y: number): CardSprite {
