@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import Phaser from 'phaser';
 import { BOARD_SCENE, createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
@@ -108,6 +109,8 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly variant = variantOf(this.gameId, this.drawCount);
 
   constructor() {
+    // The tab says which game is on the felt, not just the site name.
+    inject(Title).setTitle(`${GAME_TITLES[this.gameId]} · Solitaire`);
     // The two state changes that matter to someone who cannot see the
     // board: winning it, and running out of moves. Announced through the
     // live region in the template.

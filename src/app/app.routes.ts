@@ -6,7 +6,7 @@ import { SettingsPage } from './pages/settings/settings-page';
 import { StatsPage } from './pages/stats/stats-page';
 
 export const routes: Routes = [
-  { path: '', component: MainMenu },
+  { path: '', component: MainMenu, title: 'Solitaire' },
 
   // Every game gets a page between the menu and the board, where it says
   // what it is and asks whatever it needs to ask. Including the game with
@@ -22,8 +22,8 @@ export const routes: Routes = [
   // board of whichever game happened to be remembered.
   { path: 'play', redirectTo: '' },
 
-  { path: 'settings', component: SettingsPage },
-  { path: 'stats', component: StatsPage },
+  { path: 'settings', component: SettingsPage, title: 'Settings · Solitaire' },
+  { path: 'stats', component: StatsPage, title: 'Record · Solitaire' },
   // Anything else is the menu. There is no signed-in state and no deep link
   // worth preserving, so a stale bookmark is better answered with the front
   // door than with a page saying it is not a page.
