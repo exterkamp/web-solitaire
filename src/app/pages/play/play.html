@@ -90,8 +90,14 @@
   </header>
 
   <!-- Phaser builds its canvas into this and scales it to fit, so the element
-       needs a size of its own before the board exists. See play.scss. -->
-  <div class="board" #board></div>
+       needs a size of its own before the board exists. See play.scss.
+       The canvas is a silent image to a screen reader; the label says what
+       game is on it and the numbers a sighted player watches. -->
+  <div class="board" #board role="img" [attr.aria-label]="boardLabel()"></div>
+
+  <!-- Move announcements and state changes, for screen readers. Visually
+       hidden; the sighted equivalent is the board itself. -->
+  <div class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</div>
 
   @if (paused()) {
     <!-- Over the whole screen rather than only the board: while this is up,

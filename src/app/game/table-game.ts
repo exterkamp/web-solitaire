@@ -37,6 +37,26 @@ const GAME_IDS: readonly GameId[] = [
   'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
+/**
+ * What each game is called where a person reads it: page titles, the menu,
+ * the record book, screen-reader labels. One place so the board, the setup
+ * page, and the browser tab cannot spell a name three different ways.
+ */
+export const GAME_TITLES: Record<GameId, string> = {
+  klondike: 'Klondike',
+  freecell: 'FreeCell',
+  yukon: 'Yukon',
+  canfield: 'Canfield',
+  spiderette: 'Spiderette',
+  scorpion: 'Scorpion',
+  seahaven: 'Seahaven Towers',
+  tripeaks: 'Tri Peaks',
+  pyramid: 'Pyramid',
+  golf: 'Golf',
+  blackhole: 'Black Hole',
+  acesup: 'Aces Up',
+};
+
 /** One pile, and what is in it. The board draws piles in the order given. */
 export interface PileCards {
   ref: PileRef;
