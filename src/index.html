@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <title>solitaire</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- maximum-scale and user-scalable are deliberately absent: blocking
+       pinch-zoom fails WCAG 1.4.4, and nothing on the board needs the page
+       itself to stay fixed. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#07241f">
   <meta name="description" content="Klondike solitaire. No account, no server; everything stays in this browser.">
   <!-- The king of diamonds, cropped to his head - the same icons the deck
