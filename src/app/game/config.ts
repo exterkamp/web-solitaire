@@ -1,3 +1,5 @@
+import { CARD_HEIGHT, CARD_WIDTH, cardFaceMetrics } from 'phaser-card-engine';
+
 // Portrait, phone-first base resolution. Phaser's Scale.FIT mode scales this
 // uniformly to whatever the device screen is, so these are logical units,
 // not real pixels.
@@ -20,8 +22,10 @@ export const CORNER_INK_HALF_HEIGHT = 9.7;
 export const CORNER_INK_TOP_MARGIN = 6;
 export const CORNER_INK_BOTTOM_MARGIN = 4;
 
-export const CARD_PEEK_HEIGHT =
-  CORNER_INK_TOP_MARGIN + 2 * CORNER_INK_HALF_HEIGHT + CORNER_INK_BOTTOM_MARGIN;
+// Which is what the package works out from the same measurements, and the
+// two agreeing to the decimal is why the renderer could be swapped for its
+// own without a card moving.
+export const CARD_PEEK_HEIGHT = cardFaceMetrics(CARD_WIDTH).peek;
 
 // What a face-down card in a pile shows of itself. There is nothing to read
 // on the back, so it only has to be visibly a card: enough to see its edge
@@ -38,12 +42,11 @@ export const CARD_BACK_PEEK_HEIGHT = 11;
 export const GAME_HEIGHT = 720;
 
 // Poker size is 2.5 x 3.5 inches - a 5:7 ratio - and cards look wrong at
-// anything else, so the two are kept in that proportion exactly. Width is
-// the binding constraint here rather than height, which is the one real
-// difference between this board and Nertz's: Klondike lays seven piles
+// anything else. The package keeps them in that proportion; 60 units wide is
+// its default and this board's binding constraint, which is the one real
+// difference between this table and Nertz's: Klondike lays seven piles
 // across, and seven cards plus the gaps between them have to fit in 480.
-export const CARD_WIDTH = 60;
-export const CARD_HEIGHT = (CARD_WIDTH * 7) / 5;
+export { CARD_HEIGHT, CARD_WIDTH };
 
 // Seven tableau piles, four foundations, a stock and a waste. Only the
 // tableau count sets the column pitch - the top row is laid out into the
@@ -128,31 +131,21 @@ export const BOARD_DROP_STEP = 65;
 // ever notices.
 export const MIN_BOARD_DROP = BOARD_DROP_STEP;
 
-// The four natural suits, and nothing else - this is a plain deck. They are
-// in the order the foundations sit in, left to right.
-export const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'] as const;
-export type Suit = (typeof SUITS)[number];
-
-export const RANKS = [
-  'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K',
-] as const;
-export type Rank = (typeof RANKS)[number];
-
-export const RED_SUITS = new Set<Suit>(['hearts', 'diamonds']);
-
-export function isRed(suit: Suit): boolean {
-  return RED_SUITS.has(suit);
-}
-
-// Klondike's tableau alternates colour rather than suit, so this - not the
-// suit - is what a placement rule actually asks about.
-export function sameColour(a: Suit, b: Suit): boolean {
-  return isRed(a) === isRed(b);
-}
-
-// Ace is 1 and king is 13. Foundations build up from the ace and the tableau
-// builds down from the king, and neither wraps: this is the number both of
-// those compare.
-export function rankValue(rank: Rank): number {
-  return RANKS.indexOf(rank) + 1;
-}
+// The four natural suits and the thirteen ranks, from the package. They are
+// in the order the foundations sit in, left to right - which the package
+// keeps, because it is the order a deck is built in there too.
+//
+// `sameColor` is the American spelling the package settled on. Klondike's
+// tableau alternates colour rather than suit, so that - not the suit - is
+// what a placement rule actually asks about. `rankValue` puts the ace at 1
+// and the king at 13, and neither the foundations building up nor the tableau
+// building down wraps.
+export {
+  RANKS,
+  RED_SUITS,
+  SUITS,
+  isRed,
+  rankValue,
+  sameColor,
+} from 'phaser-card-engine';
+export type { Rank, Suit } from 'phaser-card-engine';

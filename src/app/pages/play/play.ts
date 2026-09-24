@@ -184,6 +184,7 @@ export class Play implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.clock) clearInterval(this.clock);
+    if (this.konamiTimer) clearTimeout(this.konamiTimer);
     this.stopGamepad();
     window.removeEventListener('popstate', this.onPopState);
     // A game walked away from mid-hand is a game lost, for the same reason it
@@ -252,9 +253,16 @@ export class Play implements AfterViewInit, OnDestroy {
   // year-old handshake, and this board knows it. Get it right and the cards
   // rain.
   private readonly konamiSequence = [
-    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
-    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
-    'b', 'a',
+    'ArrowUp',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowLeft',
+    'ArrowRight',
+    'b',
+    'a',
   ];
   private konamiIndex = 0;
   // The falling cards. Each is a suit glyph with a random drift, so the
@@ -266,8 +274,7 @@ export class Play implements AfterViewInit, OnDestroy {
   protected onKeydown(event: KeyboardEvent): void {
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     const want = this.konamiSequence[this.konamiIndex];
-    const wantKey = want.length === 1 ? want : want;
-    if (key === wantKey) {
+    if (key === want) {
       this.konamiIndex++;
       if (this.konamiIndex === this.konamiSequence.length) {
         this.konamiIndex = 0;
@@ -279,6 +286,8 @@ export class Play implements AfterViewInit, OnDestroy {
     }
   }
 
+  private konamiTimer: ReturnType<typeof setTimeout> | undefined;
+
   private triggerKonami(): void {
     // Thirty cards, for the thirty lives. Shuffled suits, random drift.
     const suits = ['♠', '♥', '♦', '♣'];
@@ -286,7 +295,11 @@ export class Play implements AfterViewInit, OnDestroy {
     this.konamiCards.set(cards);
     this.konamiActive.set(true);
     // The rain lasts five seconds, then the felt is clear again.
-    setTimeout(() => this.konamiActive.set(false), 5000);
+    if (this.konamiTimer) clearTimeout(this.konamiTimer);
+    this.konamiTimer = setTimeout(() => {
+      this.konamiActive.set(false);
+      this.konamiTimer = undefined;
+    }, 5000);
   }
 
   protected resume(): void {

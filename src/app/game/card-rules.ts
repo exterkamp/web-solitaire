@@ -1,4 +1,4 @@
-import { RANKS, SUITS, Suit, rankValue, sameColour } from './config';
+import { RANKS, SUITS, Suit, rankValue, sameColor } from './config';
 import { Card } from './deck';
 
 const RANK_COUNT = RANKS.length;
@@ -40,7 +40,7 @@ export function canPlaceOnFoundation(card: Card, foundation: readonly Card[]): b
  */
 export function buildsDown(card: Card, onto: Card): boolean {
   if (!onto.faceUp) return false;
-  return !sameColour(card.suit, onto.suit) && rankValue(card.rank) === rankValue(onto.rank) - 1;
+  return !sameColor(card.suit, onto.suit) && rankValue(card.rank) === rankValue(onto.rank) - 1;
 }
 
 /**

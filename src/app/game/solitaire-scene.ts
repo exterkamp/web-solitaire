@@ -13,7 +13,9 @@ import {
 } from './config';
 import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
-import { CardSprite, ghostSuitKey, preloadCardArt, setDeck } from './card-sprite';
+import {
+  CardSprite, ghostSuitKey, preloadCardArt, renderCourtArt, setDeck,
+} from './card-sprite';
 import { Move, PileRef, pileKey, samePile } from './piles';
 import { GameView, PileSlot, TableGame } from './table-game';
 import { Handedness } from './settings-types';
@@ -246,8 +248,14 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   create(): void {
+    // The courts are drawn rather than loaded, which cannot go in preload()
+    // because rasterising twelve of them is asynchronous and Phaser's loader
+    // has no way to wait for it. Not awaited: a card dealt before its
+    // portrait is ready shows its centre pip and takes the portrait when it
+    // lands, so the deal does not wait either.
+    void renderCourtArt(this);
+
     this.pixelRatio = window.devicePixelRatio || 1;
-    CardSprite.textResolution = this.pixelRatio;
 
     drawTableSurface(this, this.pixelRatio);
 

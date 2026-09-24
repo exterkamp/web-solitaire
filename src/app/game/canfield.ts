@@ -1,4 +1,4 @@
-import { FOUNDATION_COUNT, RANKS, Rank, rankValue, sameColour } from './config';
+import { FOUNDATION_COUNT, RANKS, Rank, rankValue, sameColor } from './config';
 import { Card, buildDeck, shuffle } from './deck';
 import { Move, PileRef } from './piles';
 import { foundationIndexOf, topOf } from './card-rules';
@@ -151,7 +151,7 @@ export function canPlaceOnTableau(
   const top = topOf(pile);
   if (!top) return state.reserve.length === 0;
   if (!top.faceUp) return false;
-  return !sameColour(card.suit, top.suit) && card.rank === rankBelow(top.rank);
+  return !sameColor(card.suit, top.suit) && card.rank === rankBelow(top.rank);
 }
 
 /**
@@ -169,7 +169,7 @@ function isWrappingRun(pile: readonly Card[], index: number): boolean {
     if (!pile[i].faceUp) return false;
     if (i > index) {
       const above = pile[i - 1];
-      if (sameColour(pile[i].suit, above.suit)) return false;
+      if (sameColor(pile[i].suit, above.suit)) return false;
       if (pile[i].rank !== rankBelow(above.rank)) return false;
     }
   }
