@@ -12,6 +12,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
+import { drawChipStack, ensureChipTextures } from './chip';
 import { DeckTheme } from './deck-theme';
 import { defineStack } from 'phaser-card-engine';
 import { DeckStyle } from './deck-style';
@@ -212,6 +213,9 @@ export class SolitaireScene extends Phaser.Scene {
   // on top of the printing rather than under it.
   private markings!: Phaser.GameObjects.Container;
   private cardLayer!: Phaser.GameObjects.Container;
+  // The score, in chips. Rebuilt whole on every publish() rather than
+  // diffed - see renderChips.
+  private chipLayer!: Phaser.GameObjects.Container;
 
   // One sprite per card, kept for the life of the deal and moved rather than
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
@@ -292,10 +296,13 @@ export class SolitaireScene extends Phaser.Scene {
 
     drawTableSurface(this, this.pixelRatio);
 
+    ensureChipTextures(this);
+
     this.root = this.add.container(0, 0).setScale(this.pixelRatio);
     this.markings = this.add.container(0, 0);
     this.cardLayer = this.add.container(0, 0);
-    this.root.add([this.markings, this.cardLayer]);
+    this.chipLayer = this.add.container(0, 0);
+    this.root.add([this.markings, this.cardLayer, this.chipLayer]);
 
     this.printLayout();
 
@@ -744,9 +751,11 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   private publish(): void {
+    const view = this.table.view(this.session.state);
+    this.renderChips(view.score);
     this.report.changed({
       // Whatever this game keeps: a score and a stock, or free cells.
-      ...this.table.view(this.session.state),
+      ...view,
       moves: this.session.moves,
       showsMoves: this.table.showsMoves,
       canUndo: this.session.canUndo,
@@ -754,6 +763,22 @@ export class SolitaireScene extends Phaser.Scene {
       stuck: this.session.stuck,
       won: this.session.won,
     });
+  }
+
+  // The score, in chips, sitting on the felt in the one place every game
+  // leaves empty: the band between the top row and the tableau (see
+  // TABLEAU_TOP_Y's own note - it's where the game's name is printed, and
+  // nowhere else), to the right of that lettering rather than under it.
+  // Rebuilt from scratch each time rather than diffed, the same call
+  // restack() makes about the cards themselves - a handful of image sprites
+  // is cheap enough that keeping score's own diff logic in sync with
+  // chip.ts's would cost more than it saved.
+  private renderChips(score: number | undefined): void {
+    this.chipLayer.removeAll(true);
+    if (score === undefined) return;
+    const anchorX = this.width - BOARD_MARGIN - 21;
+    const anchorY = TABLEAU_TOP_Y - 20;
+    this.chipLayer.add(drawChipStack(this, anchorX, anchorY, score));
   }
 
   // --- what the player does -----------------------------------------------
