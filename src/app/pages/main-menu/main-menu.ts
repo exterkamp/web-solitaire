@@ -206,11 +206,18 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     // itself going dark. A near-zero floor was tried first and made the
     // stagger read as a single spotlight sweeping over an otherwise
     // invisible word rather than a lit word with life in it.
+    //
+    // Two explicit legs (dim, then relight) rather than `alternate: true` -
+    // the same fix the frame needed for the same reason. Alternate reverses
+    // the whole tween every other loop, and reversing the tween reverses
+    // the stagger with it: the ripple ran left-to-right while dimming and
+    // right-to-left while relighting, so it read as marching back and forth
+    // through the word rather than running one direction continually.
+    // Spelling both legs out forward means every loop replays the
+    // identical sequence, so the sweep direction never flips.
     this.letterAnimation = animate(host.querySelectorAll<HTMLElement>('.bulb'), {
-      opacity: [1, 0.55],
-      duration: 260,
+      opacity: [{ to: 0.55, duration: 260 }, { to: 1, duration: 260 }],
       loop: true,
-      alternate: true,
       ease: steps(1),
       delay: stagger(4),
     });
