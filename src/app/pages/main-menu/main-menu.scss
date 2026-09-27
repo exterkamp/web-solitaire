@@ -124,19 +124,32 @@ h1 {
 // sign.
 .marquee__burst {
   position: absolute;
-  inset: 0;
-  transform-origin: 50% 46%;
+  // `inset: 0` was the actual bug behind the last two fixes, not just their
+  // proportions: a conic-gradient's angles are measured against its own
+  // box, and that box was the plaque's - wide and short, not square. A
+  // ray "45 degrees" from centre landed nowhere near a true 45 degrees on
+  // screen, and a static stretched sunburst can pass for one; rotating a
+  // stretched pattern swings the distortion round with it, which is what
+  // the diagonal band and the thin stretches on either side of it in a
+  // real screenshot actually were. A conic-gradient is only undistorted on
+  // a square box, so this is one: sized past the plaque's own diagonal
+  // (150% of its width comfortably covers a plaque this much wider than
+  // tall) and centred with the same top/left + translate trick used
+  // everywhere else in this file, so it can rotate at any angle and never
+  // show a straight edge - only .marquee's own overflow: hidden decides
+  // what's visible.
+  top: 46%;
+  left: 50%;
+  width: 150%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   // Dense enough that no gap between rays is ever wide enough to read as a
-  // dark wedge reaching a corner as the whole thing turns - the first
-  // version's rays were 3deg wide in a 16deg repeat, and at the rotation
-  // phase where a 13deg gap lined up with a corner rather than a ray, that
-  // corner looked bare and the whole sunburst read as thin. Bulkier rays
-  // and a bigger, brighter hub both read as "larger" the same way: more of
-  // the plaque actually lit at any one instant, not just a wider spread.
+  // dark wedge reaching a corner as the whole thing turns - see the commit
+  // that widened these from the original 3deg-in-16deg for the reasoning.
   background:
-    repeating-conic-gradient(from 6deg at 50% 46%, rgba(255, 209, 102, 0.11) 0deg 2.5deg, transparent 2.5deg 6deg),
-    repeating-conic-gradient(at 50% 46%, rgba(255, 209, 102, 0.26) 0deg 6deg, transparent 6deg 14deg),
-    radial-gradient(circle at 50% 46%, rgba(255, 209, 102, 0.4) 0%, transparent 55%);
+    repeating-conic-gradient(from 6deg, rgba(255, 209, 102, 0.11) 0deg 2.5deg, transparent 2.5deg 6deg),
+    repeating-conic-gradient(rgba(255, 209, 102, 0.26) 0deg 6deg, transparent 6deg 14deg),
+    radial-gradient(circle, rgba(255, 209, 102, 0.4) 0%, transparent 55%);
   animation: marquee-spin 40s linear infinite;
   z-index: 0;
 }
@@ -173,7 +186,7 @@ h1 {
 
 @keyframes marquee-spin {
   to {
-    transform: rotate(360deg);
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
