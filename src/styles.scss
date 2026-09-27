@@ -153,6 +153,22 @@ h3 {
   @include display-type;
 }
 
+// Offscreen but not gone: screen readers still find it, sighted players do
+// not. The standard clip pattern. Global because it started in play.scss for
+// that page's live region and a second page needed the same thing rather
+// than a second copy of it.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Phaser builds its canvas at runtime, so it carries none of Angular's
    component scoping attributes and a component-scoped rule never matches
    it. touch-action doesn't inherit either, so it has to be set here, on the

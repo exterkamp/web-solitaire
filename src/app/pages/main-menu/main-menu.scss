@@ -132,18 +132,18 @@ h1 {
   z-index: 0;
 }
 
-.marquee h1 {
+// The word itself, drawn as bulbs rather than lit letterforms - see
+// main-menu.ts's renderBulbLetters. Sized in JS to the canvas it samples
+// from; every bulb inside is one absolutely-positioned point on that grid,
+// styled inline rather than through a `.bulb` rule here - a `<span>` built
+// with `document.createElement` never gets the attribute Angular's emulated
+// encapsulation stamps onto template-authored elements, so a scoped rule
+// for it would silently match nothing. This element itself is safe because
+// it's declared in main-menu.html, not built in TypeScript.
+.marquee__letters {
   position: relative;
   z-index: 1;
-  // A thin dark stroke first, so the letters read as a lit tube with an
-  // edge rather than a soft white blur, then the glow around that: a narrow
-  // hot core out to a wide, weak halo, three widths of the same colour.
-  -webkit-text-stroke: 1px rgba(7, 36, 31, 0.5);
-  text-shadow:
-    0 0 4px rgba(255, 209, 102, 0.9),
-    0 0 14px rgba(255, 209, 102, 0.55),
-    0 0 34px rgba(255, 209, 102, 0.35),
-    0 0 70px rgba(255, 209, 102, 0.2);
+  margin: 0 auto;
 }
 
 // One loop, four sides. A marquee's chase is one strand of light running

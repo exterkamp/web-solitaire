@@ -1,8 +1,31 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { animate, stagger, steps, type JSAnimation } from 'animejs';
 import { GameId } from '../../game/table-game';
 import { formatPercent } from '../../format';
 import { Stats } from '../../stats';
+
+// One bulb, sampled from the outline of a letter drawn on a canvas nobody
+// sees. `strokeText` traces a glyph the same way a pen would - both the
+// outer edge of an S and the inner ring of an O - so walking a grid over the
+// stroke and keeping the lit pixels is what turns a font into a set of bulb
+// positions rather than a filled block of them.
+interface Bulb {
+  readonly x: number;
+  readonly y: number;
+}
+
+// Real marquee letters have visible gaps between bulbs - that's what reads
+// as individual bulbs rather than a lit tube. GRID_STEP has to be bigger
+// than a single dot's glow or neighbours merge into a blob (the first
+// version of this got exactly that wrong: too fine a grid drew a glowing
+// smear roughly shaped like the word rather than a string of lights). And
+// STROKE_WIDTH has to be at least GRID_STEP, or the sampling grid steps
+// clean over a stroke this thin without ever landing on it.
+const GRID_STEP = 9;
+const STROKE_WIDTH = 8;
+const FONT_WEIGHT = 700;
+const MARQUEE_TEXT = 'SOLITAIRE';
 
 // One button per game, and nothing else to decide here.
 //
@@ -18,8 +41,10 @@ import { Stats } from '../../stats';
   styleUrl: './main-menu.scss',
   templateUrl: './main-menu.html',
 })
-export class MainMenu {
+export class MainMenu implements AfterViewInit, OnDestroy {
   private readonly stats = inject(Stats);
+  private readonly letters = viewChild.required<ElementRef<HTMLDivElement>>('letters');
+  private bulbAnimation?: JSAnimation;
 
   // What a game is, for somebody who has not played it here before. Replaced
   // by their own record the moment they have one, because by then this is
@@ -43,5 +68,126 @@ export class MainMenu {
     const record = this.stats.game(game);
     if (!record.played) return this.blurbs[game];
     return `${record.won} of ${record.played} won · ${formatPercent(record.won / record.played)}`;
+  }
+
+  ngAfterViewInit(): void {
+    void this.renderBulbLetters();
+  }
+
+  ngOnDestroy(): void {
+    // Cancels the loop and puts every bulb's opacity back where it started,
+    // rather than leaving it wherever the animation happened to be paused -
+    // not that anything reuses this element, but a leaked infinite loop is a
+    // leaked infinite loop either way.
+    this.bulbAnimation?.revert();
+  }
+
+  // Traces MARQUEE_TEXT in the app's own display face and turns the result
+  // into a field of little glowing spans, then sets them blinking. Done in
+  // TypeScript because there is no CSS way to ask "where does this glyph's
+  // outline actually fall" - a box-shadow of dots can approximate a frame's
+  // straight edges but not an S.
+  private async renderBulbLetters(): Promise<void> {
+    const host = this.letters().nativeElement;
+    const family = "'Cinzel'";
+
+    // font-display: block (see styles.scss) only promises the *page* won't
+    // flash unstyled text while Cinzel arrives - a canvas asked to draw
+    // before the font has actually loaded falls back to a default serif
+    // silently, and bakes the wrong glyph shapes into every bulb position
+    // rather than failing loudly.
+    await document.fonts.load(`${FONT_WEIGHT} 100px ${family}`);
+    await document.fonts.ready;
+
+    const parent = host.parentElement;
+    if (!parent) return;
+
+    // Sized to whatever room the plaque actually has rather than a fixed
+    // pixel value, so the word fits the same way on a narrow phone and a
+    // wide one. measureText scales linearly with font size for a fixed
+    // string, so one measurement at a reference size is enough to solve for
+    // the size that hits the target width, without an iterative search.
+    const reference = document.createElement('canvas').getContext('2d');
+    if (!reference) return;
+    reference.font = `${FONT_WEIGHT} 100px ${family}`;
+    const referenceWidth = reference.measureText(MARQUEE_TEXT).width;
+    const available = parent.clientWidth - 24;
+    const displayWidth = Math.min(available, 380);
+    const fontSize = (100 * displayWidth) / referenceWidth;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.font = `${FONT_WEIGHT} ${fontSize}px ${family}`;
+    canvas.width = Math.ceil(ctx.measureText(MARQUEE_TEXT).width) + STROKE_WIDTH * 2;
+    canvas.height = Math.ceil(fontSize * 1.3);
+    // Sizing the canvas clears the context back to its defaults, so the font
+    // (and everything below) has to be set again after, not just before.
+    ctx.font = `${FONT_WEIGHT} ${fontSize}px ${family}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineWidth = STROKE_WIDTH;
+    ctx.strokeStyle = '#fff';
+    ctx.strokeText(MARQUEE_TEXT, STROKE_WIDTH, canvas.height * 0.72);
+
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const bulbs: Bulb[] = [];
+    for (let y = 0; y < canvas.height; y += GRID_STEP) {
+      for (let x = 0; x < canvas.width; x += GRID_STEP) {
+        if (data[(y * canvas.width + x) * 4 + 3] > 128) {
+          bulbs.push({ x, y });
+        }
+      }
+    }
+    // Left to right, so the stagger below plays as a ripple running through
+    // the word in reading order rather than as a scatter with no direction.
+    bulbs.sort((a, b) => a.x - b.x || a.y - b.y);
+
+    host.style.width = `${canvas.width}px`;
+    host.style.height = `${canvas.height}px`;
+
+    // Styled inline rather than through main-menu.scss: Angular's emulated
+    // encapsulation scopes component styles by stamping an attribute onto
+    // elements the template compiler creates, and a span built by
+    // `document.createElement` here never gets one - `.bulb { ... }` in the
+    // stylesheet would silently match nothing. Found by checking a live
+    // bulb's computed style and seeing browser defaults looking back.
+    const fragment = document.createDocumentFragment();
+    for (const bulb of bulbs) {
+      const span = document.createElement('span');
+      // Kept for the querySelectorAll below, not for any CSS rule - see the
+      // encapsulation note above.
+      span.className = 'bulb';
+      span.style.position = 'absolute';
+      span.style.left = `${bulb.x}px`;
+      span.style.top = `${bulb.y}px`;
+      span.style.width = '5px';
+      span.style.height = '5px';
+      span.style.margin = '-2.5px 0 0 -2.5px';
+      span.style.borderRadius = '50%';
+      span.style.background = '#ffd166';
+      span.style.boxShadow = '0 0 4px 1px rgba(255, 209, 102, 0.9), 0 0 11px 3px rgba(255, 209, 102, 0.45)';
+      fragment.appendChild(span);
+    }
+    host.appendChild(fragment);
+
+    // Reduced motion means reduced motion, not "the same blink at a duration
+    // so short it reads as a strobe" - see the frame bulbs' own note on
+    // this. Simplest fallback there is: never start the loop, and every
+    // bulb just sits at the opacity it was created with.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // Floor at 0.55, not near-zero: a bulb sign's letters stay readable the
+    // whole time, with individual bulbs sparkling rather than the word
+    // itself going dark. A near-zero floor was tried first and made the
+    // stagger read as a single spotlight sweeping over an otherwise
+    // invisible word rather than a lit word with life in it.
+    this.bulbAnimation = animate(host.querySelectorAll<HTMLElement>('.bulb'), {
+      opacity: [1, 0.55],
+      duration: 260,
+      loop: true,
+      alternate: true,
+      ease: steps(1),
+      delay: stagger(6),
+    });
   }
 }

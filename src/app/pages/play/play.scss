@@ -365,20 +365,9 @@
   }
 }
 
-// Offscreen but not gone: screen readers still find it, sighted players
-// do not. The standard clip pattern, so the live region and any other
-// aural-only text has somewhere to live.
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
+// `.visually-hidden` moved to styles.scss when a second page needed it -
+// see there for the live region this one was written for.
+
 // The controller's focus ring. Fixed-positioned from the component's
 // focusPos signal, centered on the pile, sized to a card. The gold matches
 // the felt's lettering; the pulse says "this one" without shouting.
