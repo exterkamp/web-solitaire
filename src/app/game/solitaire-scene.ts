@@ -12,7 +12,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
-import { ensureChipTextures, spawnChipStack } from './chip';
+import { ChipBody, ensureChipTextures, spawnChipStack, trackChipShadows } from './chip';
 import { DeckTheme } from './deck-theme';
 import { defineStack } from 'phaser-card-engine';
 import { DeckStyle } from './deck-style';
@@ -227,7 +227,7 @@ export class SolitaireScene extends Phaser.Scene {
   // container - so these live outside `root` and are positioned in canvas
   // pixels directly. Rebuilt whole on every publish() rather than diffed -
   // see renderChips.
-  private chips: Phaser.Physics.Matter.Image[] = [];
+  private chips: ChipBody[] = [];
 
   // One sprite per card, kept for the life of the deal and moved rather than
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
@@ -805,7 +805,10 @@ export class SolitaireScene extends Phaser.Scene {
   // the score restages the same small drop-and-settle rather than needing
   // its own animation for "five more chips landed on an existing pile".
   private renderChips(score: number | undefined): void {
-    for (const chip of this.chips) chip.destroy();
+    for (const { chip, shadow } of this.chips) {
+      chip.destroy();
+      shadow.destroy();
+    }
     this.chips = [];
     if (score === undefined) return;
     const pr = this.pixelRatio;
@@ -1341,6 +1344,11 @@ export class SolitaireScene extends Phaser.Scene {
   }
 
   override update(_time: number, delta: number): void {
+    // Cheap even when the pile is asleep - a handful of position copies,
+    // and the whole reason it's a copy rather than a parented child in the
+    // first place (see the note on the `chips` field).
+    if (this.chips.length) trackChipShadows(this.chips);
+
     if (!this.fallers.length || !this.cascade) return;
     // Against a 60fps step rather than raw delta, so a slow frame moves the
     // cards further instead of the whole cascade running in slow motion.

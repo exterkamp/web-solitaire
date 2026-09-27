@@ -55,6 +55,32 @@ function chipTextureKey(value: number): string {
   return `chip-${value}`;
 }
 
+const CHIP_SHADOW_KEY = 'chip-shadow';
+// Cast a few units down and to the right of the chip that owns it - away
+// from the same upper-left light the dome shading answers to. A pile reads
+// as stacked objects rather than flat overlapping circles mostly because of
+// this: the shading on one chip's face says which way is up, and its
+// shadow falling across the one under it is what says there's a gap between
+// them at all.
+const CHIP_SHADOW_OFFSET = 3;
+
+function drawChipShadowTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(CHIP_SHADOW_KEY)) return;
+  const size = CHIP_DIAMETER * CHIP_OVERSAMPLE;
+  const texture = scene.textures.createCanvas(CHIP_SHADOW_KEY, size, size);
+  if (!texture) return;
+  const ctx = texture.getContext();
+  const r = size / 2;
+  const blur = ctx.createRadialGradient(r, r, r * 0.55, r, r, r);
+  blur.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+  blur.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = blur;
+  ctx.beginPath();
+  ctx.arc(r, r, r, 0, Math.PI * 2);
+  ctx.fill();
+  texture.refresh();
+}
+
 // Simple RGB lerp toward black or white, for the shading below - there's no
 // need for anything more perceptually careful than this at chip size.
 function mix(hex: string, target: number, amount: number): string {
@@ -80,10 +106,15 @@ function drawChipTexture(scene: Phaser.Scene, value: number): void {
 
   // The body: a dome rather than a flat disc, lit from the same
   // upper-left the felt's own lamp favours (see table.ts's LIGHT_CENTER).
-  const dome = ctx.createRadialGradient(r * 0.62, r * 0.5, r * 0.1, r, r, r);
-  dome.addColorStop(0, lighten(body, 0.28));
-  dome.addColorStop(0.72, body);
-  dome.addColorStop(1, darken(body, 0.38));
+  // Pushed harder than the first pass - a tighter, brighter highlight and a
+  // darker falloff read as curved from across the felt; the first version's
+  // subtler gradient survived being scaled down to chip size as barely more
+  // than a flat tint.
+  const dome = ctx.createRadialGradient(r * 0.6, r * 0.46, r * 0.04, r, r, r * 1.05);
+  dome.addColorStop(0, lighten(body, 0.45));
+  dome.addColorStop(0.4, lighten(body, 0.1));
+  dome.addColorStop(0.75, body);
+  dome.addColorStop(1, darken(body, 0.5));
   ctx.fillStyle = dome;
   ctx.beginPath();
   ctx.arc(r, r, r - 2, 0, Math.PI * 2);
@@ -97,6 +128,24 @@ function drawChipTexture(scene: Phaser.Scene, value: number): void {
   ctx.beginPath();
   ctx.arc(r, r, r - ctx.lineWidth, 0, Math.PI * 2);
   ctx.stroke();
+
+  // A raised edge catches light on the side facing it and loses it on the
+  // side away - a lit arc opposite a shadowed one is what tells a flat ring
+  // apart from a bevelled one. Both drawn over the groove, upper-left and
+  // lower-right to match the dome above.
+  ctx.lineCap = 'round';
+  ctx.lineWidth = size * 0.032;
+  ctx.strokeStyle = lighten(body, 0.55);
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.arc(r, r, r - ctx.lineWidth * 1.4, Math.PI * 0.95, Math.PI * 1.65);
+  ctx.stroke();
+  ctx.strokeStyle = darken(body, 0.6);
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.arc(r, r, r - ctx.lineWidth * 1.4, -0.05, Math.PI * 0.65);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
 
   const spots = 8;
   ctx.fillStyle = edge;
@@ -126,9 +175,10 @@ function drawChipTexture(scene: Phaser.Scene, value: number): void {
   texture.refresh();
 }
 
-/** Generates all five chip textures, once - safe to call every scene start. */
+/** Generates all five chip textures and their shared shadow, once - safe to call every scene start. */
 export function ensureChipTextures(scene: Phaser.Scene): void {
   for (const value of CHIP_VALUES) drawChipTexture(scene, value);
+  drawChipShadowTexture(scene);
 }
 
 // A score broken into the fewest chips that add up to it - the greedy
@@ -154,40 +204,52 @@ function chipList(score: number): number[] {
   return chipCounts(score).flatMap((stack) => Array<number>(stack.count).fill(stack.value));
 }
 
+// A single shared shove - one direction, scaled by height up a tidy column -
+// turned out to look like exactly what it was: one column, leaning one way,
+// in a straight line. Every score produced the same shape. What a dropped
+// handful of chips actually looks like is each one landing wherever it
+// lands - so that's what this does instead: no column to begin with, no
+// shove to knock it over. Every chip gets its own random spot to fall from,
+// its own spin, its own drift, and piles up (or doesn't) on whatever's
+// already there. Two chips of a score this small look like two chips
+// dropped from a hand; twenty look like a spilled tray - both for the same
+// reason, because nothing here was staged to look like either.
+const POUR_WIDTH = CHIP_BODY_WIDTH * 2.6;
+
+/** A physics chip and the shadow that tracks it - see spawnChipStack. */
+export interface ChipBody {
+  chip: Phaser.Physics.Matter.Image;
+  shadow: Phaser.GameObjects.Image;
+}
+
 // Drops the whole score in one pile and lets gravity sort out what that
-// looks like. Every chip in play, in one column at `x`, spawned already
-// stacked rather than dropped from height - each a hair off-centre from the
-// one below it, which is enough to seed real instability without staging a
-// drop animation this board has no headroom for. From there Matter runs the
-// rest: a short stack settles roughly where it started, a tall one leans
-// and spills, the way an actual tray of chips does when it's racked too
-// fast. Returns what it created so the scene can destroy it next time the
-// score changes - a pile is rebuilt from scratch on every update rather
+// looks like. Returns what it created so the scene can destroy it next time
+// the score changes - a pile is rebuilt from scratch on every update rather
 // than diffed, the same choice restack() makes for the cards themselves.
+//
+// Each chip comes paired with a shadow rather than one shadow per pile,
+// because the pile is the thing that has no fixed shape - two chips lying
+// apart need two separate shadows on the felt between them, not one blob
+// under wherever their bounding box happens to be.
 export function spawnChipStack(
   scene: Phaser.Scene,
   x: number,
   y: number,
   score: number,
   scale: number,
-): Phaser.Physics.Matter.Image[] {
-  const chips = chipList(score);
-  const objects: Phaser.Physics.Matter.Image[] = [];
-
-  // A straight stack of boxes sits there forever - real friction holds it
-  // fine at this height-to-base ratio, jitter alone or not. What tips a
-  // stack of chips over is someone's hand catching the tray, so that's what
-  // this gives it: one shove, one direction, chosen once per pile rather
-  // than per chip. Scaled by height up the stack the way a real shove is -
-  // the base barely moves, the top goes sideways - which is what turns
-  // "stack of boxes" into "stack of boxes toppling" instead of "stack of
-  // boxes standing at a slight angle".
-  const push = (Math.random() < 0.5 ? -1 : 1) * Phaser.Math.FloatBetween(2.5, 4);
-
-  chips.forEach((value, i) => {
-    const jitterX = Phaser.Math.FloatBetween(-1.5, 1.5) * scale;
+): ChipBody[] {
+  const objects: ChipBody[] = [];
+  chipList(score).forEach((value, i) => {
+    const offsetX = Phaser.Math.FloatBetween(-POUR_WIDTH / 2, POUR_WIDTH / 2) * scale;
+    // Staggered rather than level, so chips arrive a beat apart instead of
+    // all landing - and fighting the solver for room - on the same instant.
+    const offsetY = i * CHIP_THICKNESS * 0.7 * scale;
+    const shadow = scene.add
+      .image(x + offsetX, y - offsetY, CHIP_SHADOW_KEY)
+      .setDisplaySize(CHIP_DIAMETER * scale, CHIP_DIAMETER * scale)
+      .setDepth(999);
     const chip = scene.matter.add
-      .image(x + jitterX, y - i * CHIP_THICKNESS * scale, chipTextureKey(value), undefined, {
+      .image(x + offsetX, y - offsetY, chipTextureKey(value), undefined, {
         shape: {
           type: 'rectangle',
           width: CHIP_BODY_WIDTH * scale,
@@ -196,13 +258,21 @@ export function spawnChipStack(
         chamfer: { radius: CHIP_CHAMFER * scale },
         friction: 0.3,
         frictionStatic: 0.35,
-        restitution: 0.15,
+        restitution: 0.2,
       })
       .setDisplaySize(CHIP_DIAMETER * scale, CHIP_DIAMETER * scale)
-      .setAngle(Phaser.Math.FloatBetween(-3, 3))
+      .setAngle(Phaser.Math.FloatBetween(-180, 180))
       .setDepth(1000);
-    chip.setVelocityX(push * (i / chips.length));
-    objects.push(chip);
+    chip.setVelocity(Phaser.Math.FloatBetween(-1.5, 1.5), Phaser.Math.FloatBetween(-0.5, 1));
+    chip.setAngularVelocity(Phaser.Math.FloatBetween(-0.2, 0.2));
+    objects.push({ chip, shadow });
   });
   return objects;
+}
+
+/** Keeps every shadow under the chip that casts it - call once a frame. */
+export function trackChipShadows(chips: readonly ChipBody[]): void {
+  for (const { chip, shadow } of chips) {
+    shadow.setPosition(chip.x + CHIP_SHADOW_OFFSET, chip.y + CHIP_SHADOW_OFFSET);
+  }
 }
