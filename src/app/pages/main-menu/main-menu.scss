@@ -126,10 +126,17 @@ h1 {
   position: absolute;
   inset: 0;
   transform-origin: 50% 46%;
+  // Dense enough that no gap between rays is ever wide enough to read as a
+  // dark wedge reaching a corner as the whole thing turns - the first
+  // version's rays were 3deg wide in a 16deg repeat, and at the rotation
+  // phase where a 13deg gap lined up with a corner rather than a ray, that
+  // corner looked bare and the whole sunburst read as thin. Bulkier rays
+  // and a bigger, brighter hub both read as "larger" the same way: more of
+  // the plaque actually lit at any one instant, not just a wider spread.
   background:
-    repeating-conic-gradient(from 6deg at 50% 46%, rgba(255, 209, 102, 0.07) 0deg 1.2deg, transparent 1.2deg 6deg),
-    repeating-conic-gradient(at 50% 46%, rgba(255, 209, 102, 0.18) 0deg 3deg, transparent 3deg 16deg),
-    radial-gradient(circle at 50% 46%, rgba(255, 209, 102, 0.28) 0%, transparent 38%);
+    repeating-conic-gradient(from 6deg at 50% 46%, rgba(255, 209, 102, 0.11) 0deg 2.5deg, transparent 2.5deg 6deg),
+    repeating-conic-gradient(at 50% 46%, rgba(255, 209, 102, 0.26) 0deg 6deg, transparent 6deg 14deg),
+    radial-gradient(circle at 50% 46%, rgba(255, 209, 102, 0.4) 0%, transparent 55%);
   animation: marquee-spin 40s linear infinite;
   z-index: 0;
 }
