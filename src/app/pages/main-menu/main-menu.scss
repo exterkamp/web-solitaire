@@ -110,24 +110,26 @@ h1 {
     inset 0 2px 18px rgba(0, 0, 0, 0.55);
 }
 
-// The medallion behind the name. Conic gradients striping out from the
-// centre are what a sunburst is - narrow gold wedges, wider gaps - rotating
-// slowly rather than blinking, because the bulbs are already doing the
-// on/off part and a second thing flashing at a different rate would be
-// visual noise rather than a second layer of sign.
+// The light behind the name, filling the whole plaque rather than a
+// medallion floating in the middle of it - the rounded rectangle it's
+// clipped to comes for free from .marquee's own `overflow: hidden` and
+// border-radius, so there's nothing to round here. Three layers rather
+// than one flat set of rays: fine dense wedges for texture, the original
+// coarse rays over them for the main sunburst shape, and a soft glow at
+// the hub so the rays read as radiating from a lit point rather than
+// starting out of nothing. All three share one origin (50% 46%, the same
+// point `transform-origin` rotates around) and one slow rotation - because
+// the bulbs are already doing the on/off part, and a second thing flashing
+// at a different rate would be visual noise rather than a second layer of
+// sign.
 .marquee__burst {
   position: absolute;
-  top: 46%;
-  left: 50%;
-  width: 78vw;
-  max-width: 460px;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: repeating-conic-gradient(
-    rgba(255, 209, 102, 0.16) 0deg 3deg,
-    transparent 3deg 16deg
-  );
+  inset: 0;
+  transform-origin: 50% 46%;
+  background:
+    repeating-conic-gradient(from 6deg at 50% 46%, rgba(255, 209, 102, 0.07) 0deg 1.2deg, transparent 1.2deg 6deg),
+    repeating-conic-gradient(at 50% 46%, rgba(255, 209, 102, 0.18) 0deg 3deg, transparent 3deg 16deg),
+    radial-gradient(circle at 50% 46%, rgba(255, 209, 102, 0.28) 0%, transparent 38%);
   animation: marquee-spin 40s linear infinite;
   z-index: 0;
 }
@@ -164,7 +166,7 @@ h1 {
 
 @keyframes marquee-spin {
   to {
-    transform: translate(-50%, -50%) rotate(360deg);
+    transform: rotate(360deg);
   }
 }
 
