@@ -260,11 +260,17 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     // travelling band of light passing through - the letters' 0.55 floor
     // would make every bulb look lit all the time, and there was nothing
     // left to walk round the frame.
+    // Two explicit legs (dim, then relight) rather than `alternate: true`.
+    // Alternate reverses the whole tween every other loop, and reversing
+    // the tween is exactly what reversed the stagger with it - the chase
+    // swept one way while dimming and swept back the other way while
+    // relighting, so it read as marching forward and back rather than
+    // travelling round the loop. Spelling both legs out forward means every
+    // loop replays the identical sequence, so the sweep direction never
+    // flips.
     this.frameAnimation = animate(host.querySelectorAll<HTMLElement>('.bulb'), {
-      opacity: [1, 0.08],
-      duration: 220,
+      opacity: [{ to: 0.08, duration: 220 }, { to: 1, duration: 220 }],
       loop: true,
-      alternate: true,
       ease: steps(1),
       delay: stagger(14),
     });
