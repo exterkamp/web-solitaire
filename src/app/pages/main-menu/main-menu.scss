@@ -82,6 +82,83 @@ h1 {
   margin: 0;
 }
 
+// The front door gets to be a Vegas sign; nowhere else in the app does. This
+// is the one place gold is decoration rather than "this is selected" - see
+// the exception noted in .claude/skills/ui-polish/SKILL.md - because a title
+// nobody presses can't be confused for a control that lights up when picked.
+.marquee {
+  position: relative;
+  padding: 14px 0;
+}
+
+.marquee h1 {
+  // A neon tube glows around its own letters as well as lighting the room
+  // it hangs in - three widths of the same colour standing in for both.
+  text-shadow:
+    0 0 4px rgba(255, 209, 102, 0.85),
+    0 0 14px rgba(255, 209, 102, 0.5),
+    0 0 34px rgba(255, 209, 102, 0.3);
+}
+
+.marquee__bulbs {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 9px;
+  pointer-events: none;
+
+  &--top {
+    top: 0;
+  }
+
+  &--bottom {
+    bottom: 0;
+  }
+
+  // Two identical rows of bulbs, one offset from the other by half a bulb's
+  // spacing, blinking in antiphase. A marquee chase is alternating bulbs,
+  // not anything actually moving - opacity is the only thing animating.
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, #ffd166 0 2.5px, rgba(255, 209, 102, 0.15) 3px, transparent 3.5px);
+    background-repeat: repeat-x;
+    background-size: 22px 9px;
+    animation: marquee-chase 1s steps(1, jump-none) infinite;
+  }
+
+  &::after {
+    background-position: 11px 0;
+    animation-delay: 0.5s;
+  }
+}
+
+@keyframes marquee-chase {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+// Left to the blanket rule in styles.scss, `animation-duration` would drop to
+// 0.01ms and an infinite steps() animation would strobe rather than sit
+// still - the opposite of what reduced motion asked for. Frozen to one fully
+// lit frame instead: both offset rows shown at once cover every bulb
+// position.
+@media (prefers-reduced-motion: reduce) {
+  .marquee__bulbs::before,
+  .marquee__bulbs::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 // Which kind of game the next few are. Quiet on purpose: it is a label on a
 // drawer, not a heading somebody has to read before they can press anything,
 // and the buttons under it have to stay the loudest thing on the page.

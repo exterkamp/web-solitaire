@@ -21,7 +21,12 @@ is what to do *with* them, not a replacement.
   nothing else; text `#fdfdfd` on dark, `#cfead0`/`#9fc4a4`/`#7fae86` for
   progressively quieter green-tinted secondary text. Gold's exclusivity is
   load-bearing — it's the one color that means "selected" or "focused"
-  anywhere in the app; don't use it decoratively.
+  anywhere in the app; don't use it decoratively. **One deliberate
+  exception**: the main menu's title sits in a Vegas-marquee treatment
+  (`.marquee` in main-menu.scss) — chasing bulbs and a neon text-glow, both
+  gold. A title isn't a control, so there's nothing for the glow to be
+  mistaken for. Don't extend the marquee treatment to other headings, and
+  don't read its presence as license to use gold decoratively elsewhere.
 - **Components**: `.button`, `.button--quiet`, `.button--small`, `.pill`,
   `.pill--active`, `.field` are global, in `styles.scss`, on purpose —
   component-scoped Angular styles can't be reached from a shared overlay, so
