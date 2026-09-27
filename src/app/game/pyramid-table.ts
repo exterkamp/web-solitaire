@@ -40,13 +40,16 @@ const MARGIN = 20;
 // first given, because the board prints the game's name across the felt at
 // TABLEAU_TOP_Y - 23 and a taller pyramid puts its second row straight
 // through the lettering. Tri Peaks starts at the same height for the same
-// reason.
-const APEX_TOP = 150;
+// reason. 200 further down than that hundred-and-fifty since, to keep pace
+// with GAME_HEIGHT - see config.ts and tripeaks-table.ts's PEAK_TOP for why
+// a game that doesn't drop toward the thumb has to move its own numbers when
+// that constant does.
+const APEX_TOP = 350;
 
 // The deck, the card in play and the heap, low, where the thumbs are. Three
 // piles rather than Tri Peaks' two, because a king leaves on his own and has
 // to leave somewhere.
-const HAND_Y = 600;
+const HAND_Y = 800;
 const HAND_GAP = 150;
 
 // Twelve half-steps from the left edge of the leftmost card to the left edge

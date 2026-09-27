@@ -31,15 +31,16 @@ const WIDTH = 480;
 const COLUMNS = 6;
 const ROWS = [6, 6, 5];
 
-// Below the printed lettering, which sits at TABLEAU_TOP_Y - 23.
-const FAN_TOP = 150;
+// Below the printed lettering, which sits at TABLEAU_TOP_Y - 23. Shifted the
+// same 200 units GAME_HEIGHT grew by - see tripeaks-table.ts's PEAK_TOP.
+const FAN_TOP = 350;
 // Three cards deep is 143 units, so 152 leaves a clear gap between rows
 // without the fans reading as one long column.
 const ROW_STEP = 152;
 
 // The hole, low and central: it is the only place a card can go, so it is the
 // one thing a dragged card is ever aimed at.
-const HOLE_Y = 655;
+const HOLE_Y = 855;
 
 const PITCH = (WIDTH - 2 * BOARD_MARGIN) / COLUMNS;
 

@@ -34,12 +34,26 @@ export const CARD_PEEK_HEIGHT = cardFaceMetrics(CARD_WIDTH).peek;
 export const CARD_BACK_PEEK_HEIGHT = 11;
 
 // Seven columns of cards decide the width, and the width then decides how big
-// a card is; the height is what is left over. Made as tall as a phone, the
-// board is fitted by width and the spare height becomes felt nobody plays on
-// - and since Scale.FIT is uniform, that felt costs the cards a quarter of
-// their size. 720 is the tallest fan the rules can produce (a king-to-ace run
-// on top of six face-down cards) plus the top row above it, and nothing more.
-export const GAME_HEIGHT = 720;
+// a card is; the height is what's left to choose, and it used to be chosen
+// for the wrong thing - 720 was exactly the tallest fan the rules can
+// produce (a king-to-ace run on top of six face-down cards) plus the top row
+// above it, and not a unit more. That's a fact about the deepest possible
+// hand, not about a phone, and it made the board *2:3* - noticeably squarer
+// than a modern phone's own screen, which measures out at .board's actual
+// rendered box (padding, HUD and footer already spent) rather than assumed:
+// ~.51-.54 on three real sizes checked. Scale.FIT can only ever satisfy one
+// of those two ratios, so the board was letterboxed top and bottom by
+// however much they disagreed - a visible band of plain page above and below
+// the felt, not felt itself, on every phone this was ever looked at on.
+//
+// 920 is chosen to match that measured range (480/920 ≈ .522) rather than
+// the deepest-hand arithmetic, which still holds - it becomes a minimum
+// this satisfies rather than a target it hits exactly. The room that opens
+// up doesn't go to waste: BOARD_FLOOR and MAX_BOARD_DROP below both grew by
+// the same 200 units this did, so the existing "board sits at the bottom of
+// the room it's using" mechanic pulls typical hands down into the new space
+// instead of leaving it as dead felt past a floor that never moved.
+export const GAME_HEIGHT = 920;
 
 // Poker size is 2.5 x 3.5 inches - a 5:7 ratio - and cards look wrong at
 // anything else. The package keeps them in that proportion; 60 units wide is
@@ -96,8 +110,10 @@ export const FIRST_FOUNDATION_COLUMN = 3;
 // this board that no card ever covers.
 export const TABLEAU_TOP_Y = 162;
 
-// The lowest a card's bottom edge may reach, clear of the rail.
-export const BOARD_FLOOR = 700;
+// The lowest a card's bottom edge may reach, clear of the rail. 200 units
+// below where it sat when GAME_HEIGHT was 720 - the same 20-unit clearance
+// from the bottom of the board, on a board that's now 200 units taller.
+export const BOARD_FLOOR = 900;
 
 // How far down the whole layout slides when the tableau is not using its full
 // height, and in what steps.
@@ -116,11 +132,15 @@ export const BOARD_FLOOR = 700;
 // most moves. In steps of a step-and-a-bit, the board moves a handful of
 // times a game, far enough to be read as deliberate.
 //
-// The cap is four of those steps, which on a phone is most of the way from
-// the middle of the screen to the bottom of it. What it costs is a band of
-// bare felt above the foundations, which is no loss: a table is allowed to
-// have table on it, and nothing was ever played up there.
-export const MAX_BOARD_DROP = 260;
+// The cap used to be four of those steps; it's seven now, the same 260 plus
+// the 200 units BOARD_FLOOR gained when GAME_HEIGHT grew to match a real
+// phone's own proportions rather than letterboxing above and below a board
+// shaped for the deepest hand alone - so a typical hand drops into that new
+// room instead of it sitting unused below a floor that never moved. What it
+// costs is a band of bare felt above the foundations, which is no loss: a
+// table is allowed to have table on it, and nothing was ever played up
+// there.
+export const MAX_BOARD_DROP = 460;
 export const BOARD_DROP_STEP = 65;
 
 // And how far down it must always sit, which is a fact about the waste rather

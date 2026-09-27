@@ -24,12 +24,13 @@ const WIDTH = 480;
 // than a tableau usually sits, because this one never grows: five cards is
 // five cards from the deal to the end of the hand, and the room a Klondike
 // pile might one day need is room this game can spend on the gap between the
-// wall and the hand.
-const WALL_TOP = 150;
+// wall and the hand. Shifted the same 200 units GAME_HEIGHT grew by - see
+// tripeaks-table.ts's PEAK_TOP.
+const WALL_TOP = 350;
 
 // The deck and the card in play, low, where between them they are every press
 // in the game. The same arrangement Tri Peaks uses, for the same reason.
-const HAND_Y = 600;
+const HAND_Y = 800;
 const HAND_GAP = 150;
 
 // Golf, as the board sees it.

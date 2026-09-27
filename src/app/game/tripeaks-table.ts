@@ -42,11 +42,16 @@ const HALF_STEP = 25;
 const ROW_STEP = 44;
 
 const MARGIN = 20;
-const PEAK_TOP = 150;
+// Both 200 below where they sat when GAME_HEIGHT was 720 - see config.ts's
+// own note on that. This game doesn't drop toward the thumb the way a
+// tableau game does, so without the shift the extra felt that move opened up
+// would sit unused below the hand instead of the peaks and the hand both
+// moving down into it.
+const PEAK_TOP = 350;
 
 // Where the deck and the card in play sit: low, because between them they are
 // every press in the game.
-const HAND_Y = 600;
+const HAND_Y = 800;
 const HAND_GAP = 150;
 
 const WIDTH = MARGIN * 2 + 18 * HALF_STEP + CARD_WIDTH;
