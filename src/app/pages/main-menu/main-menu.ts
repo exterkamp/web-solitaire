@@ -17,13 +17,18 @@ interface Bulb {
 
 // Real marquee letters have visible gaps between bulbs - that's what reads
 // as individual bulbs rather than a lit tube. GRID_STEP has to be bigger
-// than a single dot's glow or neighbours merge into a blob (the first
-// version of this got exactly that wrong: too fine a grid drew a glowing
-// smear roughly shaped like the word rather than a string of lights). And
-// STROKE_WIDTH has to be at least GRID_STEP, or the sampling grid steps
-// clean over a stroke this thin without ever landing on it.
-const GRID_STEP = 9;
-const STROKE_WIDTH = 8;
+// than a single dot's glow or neighbours merge into a blob (an earlier
+// version of this got exactly that wrong: too fine a grid at too large a
+// glow drew a smear roughly shaped like the word). But too coarse a grid
+// loses the letters themselves - nine characters in ~380px of plaque left
+// only four or five sample columns across a stroke, which isn't enough to
+// tell an R from an A. GRID_STEP came down and the bulbs shrank to match,
+// rather than just adding more of the original size - more, smaller lights
+// is what makes a real marquee font legible at all, not just more lights.
+// STROKE_WIDTH still has to be at least GRID_STEP, or the sampling grid
+// steps clean over a stroke this thin without ever landing on it.
+const GRID_STEP = 6;
+const STROKE_WIDTH = 7;
 const FONT_WEIGHT = 700;
 const MARQUEE_TEXT = 'SOLITAIRE';
 
@@ -112,7 +117,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     reference.font = `${FONT_WEIGHT} 100px ${family}`;
     const referenceWidth = reference.measureText(MARQUEE_TEXT).width;
     const available = parent.clientWidth - 24;
-    const displayWidth = Math.min(available, 380);
+    const displayWidth = Math.min(available, 440);
     const fontSize = (100 * displayWidth) / referenceWidth;
 
     const canvas = document.createElement('canvas');
@@ -160,12 +165,12 @@ export class MainMenu implements AfterViewInit, OnDestroy {
       span.style.position = 'absolute';
       span.style.left = `${bulb.x}px`;
       span.style.top = `${bulb.y}px`;
-      span.style.width = '5px';
-      span.style.height = '5px';
-      span.style.margin = '-2.5px 0 0 -2.5px';
+      span.style.width = '3.5px';
+      span.style.height = '3.5px';
+      span.style.margin = '-1.75px 0 0 -1.75px';
       span.style.borderRadius = '50%';
       span.style.background = '#ffd166';
-      span.style.boxShadow = '0 0 4px 1px rgba(255, 209, 102, 0.9), 0 0 11px 3px rgba(255, 209, 102, 0.45)';
+      span.style.boxShadow = '0 0 3px 1px rgba(255, 209, 102, 0.9), 0 0 7px 1.5px rgba(255, 209, 102, 0.45)';
       fragment.appendChild(span);
     }
     host.appendChild(fragment);
@@ -187,7 +192,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
       loop: true,
       alternate: true,
       ease: steps(1),
-      delay: stagger(6),
+      delay: stagger(4),
     });
   }
 }
