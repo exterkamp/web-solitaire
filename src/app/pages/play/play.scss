@@ -116,6 +116,7 @@
   border: 2px solid rgba(253, 253, 253, 0.75);
   border-radius: 6px;
   cursor: pointer;
+  transition: background-color 0.15s ease-out, opacity 0.15s ease-out;
 
   &:hover:not(:disabled) {
     background: rgba(253, 253, 253, 0.12);
@@ -158,7 +159,7 @@
   background: rgba(7, 36, 31, 0.93);
   border: 2px solid $edge;
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-far);
 }
 
 // Low on the screen on purpose: the cascade starts at the foundations and
@@ -272,7 +273,7 @@
   background: rgba(7, 36, 31, 0.96);
   border: 2px solid rgba(207, 234, 208, 0.45);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-far);
 }
 
 .pause__title {

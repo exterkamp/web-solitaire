@@ -76,6 +76,29 @@
      it. The column headings stay in the body face; only the entries are in a
      hand. */
   --font-score: 'Schoolbell', 'Comic Sans MS', cursive;
+
+  /* Two steps of depth, not three ad hoc values. `near` is for anything
+     small that sits slightly off the page beside other content - a chip, a
+     card preview, a button. `far` is for what sits over the board itself -
+     a panel or overlay interrupting play. Before these existed the app had
+     three different shadows in three files (a chip, a deck preview, and the
+     win/pause panels) each writing its own numbers for the same two ideas. */
+  --shadow-near: 0 2px 5px rgba(0, 0, 0, 0.45);
+  --shadow-far: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Anything that transitions or animates does so briefly, and nothing does
+   at all for somebody who has asked not to see it. This is a floor under
+   every rule below, not a substitute for them - the Phaser scene has its
+   own check (solitaire-scene.ts) for the motion a CSS rule can't reach. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 // The page colour goes on the root and nowhere else.
@@ -160,11 +183,22 @@ canvas {
   background: #17594a;
   border: 2px solid #fdfdfd;
   border-radius: 4px;
+  box-shadow: var(--shadow-near);
   cursor: pointer;
   text-decoration: none;
+  transition: background-color 0.15s ease-out, box-shadow 0.15s ease-out,
+    transform 0.15s ease-out, opacity 0.15s ease-out;
 
   &:hover {
     background: #1d6d5b;
+  }
+
+  // A press settles rather than teleporting between states - the shadow
+  // shrinking is what reads as "down" without any transform on a button
+  // people are actively tapping on a phone.
+  &:active {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    transform: translateY(1px);
   }
 
   &:focus-visible {
@@ -185,9 +219,16 @@ canvas {
   color: #cfead0;
   background: transparent;
   border-color: rgba(207, 234, 208, 0.45);
+  box-shadow: none;
 
   &:hover {
     background: rgba(253, 253, 253, 0.08);
+  }
+
+  // No shadow to shrink like the loud button has - it never had one - so
+  // the press reads through the same one-pixel settle instead.
+  &:active {
+    transform: translateY(1px);
   }
 }
 
@@ -214,6 +255,8 @@ canvas {
   border-radius: 6px;
   cursor: pointer;
   text-decoration: none;
+  transition: background-color 0.15s ease-out, border-color 0.15s ease-out,
+    color 0.15s ease-out;
 
   &:hover {
     background: rgba(253, 253, 253, 0.15);
@@ -247,6 +290,7 @@ canvas {
   background: rgba(255, 255, 255, 0.06);
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-radius: 4px;
+  transition: border-color 0.15s ease-out;
 
   &::placeholder {
     color: rgba(207, 234, 208, 0.6);

@@ -100,7 +100,7 @@ h1 {
   border-radius: 5px;
   background-size: cover;
   background-position: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-near);
 }
 
 .deck__label {
