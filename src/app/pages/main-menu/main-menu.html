@@ -7,15 +7,15 @@
        of it is hidden from anything that isn't looking at it. -->
   <div class="marquee">
     <span class="marquee__burst" aria-hidden="true"></span>
-    <span class="marquee__bulbs marquee__bulbs--top" aria-hidden="true"></span>
-    <span class="marquee__bulbs marquee__bulbs--bottom" aria-hidden="true"></span>
-    <span class="marquee__bulbs marquee__bulbs--left" aria-hidden="true"></span>
-    <span class="marquee__bulbs marquee__bulbs--right" aria-hidden="true"></span>
+    <!-- Both built in TypeScript, from the same bulb helper - a frame bulb
+         and a letter bulb are the same visual object. The frame is a
+         rounded-rectangle path walked once around the plaque's inside edge;
+         the letters are sampled from this word's outline in the app's own
+         display face. Neither has a CSS way to be drawn, which is why
+         there's no markup here beyond the two containers they fill. -->
+    <div class="marquee__frame" #frame aria-hidden="true"></div>
     <!-- The real heading, for anything that isn't a pair of eyes - a screen
-         reader, the browser tab, a search crawler. What's actually drawn is
-         the div below: the letters themselves as bulbs, sampled from this
-         same word set in the app's own display face, built in TypeScript
-         because there's no CSS way to trace a glyph's outline. -->
+         reader, the browser tab, a search crawler. -->
     <h1 class="visually-hidden">Solitaire</h1>
     <div class="marquee__letters" #letters aria-hidden="true"></div>
   </div>

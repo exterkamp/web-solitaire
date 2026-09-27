@@ -146,136 +146,20 @@ h1 {
   margin: 0 auto;
 }
 
-// One loop, four sides. A marquee's chase is one strand of light running
-// continuously round the frame; the closest a straight-strip approximation
-// gets to that without enumerating individual bulbs is staggering each
-// side's start a quarter-cycle after the last, clockwise from the top, so
-// the eye reads a highlight travelling round the box rather than four
-// independent rows blinking in place.
-.marquee__bulbs {
+// The loop of bulbs round the inside edge - see main-menu.ts's
+// renderMarquee. Built the same way as .marquee__letters, from the same
+// bulb helper, so a frame bulb and a letter bulb are the same visual object
+// rather than two approximations of one that happen to be a similar colour.
+// The old version was four CSS strips blinking in antiphase, staggered a
+// quarter-cycle apart to fake a loop; this is an actual loop, walked once
+// round a rounded rectangle and staggered in that order, which is what
+// makes it read as one strand of light chasing round the box rather than
+// four rows taking turns.
+.marquee__frame {
   position: absolute;
+  inset: 0;
   pointer-events: none;
   z-index: 1;
-
-  &--top,
-  &--bottom {
-    left: 16px;
-    right: 16px;
-    height: 8px;
-  }
-
-  &--top {
-    top: 6px;
-  }
-
-  &--bottom {
-    bottom: 6px;
-  }
-
-  &--left,
-  &--right {
-    top: 16px;
-    bottom: 16px;
-    width: 8px;
-  }
-
-  &--left {
-    left: 6px;
-  }
-
-  &--right {
-    right: 6px;
-  }
-
-  // Two identical rows of bulbs, one offset from the other by half a bulb's
-  // spacing, blinking in antiphase - a chase is alternating bulbs, not
-  // anything actually moving, so opacity is the only thing animating.
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle, #ffd166 0 2.5px, rgba(255, 209, 102, 0.15) 3px, transparent 3.5px);
-    animation: marquee-chase 1.2s steps(1, jump-none) infinite;
-  }
-
-  &--top::before,
-  &--top::after,
-  &--bottom::before,
-  &--bottom::after {
-    background-repeat: repeat-x;
-    background-size: 20px 8px;
-  }
-
-  &--left::before,
-  &--left::after,
-  &--right::before,
-  &--right::after {
-    background-repeat: repeat-y;
-    background-size: 8px 20px;
-  }
-
-  &--top::after {
-    background-position: 10px 0;
-  }
-
-  &--bottom::after {
-    background-position: 10px 0;
-  }
-
-  &--left::after {
-    background-position: 0 10px;
-  }
-
-  &--right::after {
-    background-position: 0 10px;
-  }
-
-  // The quarter-cycle stagger that turns four blinking rows into one loop:
-  // top starts on the beat, right a quarter-turn later, bottom at the half,
-  // left at three quarters - clockwise, matching how a reader's eye already
-  // moves across a rectangle.
-  &--right::before,
-  &--right::after {
-    animation-delay: 0.3s;
-  }
-
-  &--bottom::before,
-  &--bottom::after {
-    animation-delay: 0.6s;
-  }
-
-  &--left::before,
-  &--left::after {
-    animation-delay: 0.9s;
-  }
-
-  &--top::after {
-    animation-delay: 0.6s;
-  }
-
-  &--right::after {
-    animation-delay: 0.9s;
-  }
-
-  &--bottom::after {
-    animation-delay: 1.2s;
-  }
-
-  &--left::after {
-    animation-delay: 1.5s;
-  }
-}
-
-@keyframes marquee-chase {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0.2;
-  }
 }
 
 @keyframes marquee-spin {
@@ -286,17 +170,11 @@ h1 {
 
 // Left to the blanket rule in styles.scss, `animation-duration` would drop to
 // 0.01ms and an infinite steps() animation would strobe rather than sit
-// still - the opposite of what reduced motion asked for. Frozen instead: the
-// bulbs to one fully-lit frame (both offset rows shown at once covers every
-// position), the sunburst to whatever angle it happened to be turning
-// through, motionless.
+// still - the opposite of what reduced motion asked for. The bulbs (both the
+// frame's and the letters') are handled in TypeScript instead, by never
+// starting their loop - see renderMarquee. Only the sunburst's rotation is a
+// plain CSS animation, so it's the only one still frozen here.
 @media (prefers-reduced-motion: reduce) {
-  .marquee__bulbs::before,
-  .marquee__bulbs::after {
-    animation: none;
-    opacity: 1;
-  }
-
   .marquee__burst {
     animation: none;
   }
