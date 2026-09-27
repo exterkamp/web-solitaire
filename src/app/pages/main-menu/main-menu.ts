@@ -54,6 +54,13 @@ const BULB_SHADOW = '0 0 3px 1px rgba(255, 209, 102, 0.9), 0 0 7px 1.5px rgba(25
 const FRAME_INSET = 9;
 const FRAME_RADIUS = 16;
 const FRAME_SPACING = 13;
+// How long one bulb's own dim-then-relight cycle takes, and roughly how far
+// apart (in that same cycle) each bulb along the loop should start its own.
+// "Roughly" because the frame's actual stagger is solved for below, not
+// read straight off this constant - see renderFrame.
+const FRAME_PERIOD = 440;
+const FRAME_STAGGER_TARGET = 14;
+const FRAME_FLOOR = 0.08;
 
 // One button per game, and nothing else to decide here.
 //
@@ -74,7 +81,6 @@ export class MainMenu implements AfterViewInit, OnDestroy {
   private readonly letters = viewChild.required<ElementRef<HTMLDivElement>>('letters');
   private readonly frame = viewChild.required<ElementRef<HTMLDivElement>>('frame');
   private letterAnimation?: JSAnimation;
-  private frameAnimation?: JSAnimation;
 
   // What a game is, for somebody who has not played it here before. Replaced
   // by their own record the moment they have one, because by then this is
@@ -105,12 +111,13 @@ export class MainMenu implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Cancels both loops and puts every bulb's opacity back where it
+    // Cancels the letters' loop and puts every bulb's opacity back where it
     // started, rather than leaving it wherever the animation happened to be
     // paused - not that anything reuses this element, but a leaked infinite
-    // loop is a leaked infinite loop either way.
+    // loop is a leaked infinite loop either way. The frame has nothing to
+    // revert: its bulbs are plain CSS animations (see renderFrame), and
+    // those stop on their own the moment the elements are removed.
     this.letterAnimation?.revert();
-    this.frameAnimation?.revert();
   }
 
   // Fonts load once, up front, then the letters and the frame are drawn -
@@ -245,35 +252,40 @@ export class MainMenu implements AfterViewInit, OnDestroy {
       return segments[0].at(0);
     };
 
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // anime.js's `loop` treats a whole staggered call as one block and
+    // repeats the block - fine for the letters, which are a line with no
+    // wraparound, but wrong for a closed loop: it meant bulb 0 didn't
+    // restart on its own fixed rhythm, it sat lit and idle until the *last*
+    // bulb finished (which could be a couple of seconds later), then the
+    // entire ring snapped back to its start together. That snap was the
+    // jitter - and it only ever showed up here, not in the letters, because
+    // only here are the first and last bulb physically next to each other,
+    // so a restart that isn't perfectly continuous is visible as one.
+    //
+    // Plain CSS animations don't have that problem: each bulb gets its own
+    // independent, perpetually looping animation with no shared timeline to
+    // resync. What still has to be solved is the seam itself - bulb
+    // `count - 1` and bulb `0` are adjacent on the ring, so the delay
+    // between them has to be the same FRAME_STAGGER_TARGET as any other
+    // adjacent pair. Since each bulb's own cycle repeats every FRAME_PERIOD,
+    // that's only true if `count * stagger` lands on an exact multiple of
+    // FRAME_PERIOD - so the stagger actually used is solved for that,
+    // rather than applied as the raw target and hoping it lines up.
+    const laps = Math.max(1, Math.round((count * FRAME_STAGGER_TARGET) / FRAME_PERIOD));
+    const staggerMs = (FRAME_PERIOD * laps) / count;
+
     const fragment = document.createDocumentFragment();
     for (let i = 0; i < count; i++) {
       const { x, y } = pointAt((perimeter * i) / count);
-      appendBulb(fragment, x, y);
+      const bulb = appendBulb(fragment, x, y);
+      if (reducedMotion) continue;
+      bulb.style.setProperty('--bulb-floor', String(FRAME_FLOOR));
+      bulb.style.animation = `marquee-blink ${FRAME_PERIOD}ms linear infinite`;
+      bulb.style.animationDelay = `${i * staggerMs}ms`;
     }
     host.appendChild(fragment);
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    // A much lower floor than the letters get, and on purpose: the frame
-    // isn't a word that has to stay legible, it's a chase, and a chase
-    // reads as one only if most of the loop is dark at any instant with a
-    // travelling band of light passing through - the letters' 0.55 floor
-    // would make every bulb look lit all the time, and there was nothing
-    // left to walk round the frame.
-    // Two explicit legs (dim, then relight) rather than `alternate: true`.
-    // Alternate reverses the whole tween every other loop, and reversing
-    // the tween is exactly what reversed the stagger with it - the chase
-    // swept one way while dimming and swept back the other way while
-    // relighting, so it read as marching forward and back rather than
-    // travelling round the loop. Spelling both legs out forward means every
-    // loop replays the identical sequence, so the sweep direction never
-    // flips.
-    this.frameAnimation = animate(host.querySelectorAll<HTMLElement>('.bulb'), {
-      opacity: [{ to: 0.08, duration: 220 }, { to: 1, duration: 220 }],
-      loop: true,
-      ease: steps(1),
-      delay: stagger(14),
-    });
   }
 }
 
@@ -285,7 +297,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
 // bulb's computed style and seeing browser defaults looking back. The one
 // place both the letters and the frame get their bulbs from, so the two
 // can't end up looking like different things.
-function appendBulb(parent: Node, x: number, y: number): void {
+function appendBulb(parent: Node, x: number, y: number): HTMLSpanElement {
   const span = document.createElement('span');
   // Kept for the querySelectorAll calls above, not for any CSS rule.
   span.className = 'bulb';
@@ -299,4 +311,5 @@ function appendBulb(parent: Node, x: number, y: number): void {
   span.style.background = '#ffd166';
   span.style.boxShadow = BULB_SHADOW;
   parent.appendChild(span);
+  return span;
 }
