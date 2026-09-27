@@ -1,15 +1,15 @@
 import Phaser from 'phaser';
 import {
   BOARD_DROP_STEP,
-  BOARD_FLOOR,
   BOARD_MARGIN,
   CARD_HEIGHT,
   CARD_WIDTH,
-  GAME_HEIGHT,
-  MAX_BOARD_DROP,
   MIN_BOARD_DROP,
   TABLEAU_TOP_Y,
   TOP_ROW_Y,
+  boardFloor,
+  boardHeight,
+  maxBoardDrop,
 } from './config';
 import { Card } from './deck';
 import { DeckTheme } from './deck-theme';
@@ -224,9 +224,11 @@ export class SolitaireScene extends Phaser.Scene {
   private stockZone?: Phaser.GameObjects.Zone;
 
   // How far below its highest position the whole layout is currently sitting.
-  // See MAX_BOARD_DROP in config.ts: the board lives at the bottom of the
-  // room it is using, so the cards are where a thumb is.
-  private drop = MAX_BOARD_DROP;
+  // See boardFloor and maxBoardDrop in config.ts: the board lives at the
+  // bottom of the room it is using, so the cards are where a thumb is.
+  // Placeholder until init() sets the real one - this.table (and so
+  // this.height) doesn't exist yet at field-initialiser time.
+  private drop = 0;
 
   private drag?: DragState;
   // Set while the board is animating something the player must not interrupt
@@ -260,7 +262,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.showShuffle = data.showShuffle;
     this.deckStyle = data.deckStyle;
     this.report = data.events;
-    this.drop = this.table.drops ? MAX_BOARD_DROP : 0;
+    this.drop = this.table.drops ? maxBoardDrop(this.floorY) : 0;
     this.slotMap.clear();
     for (const slot of this.table.slots(this.handedness)) {
       this.slotMap.set(pileKey(slot.ref), {
@@ -319,6 +321,18 @@ export class SolitaireScene extends Phaser.Scene {
   // same textures. See freecell-table.ts.
   private get width(): number {
     return this.table.width;
+  }
+
+  // Scaled to this game's own width - see boardHeight's own note in
+  // config.ts on why a fixed height was the wrong idea for any game whose
+  // width isn't Klondike's.
+  private get height(): number {
+    return boardHeight(this.width);
+  }
+
+  // Clear of the rail at whatever height this particular game came out to.
+  private get floorY(): number {
+    return boardFloor(this.height);
   }
 
   private get columnPitch(): number {
@@ -392,9 +406,9 @@ export class SolitaireScene extends Phaser.Scene {
       .filter((pile) => !this.table.fansUp(pile.ref))
       .map((pile) => this.fanDepth(pile.ref, pile.cards));
     const deepest = Math.max(0, ...depths);
-    const slack = BOARD_FLOOR - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
+    const slack = this.floorY - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
     const stepped = Math.floor(Math.max(0, slack) / BOARD_DROP_STEP) * BOARD_DROP_STEP;
-    const next = Math.min(Math.max(stepped, MIN_BOARD_DROP), MAX_BOARD_DROP);
+    const next = Math.min(Math.max(stepped, MIN_BOARD_DROP), maxBoardDrop(this.floorY));
     if (next === this.drop) return;
 
     this.drop = next;
@@ -414,7 +428,7 @@ export class SolitaireScene extends Phaser.Scene {
   private fanOffsets(ref: PileRef, cards: readonly Card[]): number[] {
     const steps = this.fanSteps(ref, cards);
     const total = steps.reduce((sum, step) => sum + step, 0);
-    const room = BOARD_FLOOR - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
+    const room = this.floorY - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
     const squeeze = this.table.fansUp(ref) || total <= room ? 1 : room / total;
 
     const offsets: number[] = [];
@@ -986,7 +1000,7 @@ export class SolitaireScene extends Phaser.Scene {
 
   /** The board's own dimensions, for placing DOM over it. */
   gameSize(): { width: number; height: number } {
-    return { width: this.width, height: GAME_HEIGHT };
+    return { width: this.width, height: this.height };
   }
 
   /** How long the game in progress has been running, in seconds. */
@@ -1208,11 +1222,11 @@ export class SolitaireScene extends Phaser.Scene {
   // the screen, leaving a trail stamped into a render texture behind it.
   private startCascade(): void {
     const pr = this.pixelRatio;
-    const rt = this.add.renderTexture(0, 0, this.width * pr, GAME_HEIGHT * pr).setOrigin(0, 0);
+    const rt = this.add.renderTexture(0, 0, this.width * pr, this.height * pr).setOrigin(0, 0);
     // Drawn at canvas resolution and displayed back down to board units, the
     // same bargain the card textures make: the trail is a ghost, but a soft
     // ghost looks like a mistake.
-    rt.setDisplaySize(this.width, GAME_HEIGHT);
+    rt.setDisplaySize(this.width, this.height);
     this.root.addAt(rt, 1);
     this.cascade = rt;
 
@@ -1271,7 +1285,7 @@ export class SolitaireScene extends Phaser.Scene {
     // cards further instead of the whole cascade running in slow motion.
     const step = Math.min(delta / 16.6667, 2);
     const pr = this.pixelRatio;
-    const floor = GAME_HEIGHT - CARD_HEIGHT / 2;
+    const floor = this.height - CARD_HEIGHT / 2;
 
     this.fallers = this.fallers.filter((faller) => {
       const sprite = faller.sprite;

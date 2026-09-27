@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { createBoard } from 'phaser-card-engine/phaser';
-import { GAME_HEIGHT } from './config';
+import { boardHeight } from './config';
 import { FELT_CLEAR_COLOR } from './table';
 import { BoardInit, SolitaireScene } from './solitaire-scene';
 
@@ -22,7 +22,10 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
   const game = createBoard({
     parent,
     width: init.table.width,
-    height: GAME_HEIGHT,
+    // Scaled to the game's own width rather than the fixed GAME_HEIGHT - see
+    // boardHeight's own note on why a wider game needs a taller canvas to
+    // reach the same container edges a 480-wide one already does.
+    height: boardHeight(init.table.width),
     backgroundColor: FELT_CLEAR_COLOR,
   });
 

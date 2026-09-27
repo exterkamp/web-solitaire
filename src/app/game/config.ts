@@ -55,6 +55,26 @@ export const CARD_BACK_PEEK_HEIGHT = 11;
 // instead of leaving it as dead felt past a floor that never moved.
 export const GAME_HEIGHT = 920;
 
+// GAME_HEIGHT is the right canvas height for a 480-wide board, and only a
+// 480-wide board - it was measured and chosen against GAME_WIDTH, not
+// against anything that varies per game. FreeCell, Seahaven, Tri Peaks and
+// Pyramid all bring their own width (eight and ten columns, or a shape
+// that isn't columns at all), and a wider canvas at the same fixed height
+// is a canvas relatively too short for its width - which Scale.FIT resolves
+// by fitting to width and leaving the vertical letterboxing right back,
+// found the same way the fixed GAME_HEIGHT was: measured on the actual
+// device rather than assumed, this time by comparing the rendered canvas
+// to its container for five real games. Tri Peaks came out 58px short top
+// and bottom; Seahaven, the widest board here, 123px.
+//
+// This is the fix everywhere the canvas is actually sized: hold the ratio
+// GAME_HEIGHT keeps at 480 constant, and scale height with whatever width
+// the game in play actually asked for, rather than assuming every game
+// wants the same fixed number Klondike does.
+export function boardHeight(width: number): number {
+  return Math.round((width * GAME_HEIGHT) / GAME_WIDTH);
+}
+
 // Poker size is 2.5 x 3.5 inches - a 5:7 ratio - and cards look wrong at
 // anything else. The package keeps them in that proportion; 60 units wide is
 // its default and this board's binding constraint, which is the one real
@@ -142,6 +162,24 @@ export const BOARD_FLOOR = 900;
 // there.
 export const MAX_BOARD_DROP = 460;
 export const BOARD_DROP_STEP = 65;
+
+// BOARD_FLOOR and MAX_BOARD_DROP above are only right at GAME_HEIGHT - the
+// same problem boardHeight solves for a game's width, these two have for
+// its height. A game wider than 480 gets a taller canvas than 920 (see
+// boardHeight), and without pushing the floor and the drop range down to
+// match, the extra room past 920 sits unused below a floor that never
+// moved - precisely the bug boardHeight was written to fix, one level up.
+// Derived from the two constants above rather than a second pair of magic
+// numbers: the 20-unit clearance BOARD_FLOOR keeps below GAME_HEIGHT, and
+// the 440-unit gap MAX_BOARD_DROP keeps below BOARD_FLOOR, both held
+// constant as height changes rather than re-picked for every board size.
+export function boardFloor(height: number): number {
+  return height - (GAME_HEIGHT - BOARD_FLOOR);
+}
+
+export function maxBoardDrop(floor: number): number {
+  return floor - (BOARD_FLOOR - MAX_BOARD_DROP);
+}
 
 // And how far down it must always sit, which is a fact about the waste rather
 // than about the tableau: a draw-three waste fans *upward* out of its slot, so
