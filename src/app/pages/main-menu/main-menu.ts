@@ -49,12 +49,19 @@ const MARQUEE_TEXT = 'SOLITAIRE';
 // public/fonts/ATTRIBUTION.md for where it's from.
 const MARQUEE_FONT = "'Matrix Sans Print'";
 
-// One bulb's whole visual identity, in one place, so the frame and the
-// letters can't drift into two different-looking kinds of light. Small
-// enough that the gaps between the font's own dots still read as gaps
-// between bulbs rather than one continuous glow.
+// One bulb's whole visual identity - colour, and glow proportional to
+// size - in one formula (bulbShadow, below `appendBulb`), so the frame and
+// the letters can't drift into two different-looking kinds of light even
+// though they're two different sizes of the same one. The frame's bulbs
+// stay small: close together and meant to read as individual points
+// tracing a loop. The letters' are bigger - Matrix Sans Print draws every
+// stroke exactly one dot thick, which is correct for the font and thin for
+// a sign, so the bulb standing in for each dot is doing the thickening a
+// bolder weight would otherwise have done, and 5px is a size that still
+// reads as a row of distinct bulbs rather than a solid tube at the spacing
+// this font uses.
 const BULB_SIZE = 3.5;
-const BULB_SHADOW = '0 0 3px 1px rgba(255, 209, 102, 0.9), 0 0 7px 1.5px rgba(255, 209, 102, 0.45)';
+const LETTER_BULB_SIZE = 5;
 
 // The frame: a rounded rectangle walked once, rather than the four straight
 // strips this used to be. FRAME_SPACING is looser than the letters' own dot
@@ -207,7 +214,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     host.style.height = `${canvas.height / CANVAS_OVERSAMPLE}px`;
 
     const fragment = document.createDocumentFragment();
-    for (const bulb of bulbs) appendBulb(fragment, bulb.x, bulb.y);
+    for (const bulb of bulbs) appendBulb(fragment, bulb.x, bulb.y, LETTER_BULB_SIZE);
     host.appendChild(fragment);
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -392,19 +399,34 @@ function findBulbCenters(data: Uint8ClampedArray, width: number, height: number)
 // bulb's computed style and seeing browser defaults looking back. The one
 // place both the letters and the frame get their bulbs from, so the two
 // can't end up looking like different things.
-function appendBulb(parent: Node, x: number, y: number): HTMLSpanElement {
+// The glow scales with the bulb rather than being a fixed shadow string, so
+// LETTER_BULB_SIZE's bigger bulbs get a proportionally bigger halo instead
+// of the frame's tight one stretched onto something 40% larger than it was
+// measured for.
+function bulbShadow(size: number): string {
+  const innerBlur = size * 0.86;
+  const innerSpread = size * 0.29;
+  const outerBlur = size * 2;
+  const outerSpread = size * 0.43;
+  return (
+    `0 0 ${innerBlur}px ${innerSpread}px rgba(255, 209, 102, 0.9), ` +
+    `0 0 ${outerBlur}px ${outerSpread}px rgba(255, 209, 102, 0.45)`
+  );
+}
+
+function appendBulb(parent: Node, x: number, y: number, size = BULB_SIZE): HTMLSpanElement {
   const span = document.createElement('span');
   // Kept for the querySelectorAll calls above, not for any CSS rule.
   span.className = 'bulb';
   span.style.position = 'absolute';
   span.style.left = `${x}px`;
   span.style.top = `${y}px`;
-  span.style.width = `${BULB_SIZE}px`;
-  span.style.height = `${BULB_SIZE}px`;
-  span.style.margin = `${-BULB_SIZE / 2}px 0 0 ${-BULB_SIZE / 2}px`;
+  span.style.width = `${size}px`;
+  span.style.height = `${size}px`;
+  span.style.margin = `${-size / 2}px 0 0 ${-size / 2}px`;
   span.style.borderRadius = '50%';
   span.style.background = '#ffd166';
-  span.style.boxShadow = BULB_SHADOW;
+  span.style.boxShadow = bulbShadow(size);
   parent.appendChild(span);
   return span;
 }
