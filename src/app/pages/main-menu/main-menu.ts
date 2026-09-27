@@ -58,8 +58,16 @@ const FRAME_SPACING = 13;
 // apart (in that same cycle) each bulb along the loop should start its own.
 // "Roughly" because the frame's actual stagger is solved for below, not
 // read straight off this constant - see renderFrame.
-const FRAME_PERIOD = 440;
-const FRAME_STAGGER_TARGET = 14;
+// ~15% slower than the original 440ms - one bulb's full dim-then-relight
+// cycle.
+const FRAME_PERIOD = 506;
+// How many complete times the bright/dark pattern repeats around the ring
+// at once - four separate gaps chasing together rather than one bright arc
+// and one dark arc. Chosen directly as a count instead of approximated from
+// a target stagger in milliseconds, because what actually reads as "the
+// effect" is how many gaps are visible at once, not the delay between
+// adjacent bulbs.
+const FRAME_LAPS = 4;
 const FRAME_FLOOR = 0.08;
 
 // One button per game, and nothing else to decide here.
@@ -268,13 +276,13 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     // independent, perpetually looping animation with no shared timeline to
     // resync. What still has to be solved is the seam itself - bulb
     // `count - 1` and bulb `0` are adjacent on the ring, so the delay
-    // between them has to be the same FRAME_STAGGER_TARGET as any other
-    // adjacent pair. Since each bulb's own cycle repeats every FRAME_PERIOD,
-    // that's only true if `count * stagger` lands on an exact multiple of
-    // FRAME_PERIOD - so the stagger actually used is solved for that,
-    // rather than applied as the raw target and hoping it lines up.
-    const laps = Math.max(1, Math.round((count * FRAME_STAGGER_TARGET) / FRAME_PERIOD));
-    const staggerMs = (FRAME_PERIOD * laps) / count;
+    // between them has to be the same as any other adjacent pair. Since
+    // each bulb's own cycle repeats every FRAME_PERIOD, that's only true if
+    // `count * stagger` lands on an exact multiple of FRAME_PERIOD - which
+    // is guaranteed here rather than hoped for, because the stagger is
+    // solved backwards from FRAME_LAPS (an integer by definition) instead
+    // of the other way round.
+    const staggerMs = (FRAME_PERIOD * FRAME_LAPS) / count;
 
     const fragment = document.createDocumentFragment();
     for (let i = 0; i < count; i++) {
