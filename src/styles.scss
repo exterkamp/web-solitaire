@@ -169,6 +169,31 @@ h3 {
   border: 0;
 }
 
+// The main menu's marquee bulbs blink through this - see
+// main-menu.ts's renderFrame. It has to live here rather than in
+// main-menu.scss for the same reason the .bulb styles themselves ended up
+// inline in TypeScript rather than as a class rule: Angular's emulated
+// encapsulation doesn't just scope selectors, it rewrites @keyframes names
+// and any custom properties referenced inside them too, so a
+// component-scoped version of this keyframe had a different real name than
+// the literal string `marquee-blink` an inline `animation:` set from
+// TypeScript was asking for - the animation silently matched nothing.
+// Confirmed by reading the compiled output rather than assuming: the
+// shipped rule was named `_ngcontent-c123_marquee-blink`, and the custom
+// property inside it was `--ng-xyz-bulb-floor`, not `--bulb-floor`. A
+// global keyframe has no component to scope it to, so this one is safe to
+// reference by its plain name from anywhere.
+@keyframes marquee-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: var(--bulb-floor, 1);
+  }
+}
+
 /* Phaser builds its canvas at runtime, so it carries none of Angular's
    component scoping attributes and a component-scoped rule never matches
    it. touch-action doesn't inherit either, so it has to be set here, on the

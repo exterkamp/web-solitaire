@@ -168,22 +168,11 @@ h1 {
   }
 }
 
-// Each frame bulb's own perpetual dim-then-relight, applied as a plain CSS
-// animation per element rather than driven by anime.js - see renderFrame's
-// own note on why a shared JS timeline isn't the right tool for a closed
-// loop. --bulb-floor is set per bulb in TypeScript rather than hard-coded
-// here so this keyframe could be reused anywhere else a bulb needs to blink
-// between full and some other floor, not just at 0.08.
-@keyframes marquee-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: var(--bulb-floor, 1);
-  }
-}
+// marquee-blink itself moved to styles.scss - a component-scoped @keyframes
+// gets its name (and any custom properties referenced inside it) rewritten
+// by Angular's encapsulation, so an inline `animation: marquee-blink …` set
+// from TypeScript was pointing at a name that didn't actually exist. See
+// styles.scss for the rest of that story.
 
 // Left to the blanket rule in styles.scss, `animation-duration` would drop to
 // 0.01ms and an infinite steps() animation would strobe rather than sit
