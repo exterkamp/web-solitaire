@@ -7,8 +7,9 @@
 // of a canvas and a png of one is four times the size for no visible gain.
 //
 //   node tools/screenshots.mjs [--host=http://localhost:8083]
+//   node tools/screenshots.mjs --thumbs-only          # public/game-thumbs/ only
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -17,7 +18,16 @@ const host = process.argv.find((a) => a.startsWith('--host='))?.slice(7) ?? 'htt
 // shot worth retaking is usually one board looking wrong rather than six.
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
 const wanted = (name) => !only || only.split(',').includes(name);
+// For redoing the in-app thumbnails alone, without also retaking (and
+// diffing) every README picture along the way.
+const thumbsOnly = process.argv.includes('--thumbs-only');
 const out = new URL('../docs/screenshots/', import.meta.url).pathname;
+// The same shape, small: what the main menu's tiles and the setup page's
+// lead image are cropped from with CSS, not two separate photo shoots.
+// Shipped in the app itself, so quality and size are a budget rather than a
+// README nicety - see ngsw-config.json.
+const thumbOut = new URL('../public/game-thumbs/', import.meta.url).pathname;
+mkdirSync(thumbOut, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // A phone, and a real one: 412x915 at two device pixels to the CSS pixel is a
@@ -145,12 +155,35 @@ async function shoot(name) {
   console.log(`  ${name}.webp`);
 }
 
+// The canvas alone, not the HUD around it - the felt and the cards are what
+// tell two games apart, and cropping to them is what lets the same file work
+// as a near-square menu tile and a wide setup-page banner: each context
+// crops further with CSS `object-fit`, but neither can show board that
+// wasn't in the source. `scale` below the device pixel ratio (already 2, for
+// the full-size shots) is what keeps this a thumbnail rather than a second
+// copy of the README picture.
+async function shootThumb(name) {
+  const canvas = await evaluate(`(() => {
+    const box = document.querySelector('canvas').getBoundingClientRect();
+    return { x: box.left, y: box.top, width: box.width, height: box.height };
+  })()`);
+  const { result } = await send('Page.captureScreenshot', {
+    format: 'webp',
+    quality: 80,
+    clip: { x: canvas.x, y: canvas.y, width: canvas.width, height: canvas.height, scale: 0.5 },
+  });
+  writeFileSync(join(thumbOut, `${name}.webp`), Buffer.from(result.data, 'base64'));
+  console.log(`  game-thumbs/${name}.webp`);
+}
+
 // `name` is the picture to write; pass null to set a board up without
 // photographing it, which is how the pause menu gets a hand behind it. Null
 // rather than undefined, because passing undefined to a defaulted parameter
 // is the same as passing nothing - it took the default and photographed the
-// board twice.
-async function board(game, rounds, name = game) {
+// board twice. `thumb` is separate from `name` because the README shots
+// (menu, pause, setup-klondike) go through here too and none of them are a
+// game's in-app thumbnail.
+async function board(game, rounds, name = game, thumb = false) {
   await send('Page.navigate', { url: `${host}/play/${game}` });
   if (!await until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, game)) return;
   // Headless Chrome has no GPU and runs this board at about a frame a second,
@@ -164,12 +197,13 @@ async function board(game, rounds, name = game) {
   // Long enough for the last frame to be on the canvas rather than merely
   // scheduled - headless Chrome draws this board about once a second.
   await sleep(1500);
-  if (name) await shoot(name);
+  if (name && !thumbsOnly) await shoot(name);
+  if (thumb) await shootThumb(game);
 }
 
 console.log(`shooting ${host} at ${WIDTH}x${HEIGHT} @${DPR}x`);
 
-if (wanted('menu')) {
+if (!thumbsOnly && wanted('menu')) {
   await send('Page.navigate', { url: `${host}/` });
   await until("!!document.querySelector('.menu h1')", 'the menu');
   await sleep(800);
@@ -178,7 +212,7 @@ if (wanted('menu')) {
 
 // The pause menu, over a board with a hand on it - which is the only way it
 // is ever seen.
-if (wanted('pause')) {
+if (!thumbsOnly && wanted('pause')) {
   await board('klondike', 4, null);
   await evaluate(
     "[...document.querySelectorAll('.hud__button')].find(b => b.textContent.trim() === 'Menu').click()",
@@ -187,7 +221,7 @@ if (wanted('pause')) {
   await shoot('pause');
 }
 
-if (wanted('setup-klondike')) {
+if (!thumbsOnly && wanted('setup-klondike')) {
   await send('Page.navigate', { url: `${host}/setup/klondike` });
   await until("!!document.querySelector('.setup__summary')", 'the Klondike page');
   await sleep(800);
@@ -210,7 +244,7 @@ for (const [game, rounds] of [
   ['scorpion', 3], ['seahaven', 0],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
 ]) {
-  if (wanted(game)) await board(game, rounds);
+  if (wanted(game)) await board(game, rounds, game, true);
 }
 
 done(0);

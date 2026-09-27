@@ -15,10 +15,63 @@
   @include page-fits($gap: 0.55rem, $padding: 0.75rem 1rem);
 }
 
-// The games, at the size nine of them fit in. Still a 44px target twice over.
+// Two per row rather than one column of twelve - about the same total
+// height as the old single-column list of nine, for twelve.
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: min(420px, 90vw);
+}
+
+// A tile rather than a bar: the game's own board (public/game-thumbs/,
+// painted behind the label as a plain CSS background so a slow or absent
+// network still shows the teal fill and the name) instead of the same green
+// rectangle twelve times over. Still comfortably past a 44px target in
+// either dimension at this width.
 .game .button {
-  padding: 0.55rem 0;
-  font-size: 1.2rem;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  padding: 0;
+  aspect-ratio: 4 / 3;
+  background-size: cover;
+  // Bottom, not top: every board reserves empty felt at the top of the
+  // canvas so the tableau stays under a thumb (see config.ts /
+  // MAX_BOARD_DROP), so a portrait screenshot cropped to a landscape tile
+  // from the top is a picture of nothing. The cards are always toward the
+  // bottom.
+  background-position: center bottom;
+  overflow: hidden;
+
+  // The label needs to read over a photograph rather than a flat fill, so it
+  // sits on its own gradient rather than trusting the image to be dark
+  // enough at the bottom edge everywhere. Held near-solid through the band
+  // the label actually occupies rather than fading immediately, since a
+  // photo's own bottom edge is exactly as likely to be light as dark.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(7, 36, 31, 0.97) 0%,
+      rgba(7, 36, 31, 0.9) 24%,
+      rgba(7, 36, 31, 0.35) 55%,
+      transparent 100%
+    );
+  }
+
+  span {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.98rem;
+    line-height: 1.15;
+  }
 }
 
 h1 {

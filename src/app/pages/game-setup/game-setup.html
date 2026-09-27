@@ -1,5 +1,12 @@
 <div class="menu">
   <h1>{{ guide.title }}</h1>
+
+  <!-- The board itself, before any of the rules - the same photograph the
+       README uses, cropped wider by CSS rather than shot again. Answers
+       "what does this look like" before asking anyone to read three
+       paragraphs to find out. -->
+  <img class="setup__shot" src="/game-thumbs/{{ game }}.webp" alt="{{ guide.title }} in play" width="340" height="213" />
+
   <p class="setup__summary">{{ guide.summary }}</p>
 
   <!-- The rules, in the order somebody meets them: what is on the table,

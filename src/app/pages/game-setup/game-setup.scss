@@ -14,6 +14,23 @@ h1 {
   margin: 0;
 }
 
+// A crop of the same photo the menu tile uses (public/game-thumbs/), wider
+// here because there's a whole page rather than a quarter of one - `object-
+// fit` shows more of the board than the near-square tile does, not a
+// different picture.
+.setup__shot {
+  display: block;
+  width: 100%;
+  max-width: min(340px, 86vw);
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  // See main-menu.scss's .game .button for why bottom: every board leaves
+  // its top empty by design, so the cards are always lower in the frame.
+  object-position: center bottom;
+  border-radius: 8px;
+  box-shadow: var(--shadow-near);
+}
+
 // The one-line answer to "what is this game", set larger than the rest
 // because it is the line somebody reads while deciding.
 .setup__summary {

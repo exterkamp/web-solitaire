@@ -25,6 +25,7 @@
           "/fonts/*.woff2",
           "/cards/suits/*.svg",
           "/cards/art/press/*.webp",
+          "/game-thumbs/*.webp",
           "/icon-*.png",
           "/apple-touch-icon.png"
         ]

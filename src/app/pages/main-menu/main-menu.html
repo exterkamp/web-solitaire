@@ -8,66 +8,100 @@
        two minutes. -->
   <h2 class="menu__family">Build and sort</h2>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/klondike">Klondike</a>
-    <p class="menu__note">{{ line('klondike') }}</p>
-  </div>
+  <!-- Two columns of tiles rather than one column of buttons: the same
+       twelve games in about half the height, and each tile carries a photo
+       of its own board (public/game-thumbs/, from tools/screenshots.mjs)
+       rather than the same green rectangle repeated twelve times - which is
+       also most of how one game reads as different from another before you
+       have played either. -->
+  <div class="game-grid">
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/klondike.webp')" routerLink="/setup/klondike">
+        <span>Klondike</span>
+      </a>
+      <p class="menu__note">{{ line('klondike') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/freecell">FreeCell</a>
-    <p class="menu__note">{{ line('freecell') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/freecell.webp')" routerLink="/setup/freecell">
+        <span>FreeCell</span>
+      </a>
+      <p class="menu__note">{{ line('freecell') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/yukon">Yukon</a>
-    <p class="menu__note">{{ line('yukon') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/yukon.webp')" routerLink="/setup/yukon">
+        <span>Yukon</span>
+      </a>
+      <p class="menu__note">{{ line('yukon') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/canfield">Canfield</a>
-    <p class="menu__note">{{ line('canfield') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/canfield.webp')" routerLink="/setup/canfield">
+        <span>Canfield</span>
+      </a>
+      <p class="menu__note">{{ line('canfield') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/spiderette">Spiderette</a>
-    <p class="menu__note">{{ line('spiderette') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/spiderette.webp')" routerLink="/setup/spiderette">
+        <span>Spiderette</span>
+      </a>
+      <p class="menu__note">{{ line('spiderette') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/scorpion">Scorpion</a>
-    <p class="menu__note">{{ line('scorpion') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/scorpion.webp')" routerLink="/setup/scorpion">
+        <span>Scorpion</span>
+      </a>
+      <p class="menu__note">{{ line('scorpion') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/seahaven">Seahaven Towers</a>
-    <p class="menu__note">{{ line('seahaven') }}</p>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/seahaven.webp')" routerLink="/setup/seahaven">
+        <span>Seahaven Towers</span>
+      </a>
+      <p class="menu__note">{{ line('seahaven') }}</p>
+    </div>
   </div>
 
   <h2 class="menu__family">Match and clear</h2>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/tripeaks">Tri Peaks</a>
-    <p class="menu__note">{{ line('tripeaks') }}</p>
-  </div>
+  <div class="game-grid">
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/tripeaks.webp')" routerLink="/setup/tripeaks">
+        <span>Tri Peaks</span>
+      </a>
+      <p class="menu__note">{{ line('tripeaks') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/pyramid">Pyramid</a>
-    <p class="menu__note">{{ line('pyramid') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/pyramid.webp')" routerLink="/setup/pyramid">
+        <span>Pyramid</span>
+      </a>
+      <p class="menu__note">{{ line('pyramid') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/golf">Golf</a>
-    <p class="menu__note">{{ line('golf') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/golf.webp')" routerLink="/setup/golf">
+        <span>Golf</span>
+      </a>
+      <p class="menu__note">{{ line('golf') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/blackhole">Black Hole</a>
-    <p class="menu__note">{{ line('blackhole') }}</p>
-  </div>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/blackhole.webp')" routerLink="/setup/blackhole">
+        <span>Black Hole</span>
+      </a>
+      <p class="menu__note">{{ line('blackhole') }}</p>
+    </div>
 
-  <div class="game">
-    <a class="button" routerLink="/setup/acesup">Aces Up</a>
-    <p class="menu__note">{{ line('acesup') }}</p>
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/acesup.webp')" routerLink="/setup/acesup">
+        <span>Aces Up</span>
+      </a>
+      <p class="menu__note">{{ line('acesup') }}</p>
+    </div>
   </div>
 
   <!-- Side by side rather than stacked, which is a whole button's height
