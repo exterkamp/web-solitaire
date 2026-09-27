@@ -15,6 +15,19 @@ interface Bulb {
 }
 
 const CANVAS_PADDING = 4;
+// Drawn at this multiple of display size before the dots are found, then
+// divided back down. A font rasteriser's antialiasing blur is close to a
+// fixed number of *pixels* wide regardless of how large the glyph is drawn
+// - which is exactly the problem the first version of this had shipped
+// against nothing but this developer's one browser: a low-resolution
+// canvas puts that fixed-width blur right in the gap between two
+// neighbouring dots, where it can bridge them into one blob, and how much
+// of the gap it eats depends on the rasteriser - different on a phone than
+// on the desktop Chrome this was tuned against. Oversampling shrinks the
+// blur's share of the gap without touching anything about how the dots
+// actually look on screen, which a threshold tweak alone can't do because
+// it can only ever be correct for the one rendering engine it was tuned on.
+const CANVAS_OVERSAMPLE = 3;
 const FONT_WEIGHT = 400;
 const MARQUEE_TEXT = 'SOLITAIRE';
 
@@ -165,24 +178,33 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.font = `${FONT_WEIGHT} ${fontSize}px ${MARQUEE_FONT}`;
-    canvas.width = Math.ceil(ctx.measureText(MARQUEE_TEXT).width) + CANVAS_PADDING * 2;
-    canvas.height = Math.ceil(fontSize * 1.3);
+    // Drawn well past display size, then divided back down after the dots
+    // are found - see CANVAS_OVERSAMPLE's own note on why this is what
+    // makes the threshold in findBulbCenters trustworthy on a device this
+    // wasn't tuned against.
+    const drawSize = fontSize * CANVAS_OVERSAMPLE;
+    ctx.font = `${FONT_WEIGHT} ${drawSize}px ${MARQUEE_FONT}`;
+    const padding = CANVAS_PADDING * CANVAS_OVERSAMPLE;
+    canvas.width = Math.ceil(ctx.measureText(MARQUEE_TEXT).width) + padding * 2;
+    canvas.height = Math.ceil(drawSize * 1.3);
     // Sizing the canvas clears the context back to its defaults, so the font
     // (and everything below) has to be set again after, not just before.
-    ctx.font = `${FONT_WEIGHT} ${fontSize}px ${MARQUEE_FONT}`;
+    ctx.font = `${FONT_WEIGHT} ${drawSize}px ${MARQUEE_FONT}`;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#fff';
-    ctx.fillText(MARQUEE_TEXT, CANVAS_PADDING, canvas.height * 0.72);
+    ctx.fillText(MARQUEE_TEXT, padding, canvas.height * 0.72);
 
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const bulbs = findBulbCenters(data, canvas.width, canvas.height);
+    const bulbs = findBulbCenters(data, canvas.width, canvas.height).map((bulb) => ({
+      x: bulb.x / CANVAS_OVERSAMPLE,
+      y: bulb.y / CANVAS_OVERSAMPLE,
+    }));
     // Left to right, so the stagger below plays as a ripple running through
     // the word in reading order rather than as a scatter with no direction.
     bulbs.sort((a, b) => a.x - b.x || a.y - b.y);
 
-    host.style.width = `${canvas.width}px`;
-    host.style.height = `${canvas.height}px`;
+    host.style.width = `${canvas.width / CANVAS_OVERSAMPLE}px`;
+    host.style.height = `${canvas.height / CANVAS_OVERSAMPLE}px`;
 
     const fragment = document.createDocumentFragment();
     for (const bulb of bulbs) appendBulb(fragment, bulb.x, bulb.y);
@@ -305,14 +327,25 @@ export class MainMenu implements AfterViewInit, OnDestroy {
 // The alpha threshold has to be well above "any ink at all" - checked at
 // 128 first, which found 24 blobs for a word that should have roughly five
 // times that many. Adjacent dots' antialiasing was faint but not zero in
-// the gap between them, which a low threshold reads as one continuous
-// blob rather than two dots that happen to be close. Counted blobs at
-// several thresholds until the count stopped changing - 127 from 200
-// through 250 - and picked a value in the middle of that flat stretch
-// rather than right at its edge.
+// the gap between them, which a low threshold reads as one continuous blob
+// rather than two dots that happen to be close.
+//
+// Fixed at a number tuned on one browser the first time this shipped, and
+// that was the actual mistake, not the number itself - a phone's rendering
+// pipeline is not this developer's Linux Chrome, and a threshold picked
+// against one rasteriser's antialiasing has no reason to be right about
+// another's. Solved as a fraction of whatever the *brightest* pixel this
+// canvas actually produced turns out to be, rather than an absolute number
+// assumed to mean "fully opaque" - self-calibrating to whatever ceiling
+// this particular rendering pipeline happens to have, on this particular
+// device, rather than the one this was tested on.
 function findBulbCenters(data: Uint8ClampedArray, width: number, height: number): Bulb[] {
+  let maxAlpha = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i] > maxAlpha) maxAlpha = data[i];
+  const threshold = maxAlpha * 0.8;
+
   const visited = new Uint8Array(width * height);
-  const filled = (x: number, y: number) => data[(y * width + x) * 4 + 3] > 220;
+  const filled = (x: number, y: number) => data[(y * width + x) * 4 + 3] > threshold;
   const bulbs: Bulb[] = [];
   const stack: number[] = [];
   for (let y = 0; y < height; y++) {
