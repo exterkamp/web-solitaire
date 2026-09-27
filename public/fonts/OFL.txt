@@ -1,8 +1,9 @@
 Copyright 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
 Copyright 2020 The Jost Project Authors (https://github.com/indestructible-type)
 Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
+Copyright 2026 The Matrix Sans Project Authors (https://github.com/FriedOrange/MatrixSans)
 
-All three fonts are under the same licence, whose text follows once. Only
+All four fonts are under the same licence, whose text follows once. Only
 the copyright notices above differ between them.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

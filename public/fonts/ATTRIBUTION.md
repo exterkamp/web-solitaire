@@ -1,6 +1,6 @@
 # Fonts
 
-Four files. Three are under the [SIL Open Font License
+Five files. Four are under the [SIL Open Font License
 1.1](https://scripts.sil.org/OFL) — see OFL.txt, which carries their copyright
 notices over one copy of the licence text. The OFL allows bundling,
 modification and commercial use; its one real condition is that the fonts are
@@ -17,12 +17,15 @@ rather than folded in with the other three.
 | `jost-latin.woff2` | [Jost\*](https://github.com/indestructible-type/Jost) | Owen Earl | Body: sentences, rules, prices, small print |
 | `archivo-latin.woff2` | [Archivo](https://github.com/Omnibus-Type/Archivo) | Omnibus-Type | The rank in a card's corner, and nothing else |
 | `schoolbell-latin.woff2` | [Schoolbell](https://fonts.google.com/specimen/Schoolbell) | Font Diner, Inc. (Apache 2.0) | The scoreboard's entries — the hand, not the form |
+| `matrix-sans-print-latin.woff2` | [Matrix Sans, Print style](https://github.com/FriedOrange/MatrixSans) | FriedOrange | Canvas-only: the main menu's marquee, sampled for bulb positions |
 
-All are the **latin subset**, and the three OFL ones are **variable**, which
-is why there are so few files: one Cinzel covers 400–900, one Jost 300–700
-and one Archivo 500–700, so asking for a different weight costs nothing extra
-to download. Schoolbell has a single weight and that is all it needs — see
-below. 108kB for the set.
+All are the **latin subset**. Three of the OFL ones are also **variable**,
+which is why there are so few files: one Cinzel covers 400–900, one Jost
+300–700 and one Archivo 500–700, so asking for a different weight costs
+nothing extra to download. Schoolbell and Matrix Sans Print are each a single
+static weight, which is all either needs — see below for Schoolbell, and
+Matrix Sans Print's own section for why weight was never a question for
+that one. 144kB for the set.
 
 They are served from here rather than from Google's CDN. A game that deals
 its own cards and keeps its own scores should not need a third party to be up
@@ -93,6 +96,34 @@ assumed, and worth re-checking if the hand ever changes.
 paints its stroke in flat ink, which takes the grain off the outside of every
 glyph.
 
+## Why the marquee gets its own font
+
+The main menu's title is drawn as bulbs, not lit letters — see
+`main-menu.ts`. Two real fonts were tried there before this one and both
+were the wrong tool for the same underlying reason: they are letterforms
+meant to be filled or stroked as continuous shapes, and a bulb sign asks a
+different question of a glyph entirely - not "what is this shape" but
+"where, specifically, do the dots go." Cinzel's serifs and thick-thin
+stroke contrast didn't survive being sampled onto a grid coarse enough to
+read as individual bulbs. Jost's even strokes did better, being a
+geometric sans, but a *sans-serif* is still a continuous shape underneath
+- sampling one on a grid is still a guess at where the dots should fall,
+just a better-informed guess than Cinzel's.
+
+Matrix Sans Print isn't a guess, for either the app or the reader: its
+letterforms *are* discrete circles already, drawn that way on purpose to
+resemble "dot-matrix printer output and electronic signs found on
+motorways, airports and train stations" (the family's own description).
+Filling it and finding the isolated dot each blob of ink actually is -
+rather than laying a grid over the glyph and hoping the spacing lines up -
+turns font design that already solved bulb-sign legibility into bulb
+positions directly. See `renderLetters` for the connected-component pass
+that does the finding.
+
+It has one weight, which was never a design question the way Schoolbell's
+was: a dot-matrix face has nothing for a second weight to thicken - the
+dots either are there or they are not.
+
 ## Replacing them
 
 `src/styles.scss` holds the @font-face rules and the two variables every
@@ -101,4 +132,6 @@ other stylesheet reads, and `src/_type.scss` holds the display treatment
 the families are named again in `src/app/game/fonts.ts` for the canvas
 (including the card index, which lives only there), and the app waits for
 them before it bootstraps — see the note there
-and in `src/main.ts`.
+and in `src/main.ts`. Matrix Sans Print is the exception to all of that: it
+is never set as CSS at all, only loaded and drawn to an offscreen canvas -
+see `main-menu.ts`.

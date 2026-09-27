@@ -55,6 +55,19 @@
   font-display: block;
 }
 
+/* The main menu's marquee only, and only on its own offscreen canvas - see
+   main-menu.ts. Never set as CSS anywhere, same reason Archivo's rule above
+   exists: a @font-face is the only way to get the file loaded at all. One
+   static weight, because a dot-matrix face has nothing for a second weight
+   to thicken - see public/fonts/ATTRIBUTION.md. */
+@font-face {
+  font-family: 'Matrix Sans Print';
+  src: url('/fonts/matrix-sans-print-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 /* The two names the rest of the app uses. Nothing else should be naming a
    typeface: changing the deck's voice ought to be two lines here. */
 :root {

@@ -14,43 +14,40 @@ interface Bulb {
   readonly y: number;
 }
 
-// Real marquee letters have visible gaps between bulbs - that's what reads
-// as individual bulbs rather than a lit tube. GRID_STEP has to be bigger
-// than a single dot's glow or neighbours merge into a blob (an earlier
-// version of this got exactly that wrong: too fine a grid at too large a
-// glow drew a smear roughly shaped like the word). But too coarse a grid
-// loses the letters themselves - nine characters in ~380px of plaque left
-// only four or five sample columns across a stroke, which isn't enough to
-// tell an R from an A. GRID_STEP came down and the bulbs shrank to match,
-// rather than just adding more of the original size - more, smaller lights
-// is what makes a real marquee font legible at all, not just more lights.
-// STROKE_WIDTH still has to be at least GRID_STEP, or the sampling grid
-// steps clean over a stroke this thin without ever landing on it.
-const GRID_STEP = 6;
-const STROKE_WIDTH = 7;
-const FONT_WEIGHT = 700;
+const CANVAS_PADDING = 4;
+const FONT_WEIGHT = 400;
 const MARQUEE_TEXT = 'SOLITAIRE';
 
-// Jost, not Cinzel. Cinzel is cut from Roman inscriptional capitals - thin
-// serifs and a thick-thin stroke contrast that a grid of evenly spaced
-// bulbs cannot hold onto, so the word traced but only barely, and read as
-// noise before it read as SOLITAIRE. Jost is geometric - Futura's shapes,
-// the same reasoning styles.scss gives for using it as the body face - and
-// a geometric sans with even strokes and no serifs to lose is closer to
-// what a real bulb sign's lettering actually looks like.
-const MARQUEE_FONT = "'Jost'";
+// Third font tried here, and the first one that isn't a guess. Cinzel and
+// then Jost were both asked to be something they aren't: letterforms meant
+// to be filled as one continuous shape, sampled on a grid and hoped into
+// looking like individual bulbs. Cinzel's serifs and thick-thin stroke
+// contrast didn't survive that at all; Jost's even geometric strokes did
+// better, but "better" was still a grid laid over a shape, guessing at
+// where the dots should fall.
+//
+// Matrix Sans Print isn't a shape to sample - its letterforms are already
+// discrete filled circles, drawn that way on purpose to resemble dot-matrix
+// printer output and the signs at motorways and train stations (the
+// family's own description, and exactly the brief here). Filled rather than
+// sampled onto anything, then read back with findBulbCenters, which finds
+// each isolated blob of ink and takes its centre - one bulb per dot the
+// font already decided on, not a grid hoping to rediscover them. See
+// public/fonts/ATTRIBUTION.md for where it's from.
+const MARQUEE_FONT = "'Matrix Sans Print'";
 
 // One bulb's whole visual identity, in one place, so the frame and the
 // letters can't drift into two different-looking kinds of light. Small
-// enough that GRID_STEP's spacing reads as gaps between bulbs rather than
-// one continuous glow.
+// enough that the gaps between the font's own dots still read as gaps
+// between bulbs rather than one continuous glow.
 const BULB_SIZE = 3.5;
 const BULB_SHADOW = '0 0 3px 1px rgba(255, 209, 102, 0.9), 0 0 7px 1.5px rgba(255, 209, 102, 0.45)';
 
 // The frame: a rounded rectangle walked once, rather than the four straight
-// strips this used to be. FRAME_SPACING is looser than GRID_STEP - a border
-// doesn't need to hold a glyph's shape, only read as a loop of individual
-// lights - and FRAME_INSET keeps it off the plaque's own bronze edge.
+// strips this used to be. FRAME_SPACING is looser than the letters' own dot
+// spacing - a border doesn't need to hold a glyph's shape, only read as a
+// loop of individual lights - and FRAME_INSET keeps it off the plaque's own
+// bronze edge.
 const FRAME_INSET = 9;
 const FRAME_RADIUS = 16;
 const FRAME_SPACING = 13;
@@ -137,10 +134,10 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     if (!marquee) return;
 
     // font-display: block (see styles.scss) only promises the *page* won't
-    // flash unstyled text while Jost arrives - a canvas asked to draw
-    // before the font has actually loaded falls back to a default sans
-    // silently, and bakes the wrong glyph shapes into every bulb position
-    // rather than failing loudly.
+    // flash unstyled text while Matrix Sans Print arrives - a canvas asked
+    // to draw before the font has actually loaded falls back to a default
+    // sans silently, and bakes the wrong glyph shapes into every bulb
+    // position rather than failing loudly.
     await document.fonts.load(`${FONT_WEIGHT} 100px ${MARQUEE_FONT}`);
     await document.fonts.ready;
 
@@ -169,25 +166,17 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.font = `${FONT_WEIGHT} ${fontSize}px ${MARQUEE_FONT}`;
-    canvas.width = Math.ceil(ctx.measureText(MARQUEE_TEXT).width) + STROKE_WIDTH * 2;
+    canvas.width = Math.ceil(ctx.measureText(MARQUEE_TEXT).width) + CANVAS_PADDING * 2;
     canvas.height = Math.ceil(fontSize * 1.3);
     // Sizing the canvas clears the context back to its defaults, so the font
     // (and everything below) has to be set again after, not just before.
     ctx.font = `${FONT_WEIGHT} ${fontSize}px ${MARQUEE_FONT}`;
     ctx.textBaseline = 'alphabetic';
-    ctx.lineWidth = STROKE_WIDTH;
-    ctx.strokeStyle = '#fff';
-    ctx.strokeText(MARQUEE_TEXT, STROKE_WIDTH, canvas.height * 0.72);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(MARQUEE_TEXT, CANVAS_PADDING, canvas.height * 0.72);
 
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const bulbs: Bulb[] = [];
-    for (let y = 0; y < canvas.height; y += GRID_STEP) {
-      for (let x = 0; x < canvas.width; x += GRID_STEP) {
-        if (data[(y * canvas.width + x) * 4 + 3] > 128) {
-          bulbs.push({ x, y });
-        }
-      }
-    }
+    const bulbs = findBulbCenters(data, canvas.width, canvas.height);
     // Left to right, so the stagger below plays as a ripple running through
     // the word in reading order rather than as a scatter with no direction.
     bulbs.sort((a, b) => a.x - b.x || a.y - b.y);
@@ -302,6 +291,64 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     }
     host.appendChild(fragment);
   }
+}
+
+// One bulb per dot already drawn in the glyphs, not a grid laid over them
+// afterwards and hoping the spacing lines up: Matrix Sans Print's
+// letterforms are isolated filled circles by design (see MARQUEE_FONT's own
+// note), so finding each one is a flood fill - walk every filled pixel that
+// hasn't been visited yet, follow it into everything touching it, and take
+// the blob's centre. The font already decided where the dots go; this only
+// finds them. 4-connected rather than 8: a diagonal step looks close enough
+// to the gap between two dots that it isn't worth risking a merge across it.
+//
+// The alpha threshold has to be well above "any ink at all" - checked at
+// 128 first, which found 24 blobs for a word that should have roughly five
+// times that many. Adjacent dots' antialiasing was faint but not zero in
+// the gap between them, which a low threshold reads as one continuous
+// blob rather than two dots that happen to be close. Counted blobs at
+// several thresholds until the count stopped changing - 127 from 200
+// through 250 - and picked a value in the middle of that flat stretch
+// rather than right at its edge.
+function findBulbCenters(data: Uint8ClampedArray, width: number, height: number): Bulb[] {
+  const visited = new Uint8Array(width * height);
+  const filled = (x: number, y: number) => data[(y * width + x) * 4 + 3] > 220;
+  const bulbs: Bulb[] = [];
+  const stack: number[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const start = y * width + x;
+      if (visited[start] || !filled(x, y)) continue;
+      visited[start] = 1;
+      stack.push(start);
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      while (stack.length) {
+        const idx = stack.pop()!;
+        const cx = idx % width;
+        const cy = (idx / width) | 0;
+        sumX += cx;
+        sumY += cy;
+        count++;
+        const neighbors: [number, number][] = [
+          [cx - 1, cy],
+          [cx + 1, cy],
+          [cx, cy - 1],
+          [cx, cy + 1],
+        ];
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          const nIdx = ny * width + nx;
+          if (visited[nIdx] || !filled(nx, ny)) continue;
+          visited[nIdx] = 1;
+          stack.push(nIdx);
+        }
+      }
+      bulbs.push({ x: sumX / count, y: sumY / count });
+    }
+  }
+  return bulbs;
 }
 
 // Styled inline rather than through main-menu.scss: Angular's emulated
