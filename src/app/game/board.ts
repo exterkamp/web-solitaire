@@ -27,6 +27,16 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
     // reach the same container edges a 480-wide one already does.
     height: boardHeight(init.table.width),
     backgroundColor: FELT_CLEAR_COLOR,
+    // Matter, for the one thing on this board that is a physical object
+    // rather than a card: the score's chip stack (see chip.ts). Bounds are
+    // set per-game once the scene knows its own width, not here - a fixed
+    // world size here would be wrong for every table but Klondike's.
+    // Sleeping so a settled pile of chips stops costing anything once it has
+    // - the same handful of bodies otherwise gets re-simulated every frame
+    // for the rest of the hand.
+    config: {
+      physics: { default: 'matter', matter: { gravity: { x: 0, y: 1 }, enableSleeping: true } },
+    },
   });
 
   // Added rather than listed in the config above, because the scene needs its

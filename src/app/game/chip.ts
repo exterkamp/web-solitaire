@@ -35,12 +35,21 @@ const CHIP_DIAMETER = 34;
 // setDisplaySize - crisp at any device pixel ratio without regenerating a
 // texture per screen.
 const CHIP_OVERSAMPLE = 4;
-// How far a chip sits above the one under it in a stack - not the chip's
-// own thickness so much as how much of the one below has to peek out for
-// the stack to read as a stack rather than one chip with a shadow.
-const CHIP_RISE = 3.5;
-// Horizontal room between one denomination's column and the next.
-const STACK_GAP = CHIP_DIAMETER + 6;
+
+// The body a chip falls and stacks with is not its visual face. A real chip
+// is a couple of millimetres thick against an inch and a half across, and a
+// physics body sized to the full face - a disc stacked on a disc, touching
+// at a single point - is what a coin does, not what a chip does: it rolls
+// off rather than resting. Sized to the chip's actual footprint instead, a
+// flattened box a few units tall, it stacks the way a stack of boxes does in
+// any physics demo: solidly while it's centred, and toppling once it isn't -
+// which is the whole feature. The face texture is drawn full-size on top of
+// this regardless, so the mismatch is never visible - only felt, in how it
+// falls.
+const CHIP_BODY_WIDTH = 30;
+const CHIP_THICKNESS = 7;
+// Rounded slightly so a corner doesn't snag on the one below it mid-topple.
+const CHIP_CHAMFER = 1.5;
 
 function chipTextureKey(value: number): string {
   return `chip-${value}`;
@@ -138,27 +147,62 @@ export function chipCounts(score: number): { value: number; count: number }[] {
   return counts;
 }
 
-// Draws the whole tray: one column per denomination in play, highest value
-// innermost (closest to the anchor) so the stack a player glances at first
-// is the one carrying the most weight, the rest fanning out to its left.
-// Returns what it created so the scene can destroy it next time the score
-// changes - a stack is rebuilt from scratch on every update rather than
-// diffed, the same choice restack() makes for the cards themselves.
-export function drawChipStack(
+// The same, flattened into one chip per entry, highest denomination first -
+// the order a cashier actually racks a tray in, biggest on the felt first so
+// the ones that follow have something to lean on.
+function chipList(score: number): number[] {
+  return chipCounts(score).flatMap((stack) => Array<number>(stack.count).fill(stack.value));
+}
+
+// Drops the whole score in one pile and lets gravity sort out what that
+// looks like. Every chip in play, in one column at `x`, spawned already
+// stacked rather than dropped from height - each a hair off-centre from the
+// one below it, which is enough to seed real instability without staging a
+// drop animation this board has no headroom for. From there Matter runs the
+// rest: a short stack settles roughly where it started, a tall one leans
+// and spills, the way an actual tray of chips does when it's racked too
+// fast. Returns what it created so the scene can destroy it next time the
+// score changes - a pile is rebuilt from scratch on every update rather
+// than diffed, the same choice restack() makes for the cards themselves.
+export function spawnChipStack(
   scene: Phaser.Scene,
-  anchorX: number,
-  anchorY: number,
+  x: number,
+  y: number,
   score: number,
-): Phaser.GameObjects.Image[] {
-  const objects: Phaser.GameObjects.Image[] = [];
-  chipCounts(score).forEach((stack, columnIndex) => {
-    const x = anchorX - columnIndex * STACK_GAP;
-    for (let i = 0; i < stack.count; i++) {
-      const y = anchorY - i * CHIP_RISE;
-      objects.push(
-        scene.add.image(x, y, chipTextureKey(stack.value)).setDisplaySize(CHIP_DIAMETER, CHIP_DIAMETER),
-      );
-    }
+  scale: number,
+): Phaser.Physics.Matter.Image[] {
+  const chips = chipList(score);
+  const objects: Phaser.Physics.Matter.Image[] = [];
+
+  // A straight stack of boxes sits there forever - real friction holds it
+  // fine at this height-to-base ratio, jitter alone or not. What tips a
+  // stack of chips over is someone's hand catching the tray, so that's what
+  // this gives it: one shove, one direction, chosen once per pile rather
+  // than per chip. Scaled by height up the stack the way a real shove is -
+  // the base barely moves, the top goes sideways - which is what turns
+  // "stack of boxes" into "stack of boxes toppling" instead of "stack of
+  // boxes standing at a slight angle".
+  const push = (Math.random() < 0.5 ? -1 : 1) * Phaser.Math.FloatBetween(2.5, 4);
+
+  chips.forEach((value, i) => {
+    const jitterX = Phaser.Math.FloatBetween(-1.5, 1.5) * scale;
+    const chip = scene.matter.add
+      .image(x + jitterX, y - i * CHIP_THICKNESS * scale, chipTextureKey(value), undefined, {
+        shape: {
+          type: 'rectangle',
+          width: CHIP_BODY_WIDTH * scale,
+          height: CHIP_THICKNESS * scale,
+        },
+        chamfer: { radius: CHIP_CHAMFER * scale },
+        friction: 0.3,
+        frictionStatic: 0.35,
+        restitution: 0.15,
+      })
+      .setDisplaySize(CHIP_DIAMETER * scale, CHIP_DIAMETER * scale)
+      .setAngle(Phaser.Math.FloatBetween(-3, 3))
+      .setDepth(1000);
+    chip.setVelocityX(push * (i / chips.length));
+    objects.push(chip);
   });
   return objects;
 }

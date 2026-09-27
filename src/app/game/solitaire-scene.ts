@@ -12,7 +12,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
-import { drawChipStack, ensureChipTextures } from './chip';
+import { ensureChipTextures, spawnChipStack } from './chip';
 import { DeckTheme } from './deck-theme';
 import { defineStack } from 'phaser-card-engine';
 import { DeckStyle } from './deck-style';
@@ -136,6 +136,15 @@ const TAP_SLOP = 10;
 // when a dragged run is over it.
 const HIGHLIGHT_COLOR = 0xffd166;
 
+// The score's chip tray: the band of felt between the top row and the
+// tableau (see TABLEAU_TOP_Y's own note), and enough width for a toppled
+// stack to spill sideways without reaching the lettering it sits beside.
+// Tall rather than wide - no ceiling wall, so a stack too tall for its base
+// is free to lean and spill rather than piling up against an invisible lid.
+const CHIP_TRAY_WIDTH = 190;
+const CHIP_TRAY_TOP = 20;
+const CHIP_TRAY_WALL = 40;
+
 interface DragState {
   sprites: CardSprite[];
   from: PileRef;
@@ -213,9 +222,12 @@ export class SolitaireScene extends Phaser.Scene {
   // on top of the printing rather than under it.
   private markings!: Phaser.GameObjects.Container;
   private cardLayer!: Phaser.GameObjects.Container;
-  // The score, in chips. Rebuilt whole on every publish() rather than
-  // diffed - see renderChips.
-  private chipLayer!: Phaser.GameObjects.Container;
+  // The score, in chips. Physics bodies rather than sprites in a container -
+  // Matter simulates in the scene's own pixel space, not inside a scaled
+  // container - so these live outside `root` and are positioned in canvas
+  // pixels directly. Rebuilt whole on every publish() rather than diffed -
+  // see renderChips.
+  private chips: Phaser.Physics.Matter.Image[] = [];
 
   // One sprite per card, kept for the life of the deal and moved rather than
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
@@ -297,12 +309,12 @@ export class SolitaireScene extends Phaser.Scene {
     drawTableSurface(this, this.pixelRatio);
 
     ensureChipTextures(this);
+    this.setupChipTray();
 
     this.root = this.add.container(0, 0).setScale(this.pixelRatio);
     this.markings = this.add.container(0, 0);
     this.cardLayer = this.add.container(0, 0);
-    this.chipLayer = this.add.container(0, 0);
-    this.root.add([this.markings, this.cardLayer, this.chipLayer]);
+    this.root.add([this.markings, this.cardLayer]);
 
     this.printLayout();
 
@@ -765,20 +777,44 @@ export class SolitaireScene extends Phaser.Scene {
     });
   }
 
+  // Walls for the score's chip pile, set once a game's own width is known -
+  // a fixed size here would be right for Klondike and wrong for every wider
+  // table. No ceiling: see CHIP_TRAY_WIDTH's own note on why a stack too
+  // tall for the room it has should spill rather than stack against a lid.
+  // In canvas pixels rather than board units, because Matter simulates in
+  // the scene's own space rather than inside the pixelRatio-scaled `root` -
+  // see the note on the `chips` field.
+  private setupChipTray(): void {
+    const pr = this.pixelRatio;
+    const left = this.width - BOARD_MARGIN - CHIP_TRAY_WIDTH;
+    const height = TABLEAU_TOP_Y - 3 - CHIP_TRAY_TOP;
+    this.matter.world.setBounds(
+      left * pr, CHIP_TRAY_TOP * pr, CHIP_TRAY_WIDTH * pr, height * pr,
+      CHIP_TRAY_WALL, true, true, false, true,
+    );
+  }
+
   // The score, in chips, sitting on the felt in the one place every game
   // leaves empty: the band between the top row and the tableau (see
   // TABLEAU_TOP_Y's own note - it's where the game's name is printed, and
   // nowhere else), to the right of that lettering rather than under it.
   // Rebuilt from scratch each time rather than diffed, the same call
-  // restack() makes about the cards themselves - a handful of image sprites
+  // restack() makes about the cards themselves - a handful of physics bodies
   // is cheap enough that keeping score's own diff logic in sync with
-  // chip.ts's would cost more than it saved.
+  // chip.ts's would cost more than it saved, and it means every change to
+  // the score restages the same small drop-and-settle rather than needing
+  // its own animation for "five more chips landed on an existing pile".
   private renderChips(score: number | undefined): void {
-    this.chipLayer.removeAll(true);
+    for (const chip of this.chips) chip.destroy();
+    this.chips = [];
     if (score === undefined) return;
-    const anchorX = this.width - BOARD_MARGIN - 21;
-    const anchorY = TABLEAU_TOP_Y - 20;
-    this.chipLayer.add(drawChipStack(this, anchorX, anchorY, score));
+    const pr = this.pixelRatio;
+    // Centred in the tray rather than flush against its right wall - a pile
+    // built against one wall can only ever spill the other way, and half the
+    // room goes unused.
+    const anchorX = (this.width - BOARD_MARGIN - CHIP_TRAY_WIDTH / 2) * pr;
+    const anchorY = (TABLEAU_TOP_Y - 10) * pr;
+    this.chips = spawnChipStack(this, anchorX, anchorY, score, pr);
   }
 
   // --- what the player does -----------------------------------------------
