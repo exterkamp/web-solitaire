@@ -27,7 +27,7 @@ const CANVAS_PADDING = 4;
 // blur's share of the gap without touching anything about how the dots
 // actually look on screen, which a threshold tweak alone can't do because
 // it can only ever be correct for the one rendering engine it was tuned on.
-const CANVAS_OVERSAMPLE = 3;
+const CANVAS_OVERSAMPLE = 5;
 const FONT_WEIGHT = 400;
 const MARQUEE_TEXT = 'SOLITAIRE';
 
@@ -199,6 +199,21 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     ctx.font = `${FONT_WEIGHT} ${drawSize}px ${MARQUEE_FONT}`;
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#fff';
+    // A real device consistently placed one row of dots off the grid the
+    // rest of the word sits on - reproducible, not noise, which pointed at
+    // hinting rather than antialiasing. A rasteriser given a real-numbered
+    // font size still snaps glyph features to whole pixels by default for
+    // legibility at the size it's asked to draw, and that snapping is a
+    // property of the specific rendering pipeline - which is exactly why
+    // this drew correctly everywhere it was tested and not on the one
+    // device it wasn't. geometricPrecision asks for the font's true
+    // geometry instead, at the cost of the crisping hinting exists to
+    // provide - a fair trade here, since every dot is about to be reduced
+    // to a single point anyway. Support is recent enough that this is set
+    // defensively; where it's unavailable the canvas keeps its default and
+    // CANVAS_OVERSAMPLE (raised alongside this) is what's left doing the
+    // work.
+    if ('textRendering' in ctx) (ctx as CanvasRenderingContext2D & { textRendering: string }).textRendering = 'geometricPrecision';
     ctx.fillText(MARQUEE_TEXT, padding, canvas.height * 0.72);
 
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
