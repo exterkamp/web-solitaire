@@ -11,7 +11,7 @@ import {
 } from '../../game/deck-theme';
 import { colorCss, cssColor } from '../../game/deck-style';
 import { DrawCount } from '../../game/klondike';
-import { Handedness } from '../../game/settings-types';
+import { Handedness, ScoreDisplay } from '../../game/settings-types';
 import { Settings } from '../../settings';
 import { DeckPreview } from './deck-preview';
 import { DyeSwatch } from './dye-swatch';
@@ -63,6 +63,11 @@ export class SettingsPage {
   protected readonly hands: { value: Handedness; label: string; hint: string }[] = [
     { value: 'left', label: 'Left', hint: 'Stock on the left' },
     { value: 'right', label: 'Right', hint: 'Stock on the right' },
+  ];
+
+  protected readonly scoreDisplayOptions: { value: ScoreDisplay; label: string; hint: string }[] = [
+    { value: 'score', label: 'Number', hint: 'A count in the bar above the felt' },
+    { value: 'chips', label: 'Chips', hint: 'A stack on the felt itself' },
   ];
 
   protected readonly stuckOptions: { value: boolean; label: string; hint: string }[] = [

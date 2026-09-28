@@ -50,7 +50,10 @@ import { Stats, variantOf } from '../../stats';
   templateUrl: './play.html',
 })
 export class Play implements AfterViewInit, OnDestroy {
-  private readonly settings = inject(Settings);
+  // Protected rather than private: the template reads scoreDisplay() to
+  // decide whether the numeric score is shown or visually hidden in favour
+  // of the chip stack on the felt. See play.html.
+  protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
   private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
@@ -168,6 +171,7 @@ export class Play implements AfterViewInit, OnDestroy {
       backColor: this.settings.backColor(),
       handedness: this.settings.handedness(),
       showShuffle: this.settings.showShuffle(),
+      scoreDisplay: this.settings.scoreDisplay(),
       deckStyle: this.settings.deckStyle(),
       events: {
         changed: (view) => this.view.set(view),

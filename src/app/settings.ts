@@ -6,7 +6,7 @@ import {
 } from './game/deck-style';
 import { defaultInk } from 'phaser-card-engine';
 import { DrawCount } from './game/klondike';
-import { Handedness } from './game/settings-types';
+import { Handedness, ScoreDisplay } from './game/settings-types';
 
 // Standing preferences: facts about the person rather than about one deal.
 // Everything here outlives a game, which is exactly what distinguishes it
@@ -21,6 +21,7 @@ const DECK_THEME_KEY = 'solitaire.deckTheme';
 const BACK_COLOR_KEY = 'solitaire.backColor';
 const DRAW_COUNT_KEY = 'solitaire.drawCount';
 const HANDEDNESS_KEY = 'solitaire.handedness';
+const SCORE_DISPLAY_KEY = 'solitaire.scoreDisplay';
 const WARN_STUCK_KEY = 'solitaire.warnStuck';
 const SHOW_SHUFFLE_KEY = 'solitaire.showShuffle';
 const CUSTOM_DECK_KEY = 'solitaire.customDeck';
@@ -69,6 +70,14 @@ export class Settings {
   // put together, so it belongs under a thumb rather than across the screen
   // from one.
   readonly handedness = signal<Handedness>(read(HANDEDNESS_KEY) === 'left' ? 'left' : 'right');
+
+  // A number in the bar, or a stack of chips on the felt itself. The number
+  // by default - it's the one every player has always had, and the pile is a
+  // flourish somebody has to go looking for in the menu rather than one
+  // sprung on them the first time they open a game that keeps score.
+  readonly scoreDisplay = signal<ScoreDisplay>(
+    read(SCORE_DISPLAY_KEY) === 'chips' ? 'chips' : 'score',
+  );
 
   // Whether the board speaks up when a hand has no move left anywhere in it.
   // On by default, matching how the panel has always behaved; this is the
@@ -146,6 +155,7 @@ export class Settings {
     effect(() => write(BACK_COLOR_KEY, backColorHex(this.backColor())));
     effect(() => write(DRAW_COUNT_KEY, String(this.drawCount())));
     effect(() => write(HANDEDNESS_KEY, this.handedness()));
+    effect(() => write(SCORE_DISPLAY_KEY, this.scoreDisplay()));
     effect(() => write(WARN_STUCK_KEY, String(this.warnStuck())));
     effect(() => write(SHOW_SHUFFLE_KEY, String(this.showShuffle())));
     effect(() => write(CUSTOM_DECK_KEY, String(this.customDeck())));

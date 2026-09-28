@@ -16,13 +16,13 @@
     </div>
     <div class="hud__stats">
       @if (view().score !== undefined) {
-        <!-- Visually hidden rather than gone: the number is now a stack of
-             chips on the felt itself (see solitaire-scene.ts's renderChips),
-             which says nothing to a screen reader a stack of images can't
-             carry. The reading kept here rather than moved into the board's
-             own aria-label, which describes the game once rather than on
-             every score change. -->
-        <div class="hud__stat visually-hidden">
+        <!-- Visually hidden rather than gone when the setting is "chips":
+             the number is a stack of chips on the felt itself instead (see
+             solitaire-scene.ts's renderChips), which says nothing to a
+             screen reader a stack of images can't carry. The reading kept
+             here rather than moved into the board's own aria-label, which
+             describes the game once rather than on every score change. -->
+        <div class="hud__stat" [class.visually-hidden]="settings.scoreDisplay() === 'chips'">
           <span class="hud__label">Score</span>
           <span class="hud__value">{{ view().score }}</span>
         </div>

@@ -22,7 +22,7 @@ import {
 } from './card-sprite';
 import { Move, PileRef, pileKey, samePile } from './piles';
 import { GameView, PileSlot, TableGame } from './table-game';
-import { Handedness } from './settings-types';
+import { Handedness, ScoreDisplay } from './settings-types';
 import { timeBonus } from './klondike';
 import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { GameSession } from './session';
@@ -87,6 +87,8 @@ export interface BoardInit {
   handedness: Handedness;
   /** Whether a new game opens with a riffle. */
   showShuffle: boolean;
+  /** A number in the HUD, or a stack of chips on the felt. See chip.ts. */
+  scoreDisplay: ScoreDisplay;
   /** The deck the player drew, if they drew one. */
   deckStyle?: DeckStyle;
   events: BoardEvents;
@@ -193,6 +195,7 @@ export class SolitaireScene extends Phaser.Scene {
   private backColor!: number;
   private handedness: Handedness = 'right';
   private showShuffle = true;
+  private scoreDisplay: ScoreDisplay = 'score';
   private deckStyle: DeckStyle | undefined;
   // True while the pack is being riffled. A second deal started in the middle
   // of that would destroy the sprites the first one's meshes are standing in
@@ -276,6 +279,7 @@ export class SolitaireScene extends Phaser.Scene {
     this.backColor = data.backColor;
     this.handedness = data.handedness;
     this.showShuffle = data.showShuffle;
+    this.scoreDisplay = data.scoreDisplay;
     this.deckStyle = data.deckStyle;
     this.report = data.events;
     this.drop = this.table.drops ? maxBoardDrop(this.floorY) : 0;
@@ -804,13 +808,18 @@ export class SolitaireScene extends Phaser.Scene {
   // chip.ts's would cost more than it saved, and it means every change to
   // the score restages the same small drop-and-settle rather than needing
   // its own animation for "five more chips landed on an existing pile".
+  //
+  // Gated on the setting rather than left running unseen: a pile nobody has
+  // asked to look at is still a Matter world stepping every frame, and the
+  // preference exists so a player who wants the plain number back gets the
+  // felt back too, not just the number.
   private renderChips(score: number | undefined): void {
     for (const { chip, shadow } of this.chips) {
       chip.destroy();
       shadow.destroy();
     }
     this.chips = [];
-    if (score === undefined) return;
+    if (score === undefined || this.scoreDisplay !== 'chips') return;
     const pr = this.pixelRatio;
     // Centred in the tray rather than flush against its right wall - a pile
     // built against one wall can only ever spill the other way, and half the
