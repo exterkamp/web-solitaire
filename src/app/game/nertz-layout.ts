@@ -1,5 +1,5 @@
 import { CARD_HEIGHT, CARD_PEEK_HEIGHT, CARD_WIDTH } from './config';
-import { FOUNDATIONS, NertzPile, Seat, WORK_PILES } from './nertz';
+import { DEFAULT_WORK_PILES, FOUNDATIONS, NertzPile, Seat } from './nertz';
 
 // Where everything sits on a Nertz table for two, in board units.
 //
@@ -19,8 +19,22 @@ const CENTRE_Y = NERTZ_HEIGHT / 2;
 // The rail is 14 units deep; a card clear of it.
 const EDGE = 20;
 
-// Four columns, shared by the work piles and the foundations above them.
+// Four columns for the foundations and the hand row. The work piles use the
+// same four when there are four of them, and are spread across the board
+// instead when there are more, so a longer row still fits.
 const COLUMNS = [75, 185, 295, 405];
+
+// How far apart the outermost work piles' centres sit when there are more
+// than four: as much of the 480 as a card allows, which at 78 between six
+// centres still leaves each card a gap.
+const WIDE_WORK_SPAN = 390;
+
+/** The x of each of `workPiles` work-pile columns, left to right. */
+export function workColumns(workPiles: number = DEFAULT_WORK_PILES): number[] {
+  if (workPiles === DEFAULT_WORK_PILES) return COLUMNS;
+  const pitch = WIDE_WORK_SPAN / (workPiles - 1);
+  return Array.from({ length: workPiles }, (_, i) => NERTZ_WIDTH / 2 + (i - (workPiles - 1) / 2) * pitch);
+}
 
 // Two rows of four, in the middle, where both players can reach.
 const FOUNDATION_ROW_GAP = CARD_HEIGHT + 10;
@@ -62,8 +76,8 @@ export function foundationSpot(index: number): { x: number; y: number } {
 }
 
 /** The centre of the first card of a work pile. */
-export function workBase(seat: Seat, index: number): Spot {
-  return seatPoint(seat, COLUMNS[index], WORK_TOP + CARD_HEIGHT / 2);
+export function workBase(seat: Seat, index: number, workPiles: number = DEFAULT_WORK_PILES): Spot {
+  return seatPoint(seat, workColumns(workPiles)[index], WORK_TOP + CARD_HEIGHT / 2);
 }
 
 /** The Nertz pile, the stock and the waste's base. */
@@ -73,10 +87,10 @@ export function handSpot(seat: Seat, kind: 'nertz' | 'waste' | 'stock'): Spot {
 }
 
 /** Where a pile is printed, whoever's it is. */
-export function pileSpot(seat: Seat, pile: NertzPile): Spot {
+export function pileSpot(seat: Seat, pile: NertzPile, workPiles: number = DEFAULT_WORK_PILES): Spot {
   switch (pile.kind) {
     case 'work':
-      return workBase(seat, pile.index);
+      return workBase(seat, pile.index, workPiles);
     case 'foundation':
       return { ...foundationSpot(pile.index), angle: 0 };
     default:
@@ -96,8 +110,10 @@ export function workStep(count: number): number {
 }
 
 /** Where the card at `index` of a pile of `count` sits. */
-export function cardSpot(seat: Seat, pile: NertzPile, index: number, count: number): Spot {
-  const base = pileSpot(seat, pile);
+export function cardSpot(
+  seat: Seat, pile: NertzPile, index: number, count: number, workPiles: number = DEFAULT_WORK_PILES,
+): Spot {
+  const base = pileSpot(seat, pile, workPiles);
   const down = seat === 0 ? 1 : -1;
   const right = seat === 0 ? 1 : -1;
   if (pile.kind === 'work') {
@@ -117,9 +133,9 @@ export function cardSpot(seat: Seat, pile: NertzPile, index: number, count: numb
  * it, plus one card's worth below, so a card can be put on the end of a long
  * pile rather than only on its first card. Axis-aligned and in board units.
  */
-export function workZone(seat: Seat, index: number, count: number): Rect {
-  const first = workBase(seat, index);
-  const lastY = cardSpot(seat, { kind: 'work', index }, Math.max(0, count - 1), count).y;
+export function workZone(seat: Seat, index: number, count: number, workPiles: number = DEFAULT_WORK_PILES): Rect {
+  const first = workBase(seat, index, workPiles);
+  const lastY = cardSpot(seat, { kind: 'work', index }, Math.max(0, count - 1), count, workPiles).y;
   const top = Math.min(first.y, lastY);
   const bottom = Math.max(first.y, lastY);
   return {
@@ -144,4 +160,4 @@ export function overlap(a: Rect, b: Rect): number {
 }
 
 export const FOUNDATION_INDICES = Array.from({ length: FOUNDATIONS }, (_, i) => i);
-export const WORK_INDICES = Array.from({ length: WORK_PILES }, (_, i) => i);
+export const workIndices = (workPiles: number): number[] => Array.from({ length: workPiles }, (_, i) => i);

@@ -5,7 +5,7 @@ import {
   customStyle, themeStyle,
 } from './game/deck-style';
 import { defaultInk } from 'phaser-card-engine';
-import { DEFAULT_TARGET } from './game/nertz';
+import { DEFAULT_TARGET, DEFAULT_WORK_PILES, WORK_PILE_CHOICES } from './game/nertz';
 import { DrawCount } from './game/klondike';
 import { Handedness, ScoreDisplay } from './game/settings-types';
 
@@ -24,6 +24,7 @@ const DRAW_COUNT_KEY = 'solitaire.drawCount';
 const HANDEDNESS_KEY = 'solitaire.handedness';
 const SCORE_DISPLAY_KEY = 'solitaire.scoreDisplay';
 const NERTZ_TARGET_KEY = 'solitaire.nertzTarget';
+const NERTZ_WORK_PILES_KEY = 'solitaire.nertzWorkPiles';
 const WARN_STUCK_KEY = 'solitaire.warnStuck';
 const SHOW_SHUFFLE_KEY = 'solitaire.showShuffle';
 const CUSTOM_DECK_KEY = 'solitaire.customDeck';
@@ -87,6 +88,9 @@ export class Settings {
   // What a match of two-player Nertz is played to. Standing, because the same
   // two people will most likely want the same length of evening again.
   readonly nertzTarget = signal<number>(asTarget(read(NERTZ_TARGET_KEY)));
+
+  // How many work piles each player has in two-player Nertz.
+  readonly nertzWorkPiles = signal<number>(asWorkPiles(read(NERTZ_WORK_PILES_KEY)));
 
   // Whether the board speaks up when a hand has no move left anywhere in it.
   // On by default, matching how the panel has always behaved; this is the
@@ -166,6 +170,7 @@ export class Settings {
     effect(() => write(HANDEDNESS_KEY, this.handedness()));
     effect(() => write(SCORE_DISPLAY_KEY, this.scoreDisplay()));
     effect(() => write(NERTZ_TARGET_KEY, String(this.nertzTarget())));
+    effect(() => write(NERTZ_WORK_PILES_KEY, String(this.nertzWorkPiles())));
     effect(() => write(WARN_STUCK_KEY, String(this.warnStuck())));
     effect(() => write(SHOW_SHUFFLE_KEY, String(this.showShuffle())));
     effect(() => write(CUSTOM_DECK_KEY, String(this.customDeck())));
@@ -183,6 +188,12 @@ export class Settings {
 function asTarget(value: string | null): number {
   const n = Number(value);
   return NERTZ_TARGETS.includes(n) ? n : DEFAULT_TARGET;
+}
+
+/** A stored work-pile count, or the default. */
+function asWorkPiles(value: string | null): number {
+  const n = Number(value);
+  return WORK_PILE_CHOICES.includes(n) ? n : DEFAULT_WORK_PILES;
 }
 
 function read(key: string): string | null {

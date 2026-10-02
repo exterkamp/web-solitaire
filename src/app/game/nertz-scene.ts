@@ -6,12 +6,12 @@ import { DeckTheme } from './deck-theme';
 import { CardSprite, preloadCardArt, renderCourtArt, setDeck } from './card-sprite';
 import {
   Match, NertzMove, StuckTalk, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, agreeToEnd, apply, autoTarget, bothAgreed, carryOn, drawRefused,
-  canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
+  DEFAULT_WORK_PILES, canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
   newTalk, promptShowing, roundScores, sameNertzPile, tableStuck, talkAfter,
 } from './nertz';
 import {
   NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, foundationZone, handSpot, overlap, pileSpot,
-  workZone, FOUNDATION_INDICES, WORK_INDICES,
+  workZone, FOUNDATION_INDICES, workIndices,
 } from './nertz-layout';
 import { drawRecycleMark, drawSlot, drawTableSurface } from './table';
 
@@ -59,6 +59,7 @@ export interface NertzInit {
   backColor: number;
   deckStyle?: DeckStyle;
   target: number;
+  workPiles?: number;
   events: NertzEvents;
 }
 
@@ -106,6 +107,7 @@ export class NertzScene extends Phaser.Scene {
   private backColor!: number;
   private deckStyle: DeckStyle | undefined;
   private target = 100;
+  private workPiles = DEFAULT_WORK_PILES;
   // `report`, not `events`: Phaser.Scene already has one.
   private report!: NertzEvents;
 
@@ -137,6 +139,7 @@ export class NertzScene extends Phaser.Scene {
     this.backColor = data.backColor;
     this.deckStyle = data.deckStyle;
     this.target = data.target;
+    this.workPiles = data.workPiles ?? DEFAULT_WORK_PILES;
     this.report = data.events;
   }
 
@@ -178,8 +181,8 @@ export class NertzScene extends Phaser.Scene {
       put(drawSlot(this, z.x + CARD_WIDTH / 2, z.y + CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT));
     }
     for (const seat of SEATS) {
-      for (const index of WORK_INDICES) {
-        const at = pileSpot(seat, { kind: 'work', index });
+      for (const index of workIndices(this.workPiles)) {
+        const at = pileSpot(seat, { kind: 'work', index }, this.workPiles);
         put(drawSlot(this, at.x, at.y, CARD_WIDTH, CARD_HEIGHT));
       }
       for (const kind of ['nertz', 'waste', 'stock'] as const) {
@@ -210,7 +213,7 @@ export class NertzScene extends Phaser.Scene {
     for (const sprite of this.sprites.values()) sprite.destroy();
     this.sprites.clear();
 
-    this.state = deal(random);
+    this.state = deal(this.workPiles, random);
     this.phase = 'playing';
     this.last = undefined;
     this.talk = newTalk();
@@ -273,7 +276,7 @@ export class NertzScene extends Phaser.Scene {
   // --- drawing the state ----------------------------------------------------
 
   private position(seat: Seat, pile: NertzPile, index: number, count: number): { x: number; y: number } {
-    const at = cardSpot(seat, pile, index, count);
+    const at = cardSpot(seat, pile, index, count, this.workPiles);
     // A deep pile reads as one: a sliver of thickness toward the middle of
     // the table, so a Nertz pile of thirteen is not mistaken for a card.
     if (pile.kind === 'nertz' || pile.kind === 'stock') {
@@ -437,8 +440,8 @@ export class NertzScene extends Phaser.Scene {
       if (!best || area > best.area) best = { pile, area };
     };
     for (const index of FOUNDATION_INDICES) consider({ kind: 'foundation', index }, foundationZone(index));
-    for (const index of WORK_INDICES) {
-      consider({ kind: 'work', index }, workZone(drag.seat, index, this.state.hands[drag.seat].work[index].length));
+    for (const index of workIndices(this.workPiles)) {
+      consider({ kind: 'work', index }, workZone(drag.seat, index, this.state.hands[drag.seat].work[index].length, this.workPiles));
     }
     return (best as { pile: NertzPile } | undefined)?.pile;
   }
