@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Card } from './deck';
 import { seeded } from './random';
 import {
-  Hand, Match, NertzState, addRound, apply, autoTarget, bothStuck, canCallNertz, canDrop,
-  canPlayOnFoundation, canPlayOnWork, deal, finishRound, foundationFor, isStuck, liftable,
-  matchWinner, newMatch, roundScores,
+  Hand, Match, NertzState, addRound, apply, autoTarget, agreeToEnd, bothAgreed, canCallNertz, carryOn, canDrop,
+  canPlayOnFoundation, canPlayOnWork, deal, finishRound, foundationFor, liftable,
+  matchWinner, newMatch, newTalk, promptShowing, roundScores, tableStuck, talkAfter,
 } from './nertz';
 
 let serial = 0;
@@ -179,32 +179,72 @@ describe('auto target', () => {
 });
 
 describe('stuck', () => {
-  const blocked = () => ({
+  const blocked = (extra: Partial<Hand> = {}) => ({
     nertz: [card('Q', 'clubs')],
     work: [[card('9', 'hearts')], [card('9', 'diamonds')], [card('9', 'clubs')], [card('9', 'spades')]],
+    ...extra,
+  });
+  const turn = (seat: 0 | 1) => ({ kind: 'draw', seat }) as const;
+
+  it('is stuck with nothing that fits among the cards showing', () => {
+    expect(tableStuck(state(blocked(), blocked()))).toBe(true);
   });
 
-  it('is stuck with nothing that fits anywhere, hand included', () => {
-    const s = state(blocked(), blocked());
-    expect(isStuck(s, 0)).toBe(true);
-    expect(bothStuck(s)).toBe(true);
-  });
-
-  it('is not stuck while a card in the hand could be played once turned', () => {
-    const s = state({ ...blocked(), stock: [card('A', 'hearts', false), card('3', 'clubs', false), card('5', 'clubs', false)] }, blocked());
-    // The ace is the last of three turned, so it is what shows.
-    expect(isStuck(s, 0)).toBe(false);
-    expect(bothStuck(s)).toBe(false);
-  });
-
-  it('is not stuck with a move showing', () => {
-    const s = state({ ...blocked(), waste: [card('8', 'clubs')] }, blocked());
-    expect(isStuck(s, 0)).toBe(false);
+  it('is not stuck while either player has a move showing', () => {
+    expect(tableStuck(state(blocked({ waste: [card('8', 'clubs')] }), blocked()))).toBe(false);
+    expect(tableStuck(state(blocked(), blocked({ waste: [card('8', 'clubs')] })))).toBe(false);
   });
 
   it('is not stuck with a gap to fill', () => {
-    const s = state({ ...blocked(), work: [[], [card('9', 'diamonds')], [card('9', 'clubs')], [card('9', 'spades')]] }, blocked());
-    expect(isStuck(s, 0)).toBe(false);
+    const gap = blocked({ work: [[], [card('9', 'diamonds')], [card('9', 'clubs')], [card('9', 'spades')]] });
+    expect(tableStuck(state(gap, blocked()))).toBe(false);
+  });
+
+  it('prompts once each hand has been turned through, and not before', () => {
+    const hands = () => blocked({ stock: [card('K', 'clubs', false), card('K', 'hearts', false), card('K', 'spades', false)] });
+    let s = state(hands(), hands());
+    let talk = newTalk();
+    expect(promptShowing(s, talk)).toBe(false);
+    for (const seat of [0, 1] as const) {
+      const r = apply(s, turn(seat))!;
+      s = r.state;
+      talk = talkAfter(talk, s, turn(seat), r.recycled === true);
+    }
+    // Both stocks are now empty: three cards turned, none left to draw.
+    expect(promptShowing(s, talk)).toBe(true);
+  });
+
+  it('carry on hides the prompt, and turning a hand over brings it back', () => {
+    const hands = () => blocked({ stock: [card('K', 'clubs', false)] });
+    let s = state(hands(), hands());
+    let talk = newTalk();
+    for (const seat of [0, 1] as const) {
+      const r = apply(s, turn(seat))!;
+      s = r.state;
+      talk = talkAfter(talk, s, turn(seat), r.recycled === true);
+    }
+    expect(promptShowing(s, talk)).toBe(true);
+    talk = carryOn(talk);
+    expect(promptShowing(s, talk)).toBe(false);
+    // A draw with an empty stock recycles the waste: the round is not stranded.
+    const r = apply(s, turn(0))!;
+    expect(r.recycled).toBe(true);
+    talk = talkAfter(talk, r.state, turn(0), true);
+    expect(promptShowing(r.state, talk)).toBe(true);
+  });
+
+  it('a played card starts the conversation over', () => {
+    const talk = carryOn(newTalk());
+    const after = talkAfter(talk, state(), { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'foundation', index: 0 }, count: 1 }, false);
+    expect(after).toEqual(newTalk());
+  });
+
+  it('ends the round only when both agree', () => {
+    let talk = agreeToEnd(newTalk(), 0);
+    expect(bothAgreed(talk)).toBe(false);
+    talk = agreeToEnd(talk, 1);
+    expect(bothAgreed(talk)).toBe(true);
+    expect(bothAgreed(carryOn(talk))).toBe(false);
   });
 });
 

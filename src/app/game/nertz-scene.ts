@@ -5,9 +5,9 @@ import { DeckStyle } from './deck-style';
 import { DeckTheme } from './deck-theme';
 import { CardSprite, preloadCardArt, renderCourtArt, setDeck } from './card-sprite';
 import {
-  Match, NertzMove, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, apply, autoTarget,
-  canCallNertz, canDrop, deal, finishRound, hasVisibleMove, liftable, matchWinner, newMatch,
-  roundScores, sameNertzPile,
+  Match, NertzMove, StuckTalk, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, agreeToEnd, apply, autoTarget, bothAgreed, carryOn,
+  canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
+  newTalk, promptShowing, roundScores, sameNertzPile, tableStuck, talkAfter,
 } from './nertz';
 import {
   NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, foundationZone, handSpot, overlap, pileSpot,
@@ -115,9 +115,7 @@ export class NertzScene extends Phaser.Scene {
   private last: RoundResult | undefined;
 
   // Stuck handling. See publish().
-  private cycled: [boolean, boolean] = [false, false];
-  private promptDismissed = false;
-  private agreed: [boolean, boolean] = [false, false];
+  private talk: StuckTalk = newTalk();
 
   private pixelRatio = 1;
   private root!: Phaser.GameObjects.Container;
@@ -215,9 +213,7 @@ export class NertzScene extends Phaser.Scene {
     this.state = deal(random);
     this.phase = 'playing';
     this.last = undefined;
-    this.cycled = [false, false];
-    this.promptDismissed = false;
-    this.agreed = [false, false];
+    this.talk = newTalk();
 
     let n = 0;
     for (const { cards, seat } of this.everyPile()) {
@@ -291,7 +287,7 @@ export class NertzScene extends Phaser.Scene {
     const held = new Set<CardSprite>();
     for (const drag of this.drags.values()) for (const s of drag.sprites) held.add(s);
 
-    for (const { seat, pile, cards } of this.everyPile()) {
+    for (const { pile, cards } of this.everyPile()) {
       cards.forEach((card, index) => {
         const sprite = this.sprites.get(card.id);
         if (!sprite || held.has(sprite)) return;
@@ -303,7 +299,6 @@ export class NertzScene extends Phaser.Scene {
           sprite.setPosition(to.x, to.y);
         }
       });
-      void seat;
     }
     this.restack();
   }
@@ -452,14 +447,7 @@ export class NertzScene extends Phaser.Scene {
     const result = apply(this.state, move);
     if (!result) return false;
     this.state = result.state;
-    if (move.kind === 'play') {
-      // Anything that changes the table means the stuck conversation starts over.
-      this.cycled = [false, false];
-      this.promptDismissed = false;
-      this.agreed = [false, false];
-    } else if (result.recycled || this.state.hands[move.seat].stock.length === 0) {
-      this.cycled[move.seat] = true;
-    }
+    this.talk = talkAfter(this.talk, this.state, move, result.recycled === true);
     this.renderBoard(true);
     this.publish();
     return true;
@@ -482,16 +470,15 @@ export class NertzScene extends Phaser.Scene {
   /** One player's half of ending a round on which both are stuck. */
   agreeToEnd(seat: Seat): void {
     if (!this.promptShowing) return;
-    this.agreed[seat] = true;
-    if (this.agreed[0] && this.agreed[1]) this.endRound(undefined);
+    this.talk = agreeToEnd(this.talk, seat);
+    if (bothAgreed(this.talk)) this.endRound(undefined);
     else this.publish();
   }
 
   /** Either player may say to keep going. */
   continuePlay(): void {
     if (!this.promptShowing) return;
-    this.promptDismissed = true;
-    this.agreed = [false, false];
+    this.talk = carryOn(this.talk);
     this.publish();
   }
 
@@ -527,20 +514,12 @@ export class NertzScene extends Phaser.Scene {
 
   // --- what the page is told ------------------------------------------------
 
-  // Both players have nothing to play among the cards they can see. They
-  // then turn their hands over to be sure, and once each has been through
-  // theirs the page asks whether to carry on.
   private get tableStuck(): boolean {
-    return this.phase === 'playing' && !hasVisibleMove(this.state, 0) && !hasVisibleMove(this.state, 1);
-  }
-
-  private handSeen(seat: Seat): boolean {
-    const hand = this.state.hands[seat];
-    return this.cycled[seat] || hand.stock.length === 0;
+    return this.phase === 'playing' && tableStuck(this.state);
   }
 
   private get promptShowing(): boolean {
-    return this.tableStuck && this.handSeen(0) && this.handSeen(1) && !this.promptDismissed;
+    return this.phase === 'playing' && promptShowing(this.state, this.talk);
   }
 
   private publish(): void {
@@ -555,9 +534,9 @@ export class NertzScene extends Phaser.Scene {
       left: [this.state.hands[0].nertz.length, this.state.hands[1].nertz.length],
       scores: roundScores(this.state),
       canNertz: [canCallNertz(this.state, 0), canCallNertz(this.state, 1)],
-      flipping: stuck && !prompt && !this.promptDismissed,
+      flipping: stuck && !prompt && !this.talk.dismissed,
       prompt,
-      agreed: this.agreed,
+      agreed: this.talk.agreed,
       last: this.last,
       rounds: this.match.rounds,
       winner: matchWinner(this.match),

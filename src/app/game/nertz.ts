@@ -270,38 +270,59 @@ export function hasVisibleMove(state: NertzState, seat: Seat): boolean {
   );
 }
 
+// --- both players stuck ------------------------------------------------------
+
 /**
- * The cards that would turn up on top of the waste if a player went through
- * their whole hand, three at a time and round again until it comes back to
- * where it started. Any of them could be played the moment it did, so these
- * are the cards a player in a corner still has hope in.
+ * Where the "nobody can move" conversation has got to. The table is stuck
+ * when neither player has a move among the cards they can see. They then
+ * turn their hands over to be sure, and once each has been through theirs
+ * the players are asked whether to carry on or end the round by agreement.
  */
-export function reachableHandCards(hand: Hand): Card[] {
-  const reachable: Card[] = [];
-  if (hand.waste.length > 0) reachable.push(hand.waste[hand.waste.length - 1]);
-  const total = hand.stock.length + hand.waste.length;
-  let current: Hand = hand;
-  // Three turns of the whole hand brings every alignment of it round.
-  for (let step = 0; step < total + 3 * 3 && total > 0; step++) {
-    const next = draw({ hands: [current, current], foundations: [], up: [0, 0] }, { kind: 'draw', seat: 0 });
-    if (!next) break;
-    current = next.state.hands[0];
-    if (current.waste.length > 0) reachable.push(current.waste[current.waste.length - 1]);
-  }
-  return reachable;
+export interface StuckTalk {
+  /** Each player has been through their hand since the table last changed. */
+  cycled: [boolean, boolean];
+  /** "Carry on" was chosen; the prompt stays away until someone turns their hand again. */
+  dismissed: boolean;
+  /** Each player's half of agreeing to end the round. */
+  agreed: [boolean, boolean];
 }
 
-/** Whether a player has no move at all - on the table, or anywhere their hand could bring up. */
-export function isStuck(state: NertzState, seat: Seat): boolean {
-  if (hasVisibleMove(state, seat)) return false;
-  const hand = state.hands[seat];
-  const emptySpot = hand.work.some((pile) => pile.length === 0);
-  return !reachableHandCards(hand).some((card) => emptySpot || cardHasMove(state, seat, card));
+export function newTalk(): StuckTalk {
+  return { cycled: [false, false], dismissed: false, agreed: [false, false] };
 }
 
-/** Both players stuck: the point at which the round has nowhere left to go. */
-export function bothStuck(state: NertzState): boolean {
-  return isStuck(state, 0) && isStuck(state, 1);
+export function tableStuck(state: NertzState): boolean {
+  return !hasVisibleMove(state, 0) && !hasVisibleMove(state, 1);
+}
+
+/** The talk after a move. `after` is the state the move produced. */
+export function talkAfter(talk: StuckTalk, after: NertzState, move: NertzMove, recycled: boolean): StuckTalk {
+  // Anything that changes the table starts the conversation over.
+  if (move.kind === 'play') return newTalk();
+  const cycled: [boolean, boolean] = [...talk.cycled];
+  if (recycled || after.hands[move.seat].stock.length === 0) cycled[move.seat] = true;
+  // Turning a hand over is the table moving on, so a dismissed prompt may return.
+  return { cycled, dismissed: false, agreed: talk.agreed };
+}
+
+export function promptShowing(state: NertzState, talk: StuckTalk): boolean {
+  const seen = (seat: Seat) => talk.cycled[seat] || state.hands[seat].stock.length === 0;
+  return tableStuck(state) && seen(0) && seen(1) && !talk.dismissed;
+}
+
+/** "Carry on": the prompt goes away until each hand has been turned through again. */
+export function carryOn(talk: StuckTalk): StuckTalk {
+  return { cycled: [false, false], dismissed: true, agreed: [false, false] };
+}
+
+export function agreeToEnd(talk: StuckTalk, seat: Seat): StuckTalk {
+  const agreed: [boolean, boolean] = [...talk.agreed];
+  agreed[seat] = true;
+  return { ...talk, agreed };
+}
+
+export function bothAgreed(talk: StuckTalk): boolean {
+  return talk.agreed[0] && talk.agreed[1];
 }
 
 // --- ending a round, and a match --------------------------------------------
