@@ -138,7 +138,11 @@ src/app/game/
   table.ts           felt, rail, lamp, and the lettering printed on it
   board.ts           the Phaser game the scene runs in
   fonts.ts           the typefaces, named again for the canvas
+  nertz.ts           Nertz for two: the rules, as pure as the rest
+  nertz-layout.ts    where both players' piles sit, one half mirrored
+  nertz-scene.ts     its own board - two hands, one drag per finger
 src/app/pages/       menu, game setup, play, settings, record
+src/app/pages/nertz/ the setup and play pages for Nertz for two
 src/app/settings.ts  standing preferences
 src/app/stats.ts     the record book
 ```
@@ -205,6 +209,18 @@ width: eight columns of cards need a wider table than seven, so FreeCell asks
 for one and Phaser fits it to the screen. The cards come out about a tenth
 smaller and are drawn from exactly the same textures — the alternative was a
 second set of every measurement in `card-sprite.ts`.
+
+**Nertz for two is the one thing that is not a `TableGame`.** The interface
+is one hand, one pointer and one stream of moves, and two people playing at
+once is none of those, so `nertz.ts` is its own rules module (a move names its
+seat; the foundations are the only shared pile, and applying one player's
+move before the other's is how a race is settled), `nertz-layout.ts` writes
+the bottom player's half once and mirrors it for the top, and `nertz-scene.ts`
+keeps one drag per pointer id so both thumbs can carry a card at the same
+time. It has its own routes (`/setup/nertz`, `/play/nertz`, declared before the
+`:game` ones) and pages in `src/app/pages/nertz/`, and is not in `GameId`, the
+record book or the `Record<GameId, …>` lists. Everything a player reads or
+presses is made twice in the DOM, the top copy turned 180°.
 
 **The board is 480x720 logical units, always.** Phaser's `Scale.FIT` scales
 that to whatever the screen is, and the scene scales its root container by the

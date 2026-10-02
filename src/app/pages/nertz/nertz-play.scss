@@ -1,0 +1,238 @@
+@use 'type' as *;
+
+// A column: the top player's strip, the felt, the bottom player's strip.
+.nertz {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  // Two thumbs on the glass at once, and neither is a gesture to the browser.
+  touch-action: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+}
+
+.strip-slot {
+  flex: 0 0 auto;
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+}
+
+// Half a turn, for the player at the other end of the phone.
+.strip--across {
+  transform: rotate(180deg);
+}
+
+.strip__stats {
+  display: flex;
+  gap: clamp(0.5rem, 3vw, 1.25rem);
+}
+
+.strip__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.strip__label {
+  @include display-type;
+  font-size: 0.6rem;
+  color: #9fc4a4;
+}
+
+.strip__value {
+  @include numeric-type;
+  font-size: 1.05rem;
+  color: #fdfdfd;
+}
+
+.strip__button {
+  @include display-type;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: #cfead0;
+  padding: 0.4rem 0.7rem;
+  background: transparent;
+  border: 1px solid rgba(207, 234, 208, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: rgba(253, 253, 253, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd166;
+    outline-offset: 2px;
+  }
+
+  // Dimmed rather than hidden, so the row does not move under a thumb.
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+
+.strip__button--nertz:not(:disabled) {
+  color: #07241f;
+  background: #ffd166;
+  border-color: #ffd166;
+  font-size: 1rem;
+}
+
+.board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// One line of print at the edge of the felt nearest each player.
+.hint {
+  @include display-type;
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: #ffd166;
+  pointer-events: none;
+}
+
+.hint--bottom {
+  bottom: 4.2rem;
+}
+
+.hint--top {
+  top: 4.2rem;
+  transform: rotate(180deg);
+}
+
+// A message for both players at once: the screen in two halves, the upper one
+// turned to face the player across. Over the board, because a decision made
+// about a position should leave the position showing.
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  // Only the panels take a touch; the felt between them does not.
+  pointer-events: none;
+}
+
+.overlay--shade {
+  background: rgba(4, 24, 20, 0.82);
+  backdrop-filter: blur(3px);
+  pointer-events: auto;
+}
+
+.half {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.half--across {
+  transform: rotate(180deg);
+}
+
+.panel {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(300px, 86vw);
+  padding: 0.9rem 1.1rem 1rem;
+  background: rgba(7, 36, 31, 0.95);
+  border: 2px solid rgba(207, 234, 208, 0.45);
+  border-radius: 10px;
+  box-shadow: var(--shadow-far);
+}
+
+.panel--gold {
+  border-color: #ffd166;
+}
+
+.panel__title {
+  @include display-type;
+  font-size: 1.5rem;
+  color: #fdfdfd;
+  margin: 0;
+}
+
+.panel--gold .panel__title {
+  color: #ffd166;
+}
+
+.panel__note {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: #cfead0;
+  text-align: center;
+  margin: 0;
+}
+
+.panel__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+// The page's buttons are sized for a column of their own; in a panel half the
+// height of a phone they take the panel's width and a smaller face.
+.panel .button {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1.1rem;
+  padding: 0.55rem 0;
+}
+
+.panel__lines {
+  width: 100%;
+  margin: 0;
+}
+
+.panel__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.12rem 0;
+
+  dt {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: #cfead0;
+  }
+
+  dd {
+    @include numeric-type;
+    font-size: 0.85rem;
+    color: #fdfdfd;
+    margin: 0;
+    text-align: right;
+
+    strong {
+      color: #ffd166;
+    }
+  }
+}

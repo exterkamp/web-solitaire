@@ -3,6 +3,8 @@ import { createBoard } from 'phaser-card-engine/phaser';
 import { boardHeight } from './config';
 import { FELT_CLEAR_COLOR } from './table';
 import { BoardInit, SolitaireScene } from './solitaire-scene';
+import { NERTZ_SCENE, NertzInit, NertzScene } from './nertz-scene';
+import { NERTZ_HEIGHT, NERTZ_WIDTH } from './nertz-layout';
 
 // The name the scene is registered under, and the only string either side of
 // this boundary has to agree on.
@@ -46,6 +48,23 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
 
   // The handle a console session drives the board through, and the only way
   // to reach it from outside the page.
+  (window as unknown as { __game?: Phaser.Game }).__game = game;
+  return game;
+}
+
+/**
+ * The two-player Nertz table. Its own canvas and its own scene: the board
+ * above is built around one hand and one pointer, and this one has two of
+ * each. Same felt, same cards, same HiDPI arrangement.
+ */
+export function createNertzGame(parent: HTMLElement, init: NertzInit): Phaser.Game {
+  const game = createBoard({
+    parent,
+    width: NERTZ_WIDTH,
+    height: NERTZ_HEIGHT,
+    backgroundColor: FELT_CLEAR_COLOR,
+  });
+  game.scene.add(NERTZ_SCENE, NertzScene, true, init);
   (window as unknown as { __game?: Phaser.Game }).__game = game;
   return game;
 }
