@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
+import { WORK_PILE_CHOICES } from '../../game/nertz';
 import { NERTZ_TARGETS, Settings } from '../../settings';
 
 // The page between the menu and the two-player Nertz table.
@@ -20,6 +21,7 @@ import { NERTZ_TARGETS, Settings } from '../../settings';
 export class NertzSetup {
   protected readonly settings = inject(Settings);
   protected readonly targets = NERTZ_TARGETS;
+  protected readonly workPileChoices = WORK_PILE_CHOICES;
 
   constructor() {
     inject(Title).setTitle('Nertz for Two Setup · Solitaire');

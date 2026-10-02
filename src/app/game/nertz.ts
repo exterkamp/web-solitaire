@@ -19,7 +19,9 @@ export type Seat = 0 | 1;
 export const SEATS: readonly Seat[] = [0, 1];
 
 export const NERTZ_PILE_SIZE = 13;
-export const WORK_PILES = 4;
+export const DEFAULT_WORK_PILES = 4;
+/** How many work piles a match may be played with. */
+export const WORK_PILE_CHOICES: readonly number[] = [4, 5, 6];
 // Two decks' worth of aces, so two decks' worth of places to start a suit.
 export const FOUNDATIONS = 8;
 export const DRAW_COUNT = 3;
@@ -69,17 +71,17 @@ export type NertzMove =
  * id carries the seat: two of them are the seven of hearts, and a sprite is
  * kept per id.
  */
-export function deal(random: () => number = Math.random): NertzState {
-  const hands = SEATS.map((seat) => dealHand(seat, random)) as [Hand, Hand];
+export function deal(workPiles: number = DEFAULT_WORK_PILES, random: () => number = Math.random): NertzState {
+  const hands = SEATS.map((seat) => dealHand(seat, workPiles, random)) as [Hand, Hand];
   return { hands, foundations: Array.from({ length: FOUNDATIONS }, () => []), up: [0, 0] };
 }
 
-function dealHand(seat: Seat, random: () => number): Hand {
+function dealHand(seat: Seat, workPiles: number, random: () => number): Hand {
   const deck = shuffledDeck(random).map((card) => ({ ...card, id: `p${seat}-${card.id}`, faceUp: false }));
   const nertz = deck.splice(0, NERTZ_PILE_SIZE);
   // Only the one you can play is turned over.
   nertz[nertz.length - 1].faceUp = true;
-  const work = deck.splice(0, WORK_PILES).map((card) => [{ ...card, faceUp: true }]);
+  const work = deck.splice(0, workPiles).map((card) => [{ ...card, faceUp: true }]);
   return { nertz, work, stock: deck, waste: [] };
 }
 
@@ -216,7 +218,7 @@ export function foundationFor(state: NertzState, card: Card): number | undefined
 /**
  * Where a tap on this card should send it: a foundation if there is one, and
  * otherwise a work pile that already has something on it. Never an empty work
- * pile - which one of the four, and whether it is worth emptying a pile to
+ * pile - which one of them, and whether it is worth emptying a pile to
  * use it, is not a decision to make for somebody.
  */
 export function autoTarget(

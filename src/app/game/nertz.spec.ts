@@ -25,7 +25,7 @@ function state(h0: Partial<Hand> = {}, h1: Partial<Hand> = {}, foundations: Card
 }
 
 describe('deal', () => {
-  const s = deal(seeded(1));
+  const s = deal(4, seeded(1));
 
   it('gives each player thirteen, four work piles of one, and thirty-five in the stock', () => {
     for (const h of s.hands) {
@@ -50,6 +50,47 @@ describe('deal', () => {
     expect(new Set(all.map((c) => c.id)).size).toBe(104);
   });
 });
+
+describe.each([[4, 35], [5, 34], [6, 33]])('deal with %i work piles', (workPiles, stock) => {
+  const s = deal(workPiles, seeded(2));
+
+  it('gives each player that many work piles of one and the rest in the stock', () => {
+    for (const h of s.hands) {
+      expect(h.nertz).toHaveLength(13);
+      expect(h.work.map((p) => p.length)).toEqual(Array(workPiles).fill(1));
+      expect(h.stock).toHaveLength(stock);
+    }
+  });
+
+  it('accounts for every card', () => {
+    const all = s.hands.flatMap((h) => [...h.nertz, ...h.work.flat(), ...h.stock, ...h.waste]);
+    expect(all).toHaveLength(104);
+    expect(new Set(all.map((c) => c.id)).size).toBe(104);
+  });
+
+  it('uses the last work pile as a real pile', () => {
+    const last = workPiles - 1;
+    const seven = card('7', 'spades');
+    const six = card('6', 'hearts');
+    const work = Array.from({ length: workPiles }, (_, i) => (i === last ? [seven] : i === 0 ? [six] : []));
+    const t = { ...s, hands: [{ ...s.hands[0], work, waste: [], stock: [] }, s.hands[1]] as [Hand, Hand] };
+    // The six lands on the seven in the new last pile ...
+    expect(autoTarget(t, 0, { kind: 'work', index: 0 }, 1)).toEqual({ kind: 'work', index: last });
+    const played = apply(t, { kind: 'play', seat: 0, from: { kind: 'work', index: 0 }, to: { kind: 'work', index: last }, count: 1 });
+    expect(played?.state.hands[0].work[last].map((c) => c.rank)).toEqual(['7', '6']);
+    // ... and can be lifted from it again.
+    expect(liftable(played!.state, 0, { kind: 'work', index: last }, 1)).toEqual([six]);
+  });
+
+  it('refuses a work pile the hand does not have', () => {
+    expect(liftable(s, 0, { kind: 'work', index: workPiles }, 1)).toBeUndefined();
+    expect(canDrop(s, 0, [first(s)], { kind: 'work', index: workPiles })).toBe(false);
+  });
+});
+
+function first(s: NertzState): Card {
+  return s.hands[0].work[0][0];
+}
 
 describe('placement', () => {
   it('builds work piles down in alternating colours', () => {
