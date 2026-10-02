@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { MainMenu } from './pages/main-menu/main-menu';
 import { GameSetup } from './pages/game-setup/game-setup';
 import { Play } from './pages/play/play';
+import { NertzPlay } from './pages/nertz/nertz-play';
+import { NertzSetup } from './pages/nertz/nertz-setup';
 import { SettingsPage } from './pages/settings/settings-page';
 import { StatsPage } from './pages/stats/stats-page';
 
@@ -12,6 +14,10 @@ export const routes: Routes = [
   // what it is and asks whatever it needs to ask. Including the game with
   // nothing to ask: the page is an introduction that sometimes carries a
   // setting, not a settings screen that one game happens not to need.
+  // Nertz for two is not one of the twelve that share a board, so it has its
+  // own pages - declared first, because `:game` would otherwise take 'nertz'.
+  { path: 'setup/nertz', component: NertzSetup },
+  { path: 'play/nertz', component: NertzPlay },
   { path: 'setup/:game', component: GameSetup },
 
   // The board, and which game is on it. In the route rather than in a setting

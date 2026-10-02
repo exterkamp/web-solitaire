@@ -1,0 +1,156 @@
+<div class="nertz">
+  <!-- One strip for each player, and the top one is turned half a turn so it
+       reads the right way up from the other end of the phone. -->
+  <ng-template #strip let-seat>
+    <div class="strip" [class.strip--across]="seat === 1">
+      <button type="button" class="strip__button" (click)="togglePause()">Menu</button>
+      <div class="strip__stats">
+        <div class="strip__stat">
+          <span class="strip__label">Total</span>
+          <span class="strip__value" [attr.data-total]="seat">{{ view().totals[seat] }}</span>
+        </div>
+        <div class="strip__stat">
+          <span class="strip__label">Round</span>
+          <span class="strip__value">{{ signed(view().scores[seat]) }}</span>
+        </div>
+        <div class="strip__stat">
+          <span class="strip__label">Nertz</span>
+          <span class="strip__value">{{ view().left[seat] }}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="strip__button strip__button--nertz"
+        [attr.data-nertz]="seat"
+        [disabled]="!view().canNertz[seat] || view().phase !== 'playing'"
+        (click)="callNertz(seat)"
+      >
+        Nertz!
+      </button>
+    </div>
+  </ng-template>
+
+  <header class="strip-slot strip-slot--top">
+    <ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: 1 }" />
+  </header>
+
+  <!-- Phaser builds its canvas into this and scales it to fit. -->
+  <div class="board" #board role="img" [attr.aria-label]="boardLabel()"></div>
+
+  <footer class="strip-slot">
+    <ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: 0 }" />
+  </footer>
+
+  <div class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</div>
+
+  @if (view().flipping) {
+    <!-- Not a panel: both players still have a hand to turn over, and the
+         felt has to stay readable while they do. One line each, at the edge
+         nearest them. -->
+    <p class="hint hint--bottom" role="status">Both stuck - flip through your hands</p>
+    <p class="hint hint--top" role="status">Both stuck - flip through your hands</p>
+  }
+
+  <!-- Everything below is said to both players at once, once the right way up
+       and once across, rather than in one panel one of them has to read
+       upside down. -->
+  <ng-template #stuckPanel let-seat>
+    <h2 class="panel__title">Both stuck</h2>
+    <p class="panel__note">Nothing left to play. Carry on, or end the round?</p>
+    @if (view().agreed[seat]) {
+      <p class="panel__note">Waiting for the other player</p>
+    } @else {
+      <div class="panel__buttons">
+        <button type="button" class="button button--quiet" [attr.data-carry]="seat" (click)="carryOn()">Carry on</button>
+        <button type="button" class="button" [attr.data-end]="seat" (click)="agreeToEnd(seat)">End round</button>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template #roundPanel let-seat>
+    <h2 class="panel__title">Round {{ view().last ? view().rounds.length : '' }} over</h2>
+    @if (view().last; as last) {
+      @if (last.nertz !== undefined) {
+        <p class="panel__note">{{ last.nertz === seat ? 'You called Nertz' : 'Nertz was called' }}</p>
+      }
+      <dl class="panel__lines">
+        @for (who of [seat, other(seat)]; track who) {
+          <div class="panel__line">
+            <dt>{{ who === seat ? 'You' : 'Them' }}</dt>
+            <dd>
+              {{ last.up[who] }} up, {{ last.left[who] }} left
+              <strong>{{ signed(last.scores[who]) }}</strong>
+              &rarr; {{ view().totals[who] }}
+            </dd>
+          </div>
+        }
+      </dl>
+      <p class="panel__note">First to {{ view().target }}</p>
+    }
+    <button type="button" class="button" [attr.data-next]="seat" (click)="nextRound()">Next round</button>
+  </ng-template>
+
+  <ng-template #matchPanel let-seat>
+    <h2 class="panel__title">{{ view().winner === seat ? 'You win' : 'You lose' }}</h2>
+    <dl class="panel__lines">
+      @for (who of [seat, other(seat)]; track who) {
+        <div class="panel__line">
+          <dt>{{ who === seat ? 'You' : 'Them' }}</dt>
+          <dd><strong>{{ view().totals[who] }}</strong></dd>
+        </div>
+      }
+    </dl>
+    <p class="panel__note">{{ view().rounds.length }} rounds, to {{ view().target }}</p>
+    <button type="button" class="button" [attr.data-rematch]="seat" (click)="rematch()">Rematch</button>
+    <button type="button" class="button button--quiet" (click)="exitToMenu()">Menu</button>
+  </ng-template>
+
+  <ng-template #pausePanel let-seat>
+    <h2 class="panel__title">Paused</h2>
+    <button type="button" class="button" (click)="resume()">Resume</button>
+    <button type="button" class="button button--quiet" (click)="rematch()">New match</button>
+    <button type="button" class="button button--quiet" (click)="exitToMenu()">Exit to menu</button>
+  </ng-template>
+
+  @if (paused()) {
+    <div class="overlay overlay--shade" role="dialog" aria-label="Paused">
+      @for (seat of seats; track seat) {
+        <div class="half" [class.half--across]="seat === 1">
+          <div class="panel">
+            <ng-container [ngTemplateOutlet]="pausePanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (view().phase === 'match') {
+    <div class="overlay" role="dialog" aria-label="Match over">
+      @for (seat of seats; track seat) {
+        <div class="half" [class.half--across]="seat === 1">
+          <div class="panel panel--gold">
+            <ng-container [ngTemplateOutlet]="matchPanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (view().phase === 'round') {
+    <div class="overlay" role="dialog" aria-label="Round over">
+      @for (seat of seats; track seat) {
+        <div class="half" [class.half--across]="seat === 1">
+          <div class="panel panel--gold">
+            <ng-container [ngTemplateOutlet]="roundPanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (view().prompt) {
+    <div class="overlay" role="dialog" aria-label="Both players stuck">
+      @for (seat of seats; track seat) {
+        <div class="half" [class.half--across]="seat === 1">
+          <div class="panel">
+            <ng-container [ngTemplateOutlet]="stuckPanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

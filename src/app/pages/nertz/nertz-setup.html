@@ -1,0 +1,57 @@
+<div class="menu">
+  <h1>Nertz for two</h1>
+
+  <p class="setup__summary">
+    Two players, one phone, laid down between you. Everybody plays at once,
+    and the foundations in the middle are a race.
+  </p>
+
+  <div class="rules">
+    <section class="rules__part">
+      <h2 class="rules__heading">Setup</h2>
+      <p class="rules__text">
+        Sit at opposite ends of the phone. Each of you has a deck: thirteen
+        cards in a Nertz pile with the top one face up, four work piles of one
+        card each, and the other thirty-five in your stock. The eight
+        foundations in the middle start empty.
+      </p>
+    </section>
+    <section class="rules__part">
+      <h2 class="rules__heading">Play</h2>
+      <p class="rules__text">
+        No turns: play as fast as you can. Aces open a foundation, and each
+        foundation builds up in its own suit. Your work piles build down in
+        alternating colours, and a run moves as a unit. Play from the top of
+        your Nertz pile first. Turn your stock three at a time, and when it
+        runs out, turn the waste back over. Both of you may play to the same
+        foundation, and whoever gets there first lands it.
+      </p>
+    </section>
+    <section class="rules__part">
+      <h2 class="rules__heading">Scoring</h2>
+      <p class="rules__text">
+        When your Nertz pile is empty, call Nertz and the round ends. You score
+        a point for every card you put on a foundation and lose two for every
+        card left in your Nertz pile, so going out first is not the same as
+        winning. If you are both stuck, flip through your hands, and then you
+        either carry on or both agree to end the round. Rounds continue until
+        somebody reaches the target.
+      </p>
+    </section>
+  </div>
+
+  <p class="setup__gestures">
+    Tap a card to send it somewhere sensible, or drag it to place it exactly.
+    Both of you can drag at once.
+  </p>
+
+  <app-chip-select
+    label="Play to"
+    [options]="targets"
+    [value]="settings.nertzTarget()"
+    (picked)="settings.nertzTarget.set($event)"
+  />
+
+  <a class="button" routerLink="/play/nertz">Deal</a>
+  <a class="button button--quiet" routerLink="/">Back</a>
+</div>

@@ -5,6 +5,7 @@ import {
   customStyle, themeStyle,
 } from './game/deck-style';
 import { defaultInk } from 'phaser-card-engine';
+import { DEFAULT_TARGET } from './game/nertz';
 import { DrawCount } from './game/klondike';
 import { Handedness, ScoreDisplay } from './game/settings-types';
 
@@ -22,6 +23,7 @@ const BACK_COLOR_KEY = 'solitaire.backColor';
 const DRAW_COUNT_KEY = 'solitaire.drawCount';
 const HANDEDNESS_KEY = 'solitaire.handedness';
 const SCORE_DISPLAY_KEY = 'solitaire.scoreDisplay';
+const NERTZ_TARGET_KEY = 'solitaire.nertzTarget';
 const WARN_STUCK_KEY = 'solitaire.warnStuck';
 const SHOW_SHUFFLE_KEY = 'solitaire.showShuffle';
 const CUSTOM_DECK_KEY = 'solitaire.customDeck';
@@ -32,6 +34,9 @@ const COURT_INK_KEY = 'solitaire.courtInk';
 const COURT_GOLD_KEY = 'solitaire.courtGold';
 const COURT_RED_KEY = 'solitaire.courtRed';
 const COURT_HIGHLIGHT_KEY = 'solitaire.courtHighlight';
+
+/** The lengths of match offered. */
+export const NERTZ_TARGETS: readonly number[] = [50, 100, 150, 200];
 
 // Where a custom deck starts from: the theme a player has before they have
 // chosen one, so the sliders open on the deck already in front of them.
@@ -78,6 +83,10 @@ export class Settings {
   readonly scoreDisplay = signal<ScoreDisplay>(
     read(SCORE_DISPLAY_KEY) === 'chips' ? 'chips' : 'score',
   );
+
+  // What a match of two-player Nertz is played to. Standing, because the same
+  // two people will most likely want the same length of evening again.
+  readonly nertzTarget = signal<number>(asTarget(read(NERTZ_TARGET_KEY)));
 
   // Whether the board speaks up when a hand has no move left anywhere in it.
   // On by default, matching how the panel has always behaved; this is the
@@ -156,6 +165,7 @@ export class Settings {
     effect(() => write(DRAW_COUNT_KEY, String(this.drawCount())));
     effect(() => write(HANDEDNESS_KEY, this.handedness()));
     effect(() => write(SCORE_DISPLAY_KEY, this.scoreDisplay()));
+    effect(() => write(NERTZ_TARGET_KEY, String(this.nertzTarget())));
     effect(() => write(WARN_STUCK_KEY, String(this.warnStuck())));
     effect(() => write(SHOW_SHUFFLE_KEY, String(this.showShuffle())));
     effect(() => write(CUSTOM_DECK_KEY, String(this.customDeck())));
@@ -167,6 +177,12 @@ export class Settings {
     effect(() => write(COURT_RED_KEY, this.courtRed()));
     effect(() => write(COURT_HIGHLIGHT_KEY, this.courtHighlight()));
   }
+}
+
+/** A stored match target, or the default. Anything else a person typed is the default. */
+function asTarget(value: string | null): number {
+  const n = Number(value);
+  return NERTZ_TARGETS.includes(n) ? n : DEFAULT_TARGET;
 }
 
 function read(key: string): string | null {
