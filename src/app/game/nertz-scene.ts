@@ -5,7 +5,7 @@ import { DeckStyle } from './deck-style';
 import { DeckTheme } from './deck-theme';
 import { CardSprite, preloadCardArt, renderCourtArt, setDeck } from './card-sprite';
 import {
-  Match, NertzMove, StuckTalk, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, agreeToEnd, apply, autoTarget, bothAgreed, carryOn,
+  Match, NertzMove, StuckTalk, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, agreeToEnd, apply, autoTarget, bothAgreed, carryOn, drawRefused,
   canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
   newTalk, promptShowing, roundScores, sameNertzPile, tableStuck, talkAfter,
 } from './nertz';
@@ -455,7 +455,10 @@ export class NertzScene extends Phaser.Scene {
 
   private draw(seat: Seat): void {
     if (!this.live) return;
-    this.play({ kind: 'draw', seat });
+    if (this.play({ kind: 'draw', seat })) return;
+    // Nothing to turn: still a reason to ask again if the prompt was waved away.
+    this.talk = drawRefused(this.talk);
+    this.publish();
   }
 
   // --- the page's controls --------------------------------------------------
@@ -478,7 +481,7 @@ export class NertzScene extends Phaser.Scene {
   /** Either player may say to keep going. */
   continuePlay(): void {
     if (!this.promptShowing) return;
-    this.talk = carryOn(this.talk);
+    this.talk = carryOn();
     this.publish();
   }
 

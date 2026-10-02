@@ -311,8 +311,17 @@ export function promptShowing(state: NertzState, talk: StuckTalk): boolean {
 }
 
 /** "Carry on": the prompt goes away until each hand has been turned through again. */
-export function carryOn(talk: StuckTalk): StuckTalk {
+export function carryOn(): StuckTalk {
   return { cycled: [false, false], dismissed: true, agreed: [false, false] };
+}
+
+/**
+ * A player reached for their hand and there was nothing to turn. With both
+ * hands empty no draw ever succeeds, so this is what brings a dismissed
+ * prompt back.
+ */
+export function drawRefused(talk: StuckTalk): StuckTalk {
+  return { ...talk, dismissed: false };
 }
 
 export function agreeToEnd(talk: StuckTalk, seat: Seat): StuckTalk {

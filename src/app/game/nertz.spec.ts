@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Card } from './deck';
 import { seeded } from './random';
 import {
-  Hand, Match, NertzState, addRound, apply, autoTarget, agreeToEnd, bothAgreed, canCallNertz, carryOn, canDrop,
+  Hand, Match, NertzState, addRound, apply, autoTarget, agreeToEnd, bothAgreed, canCallNertz, carryOn, drawRefused, canDrop,
   canPlayOnFoundation, canPlayOnWork, deal, finishRound, foundationFor, liftable,
   matchWinner, newMatch, newTalk, promptShowing, roundScores, tableStuck, talkAfter,
 } from './nertz';
@@ -224,7 +224,7 @@ describe('stuck', () => {
       talk = talkAfter(talk, s, turn(seat), r.recycled === true);
     }
     expect(promptShowing(s, talk)).toBe(true);
-    talk = carryOn(talk);
+    talk = carryOn();
     expect(promptShowing(s, talk)).toBe(false);
     // A draw with an empty stock recycles the waste: the round is not stranded.
     const r = apply(s, turn(0))!;
@@ -233,8 +233,17 @@ describe('stuck', () => {
     expect(promptShowing(r.state, talk)).toBe(true);
   });
 
+  it('carry on with both hands empty: reaching for the hand brings the prompt back', () => {
+    const s = state(blocked(), blocked());
+    expect(apply(s, turn(0))).toBeUndefined();
+    let talk = carryOn();
+    expect(promptShowing(s, talk)).toBe(false);
+    talk = drawRefused(talk);
+    expect(promptShowing(s, talk)).toBe(true);
+  });
+
   it('a played card starts the conversation over', () => {
-    const talk = carryOn(newTalk());
+    const talk = carryOn();
     const after = talkAfter(talk, state(), { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'foundation', index: 0 }, count: 1 }, false);
     expect(after).toEqual(newTalk());
   });
@@ -244,7 +253,7 @@ describe('stuck', () => {
     expect(bothAgreed(talk)).toBe(false);
     talk = agreeToEnd(talk, 1);
     expect(bothAgreed(talk)).toBe(true);
-    expect(bothAgreed(carryOn(talk))).toBe(false);
+    expect(bothAgreed(carryOn())).toBe(false);
   });
 });
 
