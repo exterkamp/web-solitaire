@@ -76,7 +76,7 @@ export function foundationSpot(index: number): { x: number; y: number } {
 }
 
 /** The centre of the first card of a work pile. */
-export function workBase(seat: Seat, index: number, workPiles: number = DEFAULT_WORK_PILES): Spot {
+export function workBase(seat: Seat, index: number, workPiles: number): Spot {
   return seatPoint(seat, workColumns(workPiles)[index], WORK_TOP + CARD_HEIGHT / 2);
 }
 
@@ -87,7 +87,7 @@ export function handSpot(seat: Seat, kind: 'nertz' | 'waste' | 'stock'): Spot {
 }
 
 /** Where a pile is printed, whoever's it is. */
-export function pileSpot(seat: Seat, pile: NertzPile, workPiles: number = DEFAULT_WORK_PILES): Spot {
+export function pileSpot(seat: Seat, pile: NertzPile, workPiles: number): Spot {
   switch (pile.kind) {
     case 'work':
       return workBase(seat, pile.index, workPiles);
@@ -111,7 +111,7 @@ export function workStep(count: number): number {
 
 /** Where the card at `index` of a pile of `count` sits. */
 export function cardSpot(
-  seat: Seat, pile: NertzPile, index: number, count: number, workPiles: number = DEFAULT_WORK_PILES,
+  seat: Seat, pile: NertzPile, index: number, count: number, workPiles: number,
 ): Spot {
   const base = pileSpot(seat, pile, workPiles);
   const down = seat === 0 ? 1 : -1;
@@ -133,7 +133,7 @@ export function cardSpot(
  * it, plus one card's worth below, so a card can be put on the end of a long
  * pile rather than only on its first card. Axis-aligned and in board units.
  */
-export function workZone(seat: Seat, index: number, count: number, workPiles: number = DEFAULT_WORK_PILES): Rect {
+export function workZone(seat: Seat, index: number, count: number, workPiles: number): Rect {
   const first = workBase(seat, index, workPiles);
   const lastY = cardSpot(seat, { kind: 'work', index }, Math.max(0, count - 1), count, workPiles).y;
   const top = Math.min(first.y, lastY);

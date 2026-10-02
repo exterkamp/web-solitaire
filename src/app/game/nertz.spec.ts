@@ -68,14 +68,18 @@ describe.each([[4, 35], [5, 34], [6, 33]])('deal with %i work piles', (workPiles
     expect(new Set(all.map((c) => c.id)).size).toBe(104);
   });
 
-  it('plays a card across the work piles, and gets stuck and scores as ever', () => {
-    const first = s.hands[0].work[0][0];
-    const target = autoTarget(s, 0, { kind: 'work', index: 0 }, 1);
-    // Whatever it picks, a move that is offered is one that applies.
-    if (target) expect(apply(s, { kind: 'play', seat: 0, from: { kind: 'work', index: 0 }, to: target, count: 1 })).toBeDefined();
-    expect(first.faceUp).toBe(true);
-    expect(roundScores(s)).toEqual([-26, -26]);
-    expect(typeof tableStuck(s)).toBe('boolean');
+  it('uses the last work pile as a real pile', () => {
+    const last = workPiles - 1;
+    const seven = card('7', 'spades');
+    const six = card('6', 'hearts');
+    const work = Array.from({ length: workPiles }, (_, i) => (i === last ? [seven] : i === 0 ? [six] : []));
+    const t = { ...s, hands: [{ ...s.hands[0], work, waste: [], stock: [] }, s.hands[1]] as [Hand, Hand] };
+    // The six lands on the seven in the new last pile ...
+    expect(autoTarget(t, 0, { kind: 'work', index: 0 }, 1)).toEqual({ kind: 'work', index: last });
+    const played = apply(t, { kind: 'play', seat: 0, from: { kind: 'work', index: 0 }, to: { kind: 'work', index: last }, count: 1 });
+    expect(played?.state.hands[0].work[last].map((c) => c.rank)).toEqual(['7', '6']);
+    // ... and can be lifted from it again.
+    expect(liftable(played!.state, 0, { kind: 'work', index: last }, 1)).toEqual([six]);
   });
 
   it('refuses a work pile the hand does not have', () => {

@@ -6,12 +6,15 @@ import {
 } from './nertz-layout';
 import { SEATS } from './nertz';
 
+describe('four work piles', () => {
+  it('keeps the original four-column layout', () => {
+    expect(workColumns(4)).toEqual([75, 185, 295, 405]);
+    expect(workColumns()).toEqual([75, 185, 295, 405]);
+  });
+});
+
 describe.each([4, 5, 6])('layout with %i work piles', (n) => {
   const zones = (seat: 0 | 1, count = 1) => workIndices(n).map((i) => workZone(seat, i, count, n));
-
-  it('keeps the four-column layout for four', () => {
-    if (n === 4) expect(workColumns(4)).toEqual([75, 185, 295, 405]);
-  });
 
   it('keeps every column on the board', () => {
     for (const x of workColumns(n)) {
