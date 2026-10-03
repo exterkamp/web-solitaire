@@ -13,6 +13,8 @@ import {
   NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, foundationZone, handSpot, overlap, pileSpot,
   workZone, FOUNDATION_INDICES, workIndices,
 } from './nertz-layout';
+import { PointerSample, pointerVelocity } from './gesture';
+import { isMiddleFlick } from './nertz-gesture';
 import { drawRecycleMark, drawSlot, drawTableSurface } from './table';
 
 // The Nertz board for two, face to face.
@@ -75,6 +77,12 @@ const TAP_SLOP = 10;
 // How much of a card a drop has to cover a pile to count as being on it.
 const MIN_OVERLAP = 0.2 * CARD_WIDTH * CARD_HEIGHT;
 
+// Enough pointer history to cover the flick window; see gesture.ts.
+const SAMPLE_LIMIT = 8;
+// The pop a flicked card makes as it lands, as in solitaire-scene.ts.
+const LAND_POP_MS = 150;
+const LAND_POP_SCALE = 1.07;
+
 // Two hands, a thumb each, and room for a third finger that strays.
 const EXTRA_POINTERS = 3;
 
@@ -89,6 +97,8 @@ interface Drag {
   startX: number;
   startY: number;
   moved: boolean;
+  // The tail of the gesture, for telling a throw from a carry.
+  samples: PointerSample[];
 }
 
 interface Located {
@@ -377,6 +387,7 @@ export class NertzScene extends Phaser.Scene {
       startX: board.x,
       startY: board.y,
       moved: false,
+      samples: [{ x: board.x, y: board.y, t: pointer.downTime }],
     });
     // Cancel any tween still carrying these, or it fights the thumb.
     for (const s of sprites) this.tweens.killTweensOf(s);
@@ -390,6 +401,8 @@ export class NertzScene extends Phaser.Scene {
     if (Math.abs(board.x - drag.startX) > TAP_SLOP || Math.abs(board.y - drag.startY) > TAP_SLOP) {
       drag.moved = true;
     }
+    drag.samples.push({ x: board.x, y: board.y, t: pointer.moveTime });
+    if (drag.samples.length > SAMPLE_LIMIT) drag.samples.shift();
     const head = { x: board.x + drag.offsetX, y: board.y + drag.offsetY };
     drag.sprites.forEach((sprite, i) => {
       sprite.setPosition(head.x, head.y + (drag.origins[i].y - drag.origins[0].y));
@@ -403,10 +416,14 @@ export class NertzScene extends Phaser.Scene {
 
     const head = drag.sprites[0];
     const landed = drag.moved ? this.dropTarget(drag, { x: head.x, y: head.y }) : undefined;
-    const to = landed ?? (drag.moved ? undefined : autoTarget(this.state, drag.seat, drag.from, drag.count));
+    // As in the single-player scene, a pile the card was let go over wins over
+    // a throw, and a throw that finds no home falls through to a plain drop.
+    const thrown = landed ? undefined : this.flickTarget(drag, pointer);
+    const to = landed ?? thrown ?? (drag.moved ? undefined : autoTarget(this.state, drag.seat, drag.from, drag.count));
     const played = this.live && to
       ? this.play({ kind: 'play', seat: drag.seat, from: drag.from, to, count: drag.count })
       : false;
+    if (played && thrown) this.landHard(head);
     if (!played) {
       // A refused drop - or one that lost the race for a foundation - puts
       // the cards back where they came from.
@@ -418,6 +435,33 @@ export class NertzScene extends Phaser.Scene {
       });
       this.restack();
     }
+  }
+
+  /**
+   * The foundation a card was thrown at, if it was thrown at all: the one a
+   * tap would have picked. Single cards only; anything refused answers
+   * nothing and the release is an ordinary drop.
+   */
+  private flickTarget(drag: Drag, pointer: Phaser.Input.Pointer): NertzPile | undefined {
+    if (drag.count !== 1 || !drag.moved || !this.live) return undefined;
+    const board = this.toBoard(pointer);
+    const velocity = pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime });
+    if (!isMiddleFlick(velocity, drag.seat)) return undefined;
+    const home = autoTarget(this.state, drag.seat, drag.from, 1);
+    return home?.kind === 'foundation' ? home : undefined;
+  }
+
+  private landHard(sprite: CardSprite): void {
+    this.tweens.add({
+      targets: sprite,
+      scaleX: LAND_POP_SCALE,
+      scaleY: LAND_POP_SCALE,
+      duration: LAND_POP_MS / 2,
+      delay: MOVE_MS * 0.8,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => sprite.setScale(1),
+    });
   }
 
   private releaseAll(): void {

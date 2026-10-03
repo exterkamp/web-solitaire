@@ -63,9 +63,20 @@ export function pointerVelocity(
   return { vx: (end.x - from.x) / dt, vy: (end.y - from.y) / dt };
 }
 
-/** Whether that was a throw toward the top of the board. */
-export function isUpwardFlick({ vx, vy }: Velocity): boolean {
+/**
+ * Whether that was a throw along the board's vertical axis: `sign` is -1 for
+ * toward the top of the board and 1 for toward the bottom, and `speed` is the
+ * threshold for boards that are not the single-player height.
+ */
+export function isVerticalFlick(
+  { vx, vy }: Velocity, sign: -1 | 1, speed: number = FLICK_SPEED,
+): boolean {
   // Up is negative: the board's origin is its top-left corner.
-  if (vy > -FLICK_SPEED) return false;
+  if (vy * sign < speed) return false;
   return Math.abs(vy) > Math.abs(vx) * FLICK_STRAIGHTNESS;
+}
+
+/** Whether that was a throw toward the top of the board. */
+export function isUpwardFlick(velocity: Velocity): boolean {
+  return isVerticalFlick(velocity, -1);
 }
