@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { markBooted, renderScale } from './lite';
 import {
   BOARD_DROP_STEP,
   BOARD_MARGIN,
@@ -308,7 +309,7 @@ export class SolitaireScene extends Phaser.Scene {
     // lands, so the deal does not wait either.
     void renderCourtArt(this);
 
-    this.pixelRatio = window.devicePixelRatio || 1;
+    this.pixelRatio = renderScale();
 
     drawTableSurface(this, this.pixelRatio);
 
@@ -334,6 +335,9 @@ export class SolitaireScene extends Phaser.Scene {
     // The art is in and there are cards on the table. Nothing in the game
     // waits on this; the service worker does. See first-board.ts.
     firstBoardDealt();
+    // The survival window starts once the board is dealt, not when the canvas
+    // is built (see markBooted).
+    markBooted();
   }
 
   // --- where everything sits ---------------------------------------------

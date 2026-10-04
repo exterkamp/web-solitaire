@@ -375,6 +375,14 @@ const rig = (body) => `(() => {
   return answer ?? true;
 })()`;
 
+// Deal, the way a player does: pick the game on the menu, then press Deal on
+// its setup page. (The menu used to link straight to /play.)
+async function dealKlondike(browser) {
+  await browser.evaluate(`(document.querySelector('a[href="/setup/klondike"]').click(), true)`);
+  await browser.until(`!!document.querySelector('a[href="/play/klondike"]')`, 'the setup page');
+  await browser.evaluate(`(document.querySelector('a[href="/play/klondike"]').click(), true)`);
+}
+
 async function main() {
   console.log(`  --   device pixel ratio ${dpr}`);
   // A port nobody else is on. A fixed one looked fine and was not: a Chrome
@@ -392,7 +400,7 @@ async function main() {
   );
 
   // Deal, the way a player does: by pressing the button.
-  await browser.evaluate(`(document.querySelector('a[href="/play"]').click(), true)`);
+  await dealKlondike(browser);
   if (!await browser.until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, 'the board')) {
     return finish(browser);
   }
@@ -789,7 +797,7 @@ async function main() {
   }
   check(true, 'the menu opens with no network');
 
-  await browser.evaluate(`(document.querySelector('a[href="/play"]').click(), true)`);
+  await dealKlondike(browser);
   if (!await browser.until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, 'the board, offline', 60000)) {
     return finish(browser);
   }

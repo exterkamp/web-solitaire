@@ -7,6 +7,7 @@ import {
 import { defaultInk } from 'phaser-card-engine';
 import { DEFAULT_TARGET, DEFAULT_WORK_PILES, WORK_PILE_CHOICES } from './game/nertz';
 import { DrawCount } from './game/klondike';
+import { Quality, getQuality, setQuality } from './game/lite';
 import { Handedness, ScoreDisplay } from './game/settings-types';
 
 // Standing preferences: facts about the person rather than about one deal.
@@ -91,6 +92,18 @@ export class Settings {
 
   // How many work piles each player has in two-player Nertz.
   readonly nertzWorkPiles = signal<number>(asWorkPiles(read(NERTZ_WORK_PILES_KEY)));
+
+  // How sharp the board is drawn: Automatic, Lite (1x, for a phone that cannot
+  // hold a full board) or Full. Kept by game/lite.ts, which decides what
+  // Automatic means and which has to know before the app is built; this is the
+  // signal the Settings page reads and writes it through. Applies from the next
+  // game - a board already on screen was built at the old ratio.
+  readonly quality = signal<Quality>(getQuality());
+
+  setQuality(quality: Quality): void {
+    setQuality(quality);
+    this.quality.set(quality);
+  }
 
   // Whether the board speaks up when a hand has no move left anywhere in it.
   // On by default, matching how the panel has always behaved; this is the

@@ -2,6 +2,13 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { App } from './app/app';
 import { fontsReady } from './app/game/fonts';
+import { initLite } from './app/game/lite';
+import { installPolyfills } from './app/polyfills';
+
+// Before anything else runs: the menu uses Array.prototype.at, and which
+// picture quality the board is drawn at has to be settled before a board exists.
+installPolyfills();
+initLite();
 
 // The fonts are waited on before anything renders, because Phaser rasterizes
 // a Text object once, at creation, and never re-draws it when a font lands
