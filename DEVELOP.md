@@ -291,6 +291,37 @@ where the board prints the game's name across the felt. Pyramid was given an
 apex at 100 and put its second row straight through the lettering. Tri Peaks
 and Golf both start at 150, and now so does Pyramid.
 
+## Older and low-memory phones
+
+An old iPhone (or any phone short on memory) can be killed by the browser for
+the size of the board, and reloaded into the same page. Two things exist for
+that, both small and both in the app bundle only:
+
+- `src/app/polyfills.ts` fills in `Array.prototype.at` (iOS before 15.4) where
+  it is missing. It runs first in `main.ts`.
+- **Lite mode** (`src/app/game/lite.ts`) draws the board at a pixel ratio of 1
+  with unsupersampled text, instead of `devicePixelRatio`x with 2x text. Every
+  read of the ratio goes through `renderScale()`, and it reaches the engine
+  through `createBoard`'s existing `pixelRatio` option. Cards' own index text
+  is drawn by the engine at a fixed oversample and is not affected.
+
+Picture quality is Automatic, Lite or Full (Settings, `solitaire.lite` in
+`localStorage`: absent / `1` / `0`). `?lite=1` and `?lite=0` set the last two
+from the address bar and are remembered; `?lite=0` beats every guess. Automatic
+is lite when any of these holds:
+
+- `navigator.deviceMemory` is 2 or less;
+- the user agent is an iPhone, iPad or iPod on iOS before 16 (a proxy for
+  "2GB or less", since Safari does not expose memory);
+- the device reports 2 or fewer cores and a screen of 2x or more;
+- a board was lost: one that started and was not seen running for 4 seconds
+  (`solitaire.boot` mark, cleared by `markBooted`) is taken to have been
+  killed, which sets `solitaire.liteLost`. Closing the tab mid-load looks the
+  same; that false positive is accepted. Choosing any option in Settings, or
+  `?lite=`, clears the verdict.
+
+The decision logic is pure and specced in `lite.spec.ts`.
+
 ## Testing
 
 `npm test` runs the rules in vitest: dealing, placement, lifting runs, drawing

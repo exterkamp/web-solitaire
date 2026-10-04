@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { DISPLAY_FONT, DISPLAY_WEIGHT, TEXT_OVERSAMPLE } from './fonts';
+import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
+import { textOversample } from './lite';
 
 // The table the game is played on: felt, the pool of light falling on it,
 // and the rail around the edge. Modelled on a casino craps table, which is
@@ -243,7 +244,7 @@ export function drawSectionLabel(
     fontSize: '15px',
     fontStyle: DISPLAY_WEIGHT,
     color: LABEL_GOLD_CSS,
-    resolution: resolution * TEXT_OVERSAMPLE,
+    resolution: resolution * textOversample(),
   }).setOrigin(0.5);
   // Letter spacing is what sells it - casino lettering is set wide. Phaser
   // counts the trailing gap in the width too, so nudge back by half of it

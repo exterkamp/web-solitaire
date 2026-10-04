@@ -11,6 +11,7 @@ import {
 } from '../../game/deck-theme';
 import { colorCss, cssColor } from '../../game/deck-style';
 import { DrawCount } from '../../game/klondike';
+import { Quality } from '../../game/lite';
 import { Handedness, ScoreDisplay } from '../../game/settings-types';
 import { Settings } from '../../settings';
 import { DeckPreview } from './deck-preview';
@@ -68,6 +69,12 @@ export class SettingsPage {
   protected readonly scoreDisplayOptions: { value: ScoreDisplay; label: string; hint: string }[] = [
     { value: 'score', label: 'Number', hint: 'A count in the bar above the felt' },
     { value: 'chips', label: 'Chips', hint: 'A stack on the felt itself' },
+  ];
+
+  protected readonly qualityOptions: { value: Quality; label: string; hint: string }[] = [
+    { value: 'auto', label: 'Automatic', hint: 'Lite on an older phone' },
+    { value: 'lite', label: 'Lite', hint: 'Softer, uses less memory' },
+    { value: 'full', label: 'Full', hint: 'Sharpest the screen allows' },
   ];
 
   protected readonly stuckOptions: { value: boolean; label: string; hint: string }[] = [

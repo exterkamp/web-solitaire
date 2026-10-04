@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { renderScale } from './lite';
 import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
 import { DeckStyle } from './deck-style';
@@ -160,7 +161,7 @@ export class NertzScene extends Phaser.Scene {
 
   create(): void {
     void renderCourtArt(this);
-    this.pixelRatio = window.devicePixelRatio || 1;
+    this.pixelRatio = renderScale();
     drawTableSurface(this, this.pixelRatio);
 
     this.root = this.add.container(0, 0).setScale(this.pixelRatio);

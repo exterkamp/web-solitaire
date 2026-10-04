@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { renderScale } from './lite';
 import {
   BOARD_DROP_STEP,
   BOARD_MARGIN,
@@ -308,7 +309,7 @@ export class SolitaireScene extends Phaser.Scene {
     // lands, so the deal does not wait either.
     void renderCourtArt(this);
 
-    this.pixelRatio = window.devicePixelRatio || 1;
+    this.pixelRatio = renderScale();
 
     drawTableSurface(this, this.pixelRatio);
 
