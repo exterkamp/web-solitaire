@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { renderScale } from './lite';
+import { markBooted, renderScale } from './lite';
 import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
 import { DeckStyle } from './deck-style';
@@ -181,6 +181,9 @@ export class NertzScene extends Phaser.Scene {
 
     this.match = newMatch(this.target);
     this.startRound();
+    // The first frame is queued: the survival window starts here, not at
+    // construction (see markBooted).
+    markBooted();
   }
 
   // --- the felt -------------------------------------------------------------

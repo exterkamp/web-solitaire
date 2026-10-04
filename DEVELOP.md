@@ -297,8 +297,11 @@ An old iPhone (or any phone short on memory) can be killed by the browser for
 the size of the board, and reloaded into the same page. Two things exist for
 that, both small and both in the app bundle only:
 
-- `src/app/polyfills.ts` fills in `Array.prototype.at` (iOS before 15.4) where
+- `src/app/polyfills.ts` fills in `Array.prototype.at` and `Object.hasOwn` (both iOS 15.4; the
+  bundle needs both to bootstrap and draw the menu) where
   it is missing. It runs first in `main.ts`.
+  The real floor is iOS 14: the built bundle uses `??=`, which is syntax, so no
+  polyfill can help an older engine (it fails to parse before any code runs).
 - **Lite mode** (`src/app/game/lite.ts`) draws the board at a pixel ratio of 1
   with unsupersampled text, instead of `devicePixelRatio`x with 2x text. Every
   read of the ratio goes through `renderScale()`, and it reaches the engine

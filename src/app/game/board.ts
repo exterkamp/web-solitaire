@@ -50,7 +50,6 @@ export function createBoardGame(parent: HTMLElement, init: BoardInit): Phaser.Ga
   // settings - which deck, which hand, how many cards a draw turns - and a
   // scene in the config is started by the engine with nothing to go on.
   game.scene.add(BOARD_SCENE, SolitaireScene, true, init);
-  markBooted();
 
   // The handle a console session drives the board through, and the only way
   // to reach it from outside the page.
@@ -73,7 +72,6 @@ export function createNertzGame(parent: HTMLElement, init: NertzInit): Phaser.Ga
     pixelRatio: renderScale(),
   });
   game.scene.add(NERTZ_SCENE, NertzScene, true, init);
-  markBooted();
   (window as unknown as { __game?: Phaser.Game }).__game = game;
   return game;
 }

@@ -25,6 +25,8 @@
 // oversample that lite mode cannot reach from here; at a pixel ratio of 1 it is
 // a handful of small textures.
 
+import { TEXT_OVERSAMPLE } from './fonts';
+
 export type Quality = 'auto' | 'lite' | 'full';
 
 const MODE_KEY = 'solitaire.lite';
@@ -34,9 +36,6 @@ const LOST_KEY = 'solitaire.liteLost';
 // start can be and still count as a loss rather than yesterday's closed tab.
 const SURVIVE_MS = 4000;
 const STALE_MS = 2 * 60 * 1000;
-
-/** Text is drawn this many times denser than the board. 1 in lite mode. */
-const FULL_TEXT_OVERSAMPLE = 2;
 
 let lite = false;
 
@@ -157,7 +156,7 @@ export function renderScale(): number {
 
 /** How much denser than the board text is drawn. */
 export function textOversample(): number {
-  return lite ? 1 : FULL_TEXT_OVERSAMPLE;
+  return lite ? 1 : TEXT_OVERSAMPLE;
 }
 
 /** A board is about to be built. If this page dies before markBooted fires, the next load is lite. */
@@ -166,7 +165,8 @@ export function markBooting(): void {
 }
 
 /**
- * The board has been drawn and has stayed up. Waiting is the point: a kill
+ * The board has been dealt (called from each scene's create()) and has
+ * stayed up. Waiting is the point: a kill
  * from memory pressure usually arrives a moment after the first frame, as the
  * rest of the textures land.
  */
