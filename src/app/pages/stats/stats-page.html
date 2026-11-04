@@ -5,6 +5,27 @@
     means clearing your browser's storage clears this.
   </p>
 
+  <div class="record__span" role="group" aria-label="Which games to count">
+    <button
+      type="button"
+      class="pill"
+      [class.pill--active]="span() === 'recent'"
+      [attr.aria-pressed]="span() === 'recent'"
+      (click)="span.set('recent')"
+    >
+      Last {{ window }}
+    </button>
+    <button
+      type="button"
+      class="pill"
+      [class.pill--active]="span() === 'all'"
+      [attr.aria-pressed]="span() === 'all'"
+      (click)="span.set('all')"
+    >
+      All time
+    </button>
+  </div>
+
   @for (group of groups; track group.title) {
     <!-- A game and its numbers, kept together in one block so the column's
          gap falls between games rather than between a heading and the thing

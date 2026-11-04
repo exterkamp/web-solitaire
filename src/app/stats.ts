@@ -123,6 +123,55 @@ export interface ModeRecord {
 
 export interface StatsRecord {
   byVariant: Record<Variant, ModeRecord>;
+  // The last RECENT_WINDOW games of each variant, oldest first. The totals
+  // above say how somebody has played over years; these say how they are
+  // playing now, which a thousand old games would otherwise drown out.
+  //
+  // Started fresh when this arrived: the totals never kept one game apart
+  // from another, so there is no way to rebuild the window from them.
+  recent: Record<Variant, GameResult[]>;
+}
+
+/** How many games the rolling record looks back over. */
+export const RECENT_WINDOW = 100;
+
+/** One finished game, as the rolling record keeps it. A loss is all zeros. */
+export interface GameResult {
+  won: boolean;
+  seconds: number;
+  moves: number;
+  score: number;
+}
+
+/** Adds a game to a window, dropping the oldest once it is full. */
+export function pushResult(window: readonly GameResult[], result: GameResult): GameResult[] {
+  const next = [...window, result];
+  return next.length > RECENT_WINDOW ? next.slice(next.length - RECENT_WINDOW) : next;
+}
+
+/**
+ * A window of games, added up into the same shape as the all-time record -
+ * so the record book can show either without knowing which it has.
+ */
+export function summarize(results: readonly GameResult[]): ModeRecord {
+  const mode = emptyMode();
+  let run = 0;
+  for (const result of results) {
+    mode.played += 1;
+    if (result.won) {
+      mode.won += 1;
+      mode.bestScore = Math.max(mode.bestScore, result.score);
+      mode.bestSeconds = bestOf(mode.bestSeconds, result.seconds);
+      mode.fewestMoves = bestOf(mode.fewestMoves, result.moves);
+      mode.totalSeconds += result.seconds;
+      run += 1;
+      mode.bestStreak = Math.max(mode.bestStreak, run);
+    } else {
+      run = 0;
+    }
+  }
+  mode.currentStreak = run;
+  return mode;
 }
 
 function emptyMode(): ModeRecord {
@@ -139,23 +188,13 @@ function emptyMode(): ModeRecord {
 }
 
 function emptyStats(): StatsRecord {
-  return {
-    byVariant: {
-      'klondike-1': emptyMode(),
-      'klondike-3': emptyMode(),
-      freecell: emptyMode(),
-      yukon: emptyMode(),
-      canfield: emptyMode(),
-      spiderette: emptyMode(),
-      scorpion: emptyMode(),
-      seahaven: emptyMode(),
-      tripeaks: emptyMode(),
-      pyramid: emptyMode(),
-      golf: emptyMode(),
-      blackhole: emptyMode(),
-      acesup: emptyMode(),
-    },
-  };
+  const byVariant = {} as Record<Variant, ModeRecord>;
+  const recent = {} as Record<Variant, GameResult[]>;
+  for (const variant of VARIANTS) {
+    byVariant[variant] = emptyMode();
+    recent[variant] = [];
+  }
+  return { byVariant, recent };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -166,6 +205,11 @@ export class Stats {
 
   mode(variant: Variant): ModeRecord {
     return this.record().byVariant[variant];
+  }
+
+  /** The same numbers as mode(), over only the last RECENT_WINDOW games. */
+  recentMode(variant: Variant): ModeRecord {
+    return summarize(this.record().recent[variant]);
   }
 
   /**
@@ -199,7 +243,8 @@ export class Stats {
   }
 
   recordWin(variant: Variant, summary: WinSummary): void {
-    this.update(variant, (mode) => {
+    const result = { won: true, seconds: summary.seconds, moves: summary.moves, score: summary.total };
+    this.update(variant, result, (mode) => {
       const streak = mode.currentStreak + 1;
       return {
         ...mode,
@@ -223,7 +268,7 @@ export class Stats {
    * counting it as one would make the record book punish curiosity.
    */
   recordLoss(variant: Variant): void {
-    this.update(variant, (mode) => ({
+    this.update(variant, { won: false, seconds: 0, moves: 0, score: 0 }, (mode) => ({
       ...mode,
       played: mode.played + 1,
       currentStreak: 0,
@@ -236,10 +281,15 @@ export class Stats {
     save(this.record());
   }
 
-  private update(variant: Variant, change: (mode: ModeRecord) => ModeRecord): void {
+  private update(
+    variant: Variant,
+    result: GameResult,
+    change: (mode: ModeRecord) => ModeRecord,
+  ): void {
     const next = this.record();
     const updated: StatsRecord = {
       byVariant: { ...next.byVariant, [variant]: change(next.byVariant[variant]) },
+      recent: { ...next.recent, [variant]: pushResult(next.recent[variant], result) },
     };
     this.record.set(updated);
     save(updated);
@@ -261,6 +311,7 @@ function load(): StatsRecord {
       const parsed = JSON.parse(raw) as Partial<StatsRecord>;
       for (const variant of VARIANTS) {
         stats.byVariant[variant] = mergeMode(parsed.byVariant?.[variant]);
+        stats.recent[variant] = mergeRecent(parsed.recent?.[variant]);
       }
       return stats;
     }
@@ -296,6 +347,25 @@ function mergeMode(stored: Partial<ModeRecord> | undefined): ModeRecord {
     }
   }
   return base;
+}
+
+// Same distrust as mergeMode, one game at a time: anything that is not a
+// plausible game is dropped rather than repaired, and a window somebody has
+// padded past its length is cut back to the newest games.
+export function mergeRecent(stored: unknown): GameResult[] {
+  if (!Array.isArray(stored)) return [];
+  const count = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  return stored
+    .filter((entry): entry is Partial<Record<keyof GameResult, unknown>> =>
+      typeof entry === 'object' && entry !== null && typeof entry.won === 'boolean')
+    .map((entry) => ({
+      won: entry.won as boolean,
+      seconds: count(entry.seconds),
+      moves: count(entry.moves),
+      score: count(entry.score),
+    }))
+    .slice(-RECENT_WINDOW);
 }
 
 function save(record: StatsRecord): void {

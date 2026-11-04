@@ -1,7 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatBest, formatBestTime, formatPercent } from '../../format';
-import { ModeRecord, Stats, VARIANT_GROUPS, VARIANT_LABELS, Variant, VariantGroup } from '../../stats';
+import {
+  ModeRecord,
+  RECENT_WINDOW,
+  Stats,
+  VARIANT_GROUPS,
+  VARIANT_LABELS,
+  Variant,
+  VariantGroup,
+} from '../../stats';
+
+// Which record the book is showing: the last hundred games, or every one.
+export type Span = 'recent' | 'all';
 
 // One row of the book. The label is the question, and each variant answers it
 // in its own column - which is the whole reason this is a table rather than a
@@ -20,6 +31,12 @@ interface Row {
 export class StatsPage {
   protected readonly stats = inject(Stats);
   protected readonly confirming = signal(false);
+
+  // Recent first, because it is the question people come here with - "how am
+  // I doing" - and a lifetime of games answers it slowly. All time is one tap
+  // away for the bests that are worth keeping forever.
+  protected readonly span = signal<Span>('recent');
+  protected readonly window = RECENT_WINDOW;
 
   // A table per game rather than one table of eleven columns. Klondike's two
   // variants belong beside each other because they are the same game played
@@ -63,7 +80,7 @@ export class StatsPage {
   }
 
   protected mode(variant: Variant): ModeRecord {
-    return this.stats.mode(variant);
+    return this.span() === 'recent' ? this.stats.recentMode(variant) : this.stats.mode(variant);
   }
 
   /**
@@ -75,7 +92,10 @@ export class StatsPage {
    * should be the numbers.
    */
   protected played(group: VariantGroup): boolean {
-    return group.variants.some((variant) => this.mode(variant).played > 0);
+    // All time, whichever span is showing: a game played only before the
+    // rolling record began has been played, and its column of zeros is more
+    // honest than calling it untried.
+    return group.variants.some((variant) => this.stats.mode(variant).played > 0);
   }
 
   protected clear(): void {
