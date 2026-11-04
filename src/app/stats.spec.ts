@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_VARIANTS, GameResult, RECENT_WINDOW, VARIANT_GROUPS, VARIANT_LABELS, Variant,
-  mergeRecent, pushResult, summarize, variantOf,
+  ModeRecord, mergeRecent, pushResult, rollingRecord, summarize, variantOf,
 } from './stats';
 import { GameId } from './game/table-game';
 
@@ -88,5 +88,44 @@ describe('the rolling record', () => {
     expect(mergeRecent([null, { won: 'yes' }, { won: true, seconds: -4, moves: 'x', score: 9.7 }]))
       .toEqual([{ won: true, seconds: 0, moves: 0, score: 9 }]);
     expect(mergeRecent(Array.from({ length: 150 }, () => loss))).toHaveLength(RECENT_WINDOW);
+  });
+});
+
+describe('the rolling record, before it is full', () => {
+  const lifetime = (extra: Partial<ModeRecord>): ModeRecord => ({
+    played: 0, won: 0, bestScore: 0, bestSeconds: 0, fewestMoves: 0,
+    totalSeconds: 0, currentStreak: 0, bestStreak: 0, ...extra,
+  });
+
+  it('fills an empty window from the totals rather than showing zeros', () => {
+    const mode = rollingRecord(
+      lifetime({ played: 300, won: 120, totalSeconds: 120 * 200, bestSeconds: 95,
+        fewestMoves: 70, bestScore: 900, currentStreak: 3, bestStreak: 8 }),
+      [],
+    );
+    expect(mode).toEqual({ played: 100, won: 40, totalSeconds: 8000, bestSeconds: 95,
+      fewestMoves: 70, bestScore: 900, currentStreak: 3, bestStreak: 8 });
+  });
+
+  it('uses every old game when there are fewer than a hundred', () => {
+    const mode = rollingRecord(lifetime({ played: 10, won: 5, totalSeconds: 500 }), []);
+    expect(mode.played).toBe(10);
+    expect(mode.won).toBe(5);
+  });
+
+  it('mixes real games with the older averages', () => {
+    // 200 old games at 50%, then 20 real ones all lost: 80 filler games at 50%.
+    const recent: GameResult[] = Array.from({ length: 20 }, () =>
+      ({ won: false, seconds: 0, moves: 0, score: 0 }));
+    const mode = rollingRecord(lifetime({ played: 220, won: 100 }), recent);
+    expect(mode.played).toBe(100);
+    expect(mode.won).toBe(40);
+  });
+
+  it('is only the window once the window is full', () => {
+    const recent = Array.from({ length: RECENT_WINDOW }, (_, i) =>
+      ({ won: i % 2 === 0, seconds: 100, moves: 90, score: 0 }));
+    const mode = rollingRecord(lifetime({ played: 500, won: 500, bestSeconds: 10 }), recent);
+    expect(mode).toEqual(summarize(recent));
   });
 });

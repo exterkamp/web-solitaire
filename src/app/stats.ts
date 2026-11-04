@@ -149,6 +149,49 @@ export function pushResult(window: readonly GameResult[], result: GameResult): G
   return next.length > RECENT_WINDOW ? next.slice(next.length - RECENT_WINDOW) : next;
 }
 
+// How many of the window's slots have to come from before it began: games
+// counted in the totals but never kept one by one.
+function fillerGames(lifetime: ModeRecord, recent: readonly GameResult[]): number {
+  const older = lifetime.played - recent.length;
+  return Math.max(0, Math.min(RECENT_WINDOW - recent.length, older));
+}
+
+/**
+ * The last RECENT_WINDOW games, with the gap filled from the totals.
+ *
+ * The window only started being kept when it arrived, and the totals never
+ * kept one game apart from another - so somebody with three hundred games
+ * behind them would otherwise open it to a page of zeros. Until the window
+ * is full, its empty slots are filled with the older games' averages: their
+ * win rate, their average winning time. The bests and the streak come from
+ * the totals while any of that filler is in play, since one of those older
+ * games may be the best. It is an estimate, and it shrinks a game at a time:
+ * after a hundred new games none of it is left.
+ */
+export function rollingRecord(lifetime: ModeRecord, recent: readonly GameResult[]): ModeRecord {
+  const window = summarize(recent);
+  const filler = fillerGames(lifetime, recent);
+  if (!filler) return window;
+
+  const olderPlayed = lifetime.played - window.played;
+  const olderWon = Math.max(0, lifetime.won - window.won);
+  const olderSeconds = Math.max(0, lifetime.totalSeconds - window.totalSeconds);
+  const fillerWon = Math.round((olderWon / olderPlayed) * filler);
+  const fillerSeconds = olderWon ? Math.round((olderSeconds / olderWon) * fillerWon) : 0;
+
+  return {
+    played: window.played + filler,
+    won: window.won + fillerWon,
+    totalSeconds: window.totalSeconds + fillerSeconds,
+    bestScore: Math.max(window.bestScore, lifetime.bestScore),
+    bestSeconds: bestOf(window.bestSeconds, lifetime.bestSeconds),
+    fewestMoves: bestOf(window.fewestMoves, lifetime.fewestMoves),
+    // The totals' streak is always the real current one, whatever the window.
+    currentStreak: Math.min(lifetime.currentStreak, RECENT_WINDOW),
+    bestStreak: Math.min(Math.max(window.bestStreak, lifetime.bestStreak), RECENT_WINDOW),
+  };
+}
+
 /**
  * A window of games, added up into the same shape as the all-time record -
  * so the record book can show either without knowing which it has.
@@ -209,7 +252,12 @@ export class Stats {
 
   /** The same numbers as mode(), over only the last RECENT_WINDOW games. */
   recentMode(variant: Variant): ModeRecord {
-    return summarize(this.record().recent[variant]);
+    return rollingRecord(this.mode(variant), this.record().recent[variant]);
+  }
+
+  /** Whether recentMode() is partly made up from the all-time totals. */
+  recentIsEstimated(variant: Variant): boolean {
+    return fillerGames(this.mode(variant), this.record().recent[variant]) > 0;
   }
 
   /**

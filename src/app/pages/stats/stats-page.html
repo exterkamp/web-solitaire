@@ -25,6 +25,12 @@
       All time
     </button>
   </div>
+  @if (estimated()) {
+    <p class="record__note">
+      Games from before the rolling record began are estimated from your
+      all-time averages until {{ window }} new games replace them.
+    </p>
+  }
 
   @for (group of groups; track group.title) {
     <!-- A game and its numbers, kept together in one block so the column's

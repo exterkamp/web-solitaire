@@ -91,6 +91,14 @@ export class StatsPage {
    * page: an empty book should be a list of games to try, and a full one
    * should be the numbers.
    */
+  /** Whether anything on the page is filled in from before the window began. */
+  protected estimated(): boolean {
+    return (
+      this.span() === 'recent' &&
+      VARIANT_GROUPS.some((group) => group.variants.some((v) => this.stats.recentIsEstimated(v)))
+    );
+  }
+
   protected played(group: VariantGroup): boolean {
     // All time, whichever span is showing: a game played only before the
     // rolling record began has been played, and its column of zeros is more
