@@ -232,24 +232,56 @@ describe('stuck chips', () => {
     expect(chips).toEqual([false, true]);
   });
 
-  // The case as it is played: a turn shows 2, 5, 7 with the 7 on top.
-  it('sends the first of the three showing to the bottom, so the next turn is 5, 7 and a new card', () => {
+  // The case as it is played: the first turn shows 2, 5, 7 with the 7 on top.
+  it('sends the first card turned to the bottom, so the next turn is 5, 7 and a new card', () => {
     const [x, y] = [card('K', 'spades', false), card('Q', 'spades', false)];
     const [two, five, seven] = [card('2', 'hearts', false), card('5', 'clubs', false), card('7', 'diamonds', false)];
-    const under = card('9', 'clubs');
-    // Stock top last: y is next after the turn, then x. The turn took 2, 5, 7 off the top.
-    let s = state({ stock: [x, y, seven, five, two], waste: [under] });
+    // Stock top last: the turn takes 2, 5, 7, and y is next after it.
+    let s = state({ stock: [x, y, seven, five, two] });
     s = apply(s, { kind: 'draw', seat: 0 })!.state;
-    expect(s.hands[0].waste.map((c) => c.rank)).toEqual(['9', '2', '5', '7']);
+    expect(s.hands[0].waste.map((c) => c.rank)).toEqual(['2', '5', '7']);
 
     const next = cycleHand(s.hands[0]);
+    expect(next.waste).toEqual([]);
     expect(next.stock[0].id).toBe(two.id);
     expect(next.stock.every((c) => !c.faceUp)).toBe(true);
-    // Only the three showing went back; the card under them stays put.
-    expect(next.waste.map((c) => c.id)).toEqual([under.id]);
 
     const turned = apply(state(next), { kind: 'draw', seat: 0 })!.state.hands[0].waste;
-    expect(turned.slice(-3).map((c) => c.id)).toEqual([five.id, seven.id, y.id]);
+    expect(turned.map((c) => c.id)).toEqual([five.id, seven.id, y.id]);
+  });
+
+  it('puts every turned card back on the stock before moving the top one', () => {
+    // A stock of nine turned three times: 1-2-3, 4-5-6, 7-8-9, with nothing played.
+    const cards = ['A', '2', '3', '4', '5', '6', '7', '8', '9'].map((r) => card(r as Card['rank'], 'hearts', false));
+    let s = state({ stock: [...cards].reverse() });
+    for (let i = 0; i < 3; i++) s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    expect(s.hands[0].stock).toEqual([]);
+
+    const next = cycleHand(s.hands[0]);
+    expect(next.waste).toEqual([]);
+    // The ace - the first card turned - is now at the very bottom.
+    expect(next.stock[0].id).toBe(cards[0].id);
+    // And the turns from the top now run 2-3-4, 5-6-7, 8-9-A.
+    let t = state(next);
+    const turns: string[][] = [];
+    for (let i = 0; i < 3; i++) {
+      t = apply(t, { kind: 'draw', seat: 0 })!.state;
+      turns.push(t.hands[0].waste.slice(-3).map((c) => c.rank));
+    }
+    expect(turns).toEqual([['2', '3', '4'], ['5', '6', '7'], ['8', '9', 'A']]);
+  });
+
+  it('puts back what is left on the waste when a card was played off it between turns', () => {
+    const cards = ['A', '2', '3', '4', '5', '6'].map((r) => card(r as Card['rank'], 'spades', false));
+    let s = state({ stock: [...cards].reverse(), work: [[card('4', 'hearts')], [], [], []] });
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    // The 3 of spades, showing, goes on the 4 of hearts.
+    s = apply(s, { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'work', index: 0 }, count: 1 })!.state;
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    const next = cycleHand(s.hands[0]);
+    // From the top: 2, 4, 5, 6, and the ace - turned first - at the very bottom.
+    expect([...next.stock].reverse().map((c) => c.rank)).toEqual(['2', '4', '5', '6', 'A']);
+    expect(next.waste).toEqual([]);
   });
 
   it('with nothing on the waste, sends the top of the stock to the bottom', () => {
@@ -259,7 +291,7 @@ describe('stuck chips', () => {
     expect(next.stock.map((x) => x.id)).toEqual([c.id, a.id, b.id]);
   });
 
-  it('puts back only what is on the waste when it holds fewer than three', () => {
+  it('returns a waste of one onto the stock and then moves it to the bottom', () => {
     const [w, s1] = [card('6', 'hearts'), card('8', 'clubs', false)];
     const next = cycleHand(hand({ stock: [s1], waste: [w] }));
     expect(next.waste).toEqual([]);
