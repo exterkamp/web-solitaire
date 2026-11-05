@@ -388,7 +388,8 @@ export class NertzScene extends Phaser.Scene {
     if (!this.live || this.drags.has(pointer.id) || this.chipDrags.has(pointer.id)) return;
     const chip = this.chipSprites.indexOf(object as Phaser.GameObjects.Container);
     if (chip >= 0) {
-      this.pickUpChip(pointer, chip as Seat);
+      // One finger to a chip: a second would only fight the first for it.
+      if (!this.chipHeld(chip as Seat)) this.pickUpChip(pointer, chip as Seat);
       return;
     }
     if (this.stockZones.includes(object as Phaser.GameObjects.Zone)) {
@@ -601,9 +602,15 @@ export class NertzScene extends Phaser.Scene {
     return this.chips[seat] ? chipMiddle(seat) : chipHome(seat);
   }
 
+  private chipHeld(seat: Seat): boolean {
+    for (const drag of this.chipDrags.values()) if (drag.seat === seat) return true;
+    return false;
+  }
+
+  /** Sends a chip to where the rules say it is - unless a finger has it, in which case dropChip will. */
   private placeChip(seat: Seat, animate: boolean, delay = 0): void {
     const chip = this.chipSprites[seat];
-    if (!chip) return;
+    if (!chip || this.chipHeld(seat)) return;
     const to = this.chipSpot(seat);
     this.tweens.killTweensOf(chip);
     chip.setScale(1);
@@ -674,22 +681,29 @@ export class NertzScene extends Phaser.Scene {
       this.chips = takeBackChip(this.chips, seat);
     }
     this.placeChip(seat, true);
-    if (bothStuck(this.chips)) this.moveHandsOn();
+    // A chip under the other player's finger is on its way somewhere, not in.
+    const other: Seat = seat === 0 ? 1 : 0;
+    if (bothStuck(this.chips) && !this.chipHeld(other)) this.moveHandsOn();
     else this.publish();
   }
 
   /** Both chips are in: every hand moves on a card, and the chips come home. */
   private moveHandsOn(): void {
-    // A card in a thumb may be one about to go back under the stock.
-    for (const drag of this.drags.values()) {
+    // A card off the waste is about to go back under the stock, so a thumb
+    // holding one lets go of it. Anything else being carried is unaffected.
+    for (const [id, drag] of this.drags) {
+      if (drag.from.kind !== 'waste') continue;
       drag.sprites.forEach((s, i) => s.setPosition(drag.origins[i].x, drag.origins[i].y));
+      this.drags.delete(id);
     }
-    this.drags.clear();
     this.state = unstick(this.state);
     this.chips = noChips();
     this.unstuck += 1;
     this.renderBoard(true);
-    this.placeChips(true, CHIP_SETTLE_MS);
+    // The last chip is still on its way in: let it land, let both sit there a
+    // moment, then send them home. Read from the rules when it fires, so a
+    // chip thrown again in the meantime stays where it was thrown.
+    this.time.delayedCall(MOVE_MS * 1.4 + CHIP_SETTLE_MS, () => this.placeChips(true));
     this.publish();
   }
 

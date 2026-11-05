@@ -107,7 +107,13 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     } else if (view.phase === 'round' && before.phase === 'playing') {
       this.announcement.set('Round over.');
     } else if (view.unstuck > before.unstuck) {
-      this.announcement.set('Both stuck. Each stock moved on a card.');
+      // Numbered, so a second time in a round is a new announcement rather
+      // than the same text a live region would not read again.
+      this.announcement.set(
+        view.unstuck === 1
+          ? 'Both stuck. Each stock moved on a card.'
+          : `Both stuck again. Each stock moved on a card, ${view.unstuck} times this round.`,
+      );
       this.movedOn.set(true);
       clearTimeout(this.movedOnTimer);
       this.movedOnTimer = setTimeout(() => this.movedOn.set(false), 1800);
