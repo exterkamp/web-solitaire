@@ -43,30 +43,16 @@
 
   <div class="visually-hidden" aria-live="polite" role="status">{{ announcement() }}</div>
 
-  @if (view().flipping) {
-    <!-- Not a panel: both players still have a hand to turn over, and the
-         felt has to stay readable while they do. One line each, at the edge
-         nearest them. -->
-    <p class="hint hint--bottom" role="status">Both stuck - flip through your hands</p>
-    <p class="hint hint--top" role="status">Both stuck - flip through your hands</p>
+  @if (movedOn()) {
+    <!-- Not a panel: play goes straight on. One line each, at the edge
+         nearest them, while the stocks move. -->
+    <p class="hint hint--bottom">Both stuck - stocks moved on a card</p>
+    <p class="hint hint--top">Both stuck - stocks moved on a card</p>
   }
 
   <!-- Everything below is said to both players at once, once the right way up
        and once across, rather than in one panel one of them has to read
        upside down. -->
-  <ng-template #stuckPanel let-seat>
-    <h2 class="panel__title">Both stuck</h2>
-    <p class="panel__note">Nothing left to play. Carry on, or end the round?</p>
-    @if (view().agreed[seat]) {
-      <p class="panel__note">Waiting for the other player</p>
-    } @else {
-      <div class="panel__buttons">
-        <button type="button" class="button button--quiet" [attr.data-carry]="seat" (click)="carryOn()">Carry on</button>
-        <button type="button" class="button" [attr.data-end]="seat" (click)="agreeToEnd(seat)">End round</button>
-      </div>
-    }
-  </ng-template>
-
   <ng-template #roundPanel let-seat>
     <h2 class="panel__title">Round {{ view().last ? view().rounds.length : '' }} over</h2>
     @if (view().last; as last) {
@@ -108,6 +94,9 @@
   <ng-template #pausePanel let-seat>
     <h2 class="panel__title">Paused</h2>
     <button type="button" class="button" (click)="resume()">Resume</button>
+    @if (view().phase === 'playing') {
+      <button type="button" class="button button--quiet" [attr.data-end]="seat" (click)="endRound()">End round</button>
+    }
     <button type="button" class="button button--quiet" (click)="rematch()">New match</button>
     <button type="button" class="button button--quiet" (click)="exitToMenu()">Exit to menu</button>
   </ng-template>
@@ -138,16 +127,6 @@
         <div class="half" [class.half--across]="seat === 1">
           <div class="panel panel--gold">
             <ng-container [ngTemplateOutlet]="roundPanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
-          </div>
-        </div>
-      }
-    </div>
-  } @else if (view().prompt) {
-    <div class="overlay" role="dialog" aria-label="Both players stuck">
-      @for (seat of seats; track seat) {
-        <div class="half" [class.half--across]="seat === 1">
-          <div class="panel">
-            <ng-container [ngTemplateOutlet]="stuckPanel" [ngTemplateOutletContext]="{ $implicit: seat }" />
           </div>
         </div>
       }
