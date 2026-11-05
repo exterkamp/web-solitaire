@@ -689,7 +689,7 @@ export class NertzScene extends Phaser.Scene {
 
   /** Both chips are in: every hand moves on a card, and the chips come home. */
   private moveHandsOn(): void {
-    // A card off the waste is about to go back under the stock, so a thumb
+    // Every card on the waste is about to go back onto the stock, so a thumb
     // holding one lets go of it. Anything else being carried is unaffected.
     for (const [id, drag] of this.drags) {
       if (drag.from.kind !== 'waste') continue;

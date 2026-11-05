@@ -271,6 +271,19 @@ describe('stuck chips', () => {
     expect(turns).toEqual([['2', '3', '4'], ['5', '6', '7'], ['8', '9', 'A']]);
   });
 
+  it('puts back what is left on the waste when a card was played off it between turns', () => {
+    const cards = ['A', '2', '3', '4', '5', '6'].map((r) => card(r as Card['rank'], 'spades', false));
+    let s = state({ stock: [...cards].reverse(), work: [[card('4', 'hearts')], [], [], []] });
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    // The 3 of spades, showing, goes on the 4 of hearts.
+    s = apply(s, { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'work', index: 0 }, count: 1 })!.state;
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    const next = cycleHand(s.hands[0]);
+    // From the top: 2, 4, 5, 6, and the ace - turned first - at the very bottom.
+    expect([...next.stock].reverse().map((c) => c.rank)).toEqual(['2', '4', '5', '6', 'A']);
+    expect(next.waste).toEqual([]);
+  });
+
   it('with nothing on the waste, sends the top of the stock to the bottom', () => {
     const [a, b, c] = [card('2', 'clubs', false), card('3', 'clubs', false), card('4', 'clubs', false)];
     // c is the top of the stock, taken first by the next turn.
