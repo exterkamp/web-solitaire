@@ -50,9 +50,8 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     left: [13, 13],
     scores: [-26, -26],
     canNertz: [false, false],
-    flipping: false,
-    prompt: false,
-    agreed: [false, false],
+    chips: [false, false],
+    unstuck: 0,
     rounds: [],
   });
 
@@ -60,6 +59,11 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
   private backGuarded = false;
 
   protected readonly announcement = signal('');
+
+  // A line at each player's edge for a moment after both chips went in, so
+  // the stocks changing under their thumbs is not a mystery.
+  protected readonly movedOn = signal(false);
+  private movedOnTimer?: ReturnType<typeof setTimeout>;
 
   protected readonly boardLabel = computed(() => {
     const v = this.view();
@@ -87,6 +91,7 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.onPopState);
+    clearTimeout(this.movedOnTimer);
     this.game?.destroy(true);
   }
 
@@ -101,6 +106,17 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
       this.announcement.set(`Player ${view.winner === 0 ? 'at the bottom' : 'at the top'} wins the match.`);
     } else if (view.phase === 'round' && before.phase === 'playing') {
       this.announcement.set('Round over.');
+    } else if (view.unstuck > before.unstuck) {
+      // Numbered, so a second time in a round is a new announcement rather
+      // than the same text a live region would not read again.
+      this.announcement.set(
+        view.unstuck === 1
+          ? 'Both stuck. Each stock moved on a card.'
+          : `Both stuck again. Each stock moved on a card, ${view.unstuck} times this round.`,
+      );
+      this.movedOn.set(true);
+      clearTimeout(this.movedOnTimer);
+      this.movedOnTimer = setTimeout(() => this.movedOn.set(false), 1800);
     }
   }
 
@@ -151,12 +167,10 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     this.scene()?.callNertz(seat);
   }
 
-  protected agreeToEnd(seat: Seat): void {
-    this.scene()?.agreeToEnd(seat);
-  }
-
-  protected carryOn(): void {
-    this.scene()?.continuePlay();
+  /** From the pause menu: score the round as it stands. */
+  protected endRound(): void {
+    this.setPaused(false);
+    this.scene()?.endRoundNow();
   }
 
   protected nextRound(): void {

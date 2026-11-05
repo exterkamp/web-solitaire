@@ -159,5 +159,36 @@ export function overlap(a: Rect, b: Rect): number {
   return w > 0 && h > 0 ? w * h : 0;
 }
 
+// --- the Stuck chips ----------------------------------------------------------
+
+/** How big a Stuck chip is, as a radius. */
+export const CHIP_RADIUS = 19;
+
+/**
+ * Where a player's Stuck chip waits: on their own edge, in the gap between
+ * the waste's fan and the stock, under the thumb that turns the stock.
+ */
+export function chipHome(seat: Seat): Spot {
+  const wasteRight = WASTE_X + 2 * WASTE_FAN + CARD_WIDTH / 2;
+  const stockLeft = COLUMNS[3] - CARD_WIDTH / 2;
+  return seatPoint(seat, (wasteRight + stockLeft) / 2, HAND_Y);
+}
+
+/**
+ * Where a chip sits once it is thrown in: the channel between the second and
+ * third columns of foundations, which is the one place in the middle that is
+ * not a card. Each player's on their own side of the centre line.
+ */
+export function chipMiddle(seat: Seat): Spot {
+  return seatPoint(seat, NERTZ_WIDTH / 2, CENTRE_Y + CHIP_RADIUS + 8);
+}
+
+/** What counts as the middle when a chip is let go: the whole block of foundations. */
+export function middleZone(): Rect {
+  const first = foundationZone(0);
+  const last = foundationZone(FOUNDATIONS - 1);
+  return { x: first.x, y: first.y, width: last.x + last.width - first.x, height: last.y + last.height - first.y };
+}
+
 export const FOUNDATION_INDICES = Array.from({ length: FOUNDATIONS }, (_, i) => i);
 export const workIndices = (workPiles: number): number[] => Array.from({ length: workPiles }, (_, i) => i);

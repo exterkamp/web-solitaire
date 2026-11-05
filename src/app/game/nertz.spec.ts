@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Card } from './deck';
 import { seeded } from './random';
 import {
-  Hand, Match, NertzState, addRound, apply, autoTarget, agreeToEnd, bothAgreed, canCallNertz, carryOn, drawRefused, canDrop,
-  canPlayOnFoundation, canPlayOnWork, deal, finishRound, foundationFor, liftable,
-  matchWinner, newMatch, newTalk, promptShowing, roundScores, tableStuck, talkAfter,
+  Hand, Match, NertzState, addRound, apply, autoTarget, bothStuck, canCallNertz, canDrop,
+  canPlayOnFoundation, canPlayOnWork, cycleHand, deal, finishRound, foundationFor, liftable,
+  matchWinner, newMatch, noChips, roundScores, takeBackChip, throwChip, unstick,
 } from './nertz';
 
 let serial = 0;
@@ -219,83 +219,78 @@ describe('auto target', () => {
   });
 });
 
-describe('stuck', () => {
-  const blocked = (extra: Partial<Hand> = {}) => ({
-    nertz: [card('Q', 'clubs')],
-    work: [[card('9', 'hearts')], [card('9', 'diamonds')], [card('9', 'clubs')], [card('9', 'spades')]],
-    ...extra,
-  });
-  const turn = (seat: 0 | 1) => ({ kind: 'draw', seat }) as const;
-
-  it('is stuck with nothing that fits among the cards showing', () => {
-    expect(tableStuck(state(blocked(), blocked()))).toBe(true);
+describe('stuck chips', () => {
+  it('moves the hands on only once both chips are in', () => {
+    let chips = throwChip(noChips(), 0);
+    expect(bothStuck(chips)).toBe(false);
+    chips = throwChip(chips, 1);
+    expect(bothStuck(chips)).toBe(true);
   });
 
-  it('is not stuck while either player has a move showing', () => {
-    expect(tableStuck(state(blocked({ waste: [card('8', 'clubs')] }), blocked()))).toBe(false);
-    expect(tableStuck(state(blocked(), blocked({ waste: [card('8', 'clubs')] })))).toBe(false);
+  it('takes one chip back without touching the other', () => {
+    const chips = takeBackChip(throwChip(throwChip(noChips(), 0), 1), 0);
+    expect(chips).toEqual([false, true]);
   });
 
-  it('is not stuck with a gap to fill', () => {
-    const gap = blocked({ work: [[], [card('9', 'diamonds')], [card('9', 'clubs')], [card('9', 'spades')]] });
-    expect(tableStuck(state(gap, blocked()))).toBe(false);
+  // The case as it is played: a turn shows 2, 5, 7 with the 7 on top.
+  it('sends the first of the three showing to the bottom, so the next turn is 5, 7 and a new card', () => {
+    const [x, y] = [card('K', 'spades', false), card('Q', 'spades', false)];
+    const [two, five, seven] = [card('2', 'hearts', false), card('5', 'clubs', false), card('7', 'diamonds', false)];
+    const under = card('9', 'clubs');
+    // Stock top last: y is next after the turn, then x. The turn took 2, 5, 7 off the top.
+    let s = state({ stock: [x, y, seven, five, two], waste: [under] });
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    expect(s.hands[0].waste.map((c) => c.rank)).toEqual(['9', '2', '5', '7']);
+
+    const next = cycleHand(s.hands[0]);
+    expect(next.stock[0].id).toBe(two.id);
+    expect(next.stock.every((c) => !c.faceUp)).toBe(true);
+    // Only the three showing went back; the card under them stays put.
+    expect(next.waste.map((c) => c.id)).toEqual([under.id]);
+
+    const turned = apply(state(next), { kind: 'draw', seat: 0 })!.state.hands[0].waste;
+    expect(turned.slice(-3).map((c) => c.id)).toEqual([five.id, seven.id, y.id]);
   });
 
-  it('prompts once each hand has been turned through, and not before', () => {
-    const hands = () => blocked({ stock: [card('K', 'clubs', false), card('K', 'hearts', false), card('K', 'spades', false)] });
-    let s = state(hands(), hands());
-    let talk = newTalk();
-    expect(promptShowing(s, talk)).toBe(false);
+  it('with nothing on the waste, sends the top of the stock to the bottom', () => {
+    const [a, b, c] = [card('2', 'clubs', false), card('3', 'clubs', false), card('4', 'clubs', false)];
+    // c is the top of the stock, taken first by the next turn.
+    const next = cycleHand(hand({ stock: [a, b, c] }));
+    expect(next.stock.map((x) => x.id)).toEqual([c.id, a.id, b.id]);
+  });
+
+  it('puts back only what is on the waste when it holds fewer than three', () => {
+    const [w, s1] = [card('6', 'hearts'), card('8', 'clubs', false)];
+    const next = cycleHand(hand({ stock: [s1], waste: [w] }));
+    expect(next.waste).toEqual([]);
+    expect(next.stock.map((x) => x.id)).toEqual([w.id, s1.id]);
+  });
+
+  it('changes which three come up next', () => {
+    const s = deal(4, seeded(7));
+    const before = apply(s, { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
+    const after = apply(unstick(s), { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
+    expect(after.slice(0, 2)).toEqual(before.slice(1));
+    expect(after[2]).not.toBe(before[0]);
+  });
+
+  it('copes with a hand of one card or none', () => {
+    expect(cycleHand(hand()).stock).toEqual([]);
+    const lone = card('9', 'spades');
+    expect(cycleHand(hand({ waste: [lone] })).stock).toEqual([{ ...lone, faceUp: false }]);
+  });
+
+  it('leaves the Nertz pile, the work piles and the foundations alone', () => {
+    const s = deal(4, seeded(3));
+    const next = unstick(s);
     for (const seat of [0, 1] as const) {
-      const r = apply(s, turn(seat))!;
-      s = r.state;
-      talk = talkAfter(talk, s, turn(seat), r.recycled === true);
+      expect(next.hands[seat].nertz).toEqual(s.hands[seat].nertz);
+      expect(next.hands[seat].work).toEqual(s.hands[seat].work);
+      expect(next.hands[seat].stock).toHaveLength(s.hands[seat].stock.length);
     }
-    // Both stocks are now empty: three cards turned, none left to draw.
-    expect(promptShowing(s, talk)).toBe(true);
+    expect(next.foundations).toEqual(s.foundations);
   });
 
-  it('carry on hides the prompt, and turning a hand over brings it back', () => {
-    const hands = () => blocked({ stock: [card('K', 'clubs', false)] });
-    let s = state(hands(), hands());
-    let talk = newTalk();
-    for (const seat of [0, 1] as const) {
-      const r = apply(s, turn(seat))!;
-      s = r.state;
-      talk = talkAfter(talk, s, turn(seat), r.recycled === true);
-    }
-    expect(promptShowing(s, talk)).toBe(true);
-    talk = carryOn();
-    expect(promptShowing(s, talk)).toBe(false);
-    // A draw with an empty stock recycles the waste: the round is not stranded.
-    const r = apply(s, turn(0))!;
-    expect(r.recycled).toBe(true);
-    talk = talkAfter(talk, r.state, turn(0), true);
-    expect(promptShowing(r.state, talk)).toBe(true);
-  });
-
-  it('carry on with both hands empty: reaching for the hand brings the prompt back', () => {
-    const s = state(blocked(), blocked());
-    expect(apply(s, turn(0))).toBeUndefined();
-    let talk = carryOn();
-    expect(promptShowing(s, talk)).toBe(false);
-    talk = drawRefused(talk);
-    expect(promptShowing(s, talk)).toBe(true);
-  });
-
-  it('a played card starts the conversation over', () => {
-    const talk = carryOn();
-    const after = talkAfter(talk, state(), { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'foundation', index: 0 }, count: 1 }, false);
-    expect(after).toEqual(newTalk());
-  });
-
-  it('ends the round only when both agree', () => {
-    let talk = agreeToEnd(newTalk(), 0);
-    expect(bothAgreed(talk)).toBe(false);
-    talk = agreeToEnd(talk, 1);
-    expect(bothAgreed(talk)).toBe(true);
-    expect(bothAgreed(carryOn())).toBe(false);
-  });
 });
 
 describe('rounds and the match', () => {

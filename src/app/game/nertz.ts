@@ -238,102 +238,67 @@ export function autoTarget(
   return undefined;
 }
 
-// --- running out of moves ---------------------------------------------------
-
-// Whether one card, wherever it is, has somewhere worth putting it. A move
-// that only shuffles a pile onto an empty pile is not worth anything, so a
-// work pile's run counts only if it can land on something that is not empty.
-function cardHasMove(state: NertzState, seat: Seat, card: Card, fromWork?: number): boolean {
-  if (foundationFor(state, card) !== undefined) return true;
-  return state.hands[seat].work.some((pile, i) => i !== fromWork && pile.length > 0 && canPlayOnWork(card, pile));
-}
-
-/** Whether a player has a move among the cards they can see, ignoring their stock. */
-export function hasVisibleMove(state: NertzState, seat: Seat): boolean {
-  const hand = state.hands[seat];
-  const nertzTop = hand.nertz[hand.nertz.length - 1];
-  const wasteTop = hand.waste[hand.waste.length - 1];
-  // Anything may go on an empty work pile, so a card from the Nertz pile or
-  // the waste always has somewhere to go while one is empty.
-  const emptySpot = hand.work.some((pile) => pile.length === 0);
-  if (nertzTop && (emptySpot || cardHasMove(state, seat, nertzTop))) return true;
-  if (wasteTop && (emptySpot || cardHasMove(state, seat, wasteTop))) return true;
-  return hand.work.some((pile, i) =>
-    pile.some((card, start) => {
-      // The top card may go up. Anything else moves as a run, and a run that
-      // is already sitting on a card it can sit on gains nothing by moving
-      // sideways - unless it is the whole pile, which empties a place, or it
-      // uncovers a card that can go up.
-      const top = start === pile.length - 1;
-      if (top && foundationFor(state, card) !== undefined) return true;
-      const worthMoving = start === 0 || (start > 0 && foundationFor(state, pile[start - 1]) !== undefined);
-      return worthMoving && cardHasMove(state, seat, card, i);
-    }),
-  );
-}
-
 // --- both players stuck ------------------------------------------------------
 
 /**
- * Where the "nobody can move" conversation has got to. The table is stuck
- * when neither player has a move among the cards they can see. They then
- * turn their hands over to be sure, and once each has been through theirs
- * the players are asked whether to carry on or end the round by agreement.
+ * Whose Stuck chip is in the middle of the table.
+ *
+ * Nothing here tries to work out whether the players are stuck. It used to,
+ * and a guess at "no move left" that is wrong either way is worse than no
+ * guess: the players can see the table, so they say so themselves. Each has
+ * a chip; throwing it into the middle says "I am stuck", and once both are
+ * in, every hand is moved on a card (see unstick) and the chips come home.
  */
-export interface StuckTalk {
-  /** Each player has been through their hand since the table last changed. */
-  cycled: [boolean, boolean];
-  /** "Carry on" was chosen; the prompt stays away until someone turns their hand again. */
-  dismissed: boolean;
-  /** Each player's half of agreeing to end the round. */
-  agreed: [boolean, boolean];
+export type Chips = [boolean, boolean];
+
+export function noChips(): Chips {
+  return [false, false];
 }
 
-export function newTalk(): StuckTalk {
-  return { cycled: [false, false], dismissed: false, agreed: [false, false] };
+export function throwChip(chips: Chips, seat: Seat): Chips {
+  const next: Chips = [...chips];
+  next[seat] = true;
+  return next;
 }
 
-export function tableStuck(state: NertzState): boolean {
-  return !hasVisibleMove(state, 0) && !hasVisibleMove(state, 1);
+/** Taken back by hand, or by playing a card - which is not being stuck. */
+export function takeBackChip(chips: Chips, seat: Seat): Chips {
+  const next: Chips = [...chips];
+  next[seat] = false;
+  return next;
 }
 
-/** The talk after a move. `after` is the state the move produced. */
-export function talkAfter(talk: StuckTalk, after: NertzState, move: NertzMove, recycled: boolean): StuckTalk {
-  // Anything that changes the table starts the conversation over.
-  if (move.kind === 'play') return newTalk();
-  const cycled: [boolean, boolean] = [...talk.cycled];
-  if (recycled || after.hands[move.seat].stock.length === 0) cycled[move.seat] = true;
-  // Turning a hand over is the table moving on, so a dismissed prompt may return.
-  return { cycled, dismissed: false, agreed: talk.agreed };
-}
-
-export function promptShowing(state: NertzState, talk: StuckTalk): boolean {
-  const seen = (seat: Seat) => talk.cycled[seat] || state.hands[seat].stock.length === 0;
-  return tableStuck(state) && seen(0) && seen(1) && !talk.dismissed;
-}
-
-/** "Carry on": the prompt goes away until each hand has been turned through again. */
-export function carryOn(): StuckTalk {
-  return { cycled: [false, false], dismissed: true, agreed: [false, false] };
+export function bothStuck(chips: Chips): boolean {
+  return chips[0] && chips[1];
 }
 
 /**
- * A player reached for their hand and there was nothing to turn. With both
- * hands empty no draw ever succeeds, so this is what brings a dismissed
- * prompt back.
+ * One hand, moved on a card.
+ *
+ * The three cards showing on the waste - the last turn, say 2, 5, 7 with the
+ * 7 on top - go back onto the stock as they came off it, and then the first
+ * of them, the 2, goes to the very bottom of the stock. So the next turn
+ * comes up 5, 7 and a card that was never in that three, and every turn
+ * after it falls one card later than it did. The rest of the waste stays
+ * where it is. With nothing on the waste, the top card of the stock - the
+ * first one the next turn would take - goes to the bottom.
+ *
+ * In array terms a pile's last card is its top: draw() takes the stock's
+ * last three and lays them on the waste in reverse, so putting them back is
+ * the same three reversed onto the end of the stock.
  */
-export function drawRefused(talk: StuckTalk): StuckTalk {
-  return { ...talk, dismissed: false };
+export function cycleHand(hand: Hand): Hand {
+  const showing = hand.waste.slice(-DRAW_COUNT);
+  const waste = hand.waste.slice(0, hand.waste.length - showing.length);
+  const stock = [...hand.stock, ...[...showing].reverse().map((card) => ({ ...card, faceUp: false }))];
+  if (stock.length < 2) return { ...hand, stock, waste };
+  const top = stock.pop()!;
+  return { ...hand, stock: [top, ...stock], waste };
 }
 
-export function agreeToEnd(talk: StuckTalk, seat: Seat): StuckTalk {
-  const agreed: [boolean, boolean] = [...talk.agreed];
-  agreed[seat] = true;
-  return { ...talk, agreed };
-}
-
-export function bothAgreed(talk: StuckTalk): boolean {
-  return talk.agreed[0] && talk.agreed[1];
+/** Both players threw their chip in: every hand moves on a card. */
+export function unstick(state: NertzState): NertzState {
+  return { ...state, hands: [cycleHand(state.hands[0]), cycleHand(state.hands[1])] };
 }
 
 // --- ending a round, and a match --------------------------------------------

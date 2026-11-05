@@ -1,19 +1,20 @@
 import Phaser from 'phaser';
-import { markBooted, renderScale } from './lite';
+import { markBooted, renderScale, textOversample } from './lite';
 import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
 import { DeckStyle } from './deck-style';
 import { DeckTheme } from './deck-theme';
 import { CardSprite, preloadCardArt, renderCourtArt, setDeck } from './card-sprite';
 import {
-  Match, NertzMove, StuckTalk, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, agreeToEnd, apply, autoTarget, bothAgreed, carryOn, drawRefused,
-  DEFAULT_WORK_PILES, canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
-  newTalk, promptShowing, roundScores, sameNertzPile, tableStuck, talkAfter,
+  Chips, Match, NertzMove, NertzPile, NertzState, RoundResult, SEATS, Seat, addRound, apply, autoTarget,
+  DEFAULT_WORK_PILES, bothStuck, canCallNertz, canDrop, deal, finishRound, liftable, matchWinner, newMatch,
+  noChips, roundScores, sameNertzPile, takeBackChip, throwChip, unstick,
 } from './nertz';
 import {
-  NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, foundationZone, handSpot, overlap, pileSpot,
-  workZone, FOUNDATION_INDICES, workIndices,
+  CHIP_RADIUS, NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, chipHome, chipMiddle, foundationZone, handSpot,
+  middleZone, overlap, pileSpot, workZone, FOUNDATION_INDICES, workIndices,
 } from './nertz-layout';
+import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
 import { PointerSample, pointerVelocity } from './gesture';
 import { isMiddleFlick } from './nertz-gesture';
 import { drawRecycleMark, drawSlot, drawTableSurface } from './table';
@@ -42,12 +43,11 @@ export interface NertzView {
   left: [number, number];
   scores: [number, number];
   canNertz: [boolean, boolean];
-  // Both players have run out of moves on the table and are turning their
-  // hands over to see whether anything is left in them.
-  flipping: boolean;
-  // ...and have, and are being asked whether to carry on.
-  prompt: boolean;
-  agreed: [boolean, boolean];
+  // Whose Stuck chip is in the middle.
+  chips: Chips;
+  // How many times this round both chips went in and the hands moved on.
+  // A count rather than a flag, so the page can tell each one apart.
+  unstuck: number;
   last?: RoundResult;
   rounds: RoundResult[];
   winner?: Seat;
@@ -84,6 +84,13 @@ const SAMPLE_LIMIT = 8;
 const LAND_POP_MS = 150;
 const LAND_POP_SCALE = 1.07;
 
+// How long both chips stay in the middle before they come home, so each
+// player sees the other's land before the hands move on.
+const CHIP_SETTLE_MS = 380;
+const CHIP_FACE = 0xf4ecd8;
+const CHIP_EDGE = 0xb3282f;
+const CHIP_INK = '#8c1d24';
+
 // Two hands, a thumb each, and room for a third finger that strays.
 const EXTRA_POINTERS = 3;
 
@@ -99,6 +106,16 @@ interface Drag {
   startY: number;
   moved: boolean;
   // The tail of the gesture, for telling a throw from a carry.
+  samples: PointerSample[];
+}
+
+interface ChipDrag {
+  seat: Seat;
+  startX: number;
+  startY: number;
+  offsetX: number;
+  offsetY: number;
+  moved: boolean;
   samples: PointerSample[];
 }
 
@@ -127,13 +144,17 @@ export class NertzScene extends Phaser.Scene {
   private phase: NertzPhase = 'playing';
   private last: RoundResult | undefined;
 
-  // Stuck handling. See publish().
-  private talk: StuckTalk = newTalk();
+  // The Stuck chips. See nertz.ts's Chips.
+  private chips: Chips = noChips();
+  private unstuck = 0;
+  private chipSprites: Phaser.GameObjects.Container[] = [];
+  private chipDrags = new Map<number, ChipDrag>();
 
   private pixelRatio = 1;
   private root!: Phaser.GameObjects.Container;
   private markings!: Phaser.GameObjects.Container;
   private cardLayer!: Phaser.GameObjects.Container;
+  private chipLayer!: Phaser.GameObjects.Container;
   private sprites = new Map<string, CardSprite>();
   private stockZones: Phaser.GameObjects.Zone[] = [];
 
@@ -167,8 +188,12 @@ export class NertzScene extends Phaser.Scene {
     this.root = this.add.container(0, 0).setScale(this.pixelRatio);
     this.markings = this.add.container(0, 0);
     this.cardLayer = this.add.container(0, 0);
-    this.root.add([this.markings, this.cardLayer]);
+    // Over the cards: a chip in the middle sits in the gap between
+    // foundations, but one being carried passes over everything.
+    this.chipLayer = this.add.container(0, 0);
+    this.root.add([this.markings, this.cardLayer, this.chipLayer]);
     this.printLayout();
+    this.makeChips();
 
     // Phaser starts with a mouse and one finger. Two thumbs and a stray
     // third need more.
@@ -230,7 +255,9 @@ export class NertzScene extends Phaser.Scene {
     this.state = deal(this.workPiles, random);
     this.phase = 'playing';
     this.last = undefined;
-    this.talk = newTalk();
+    this.chips = noChips();
+    this.unstuck = 0;
+    this.placeChips(false);
 
     let n = 0;
     for (const { cards, seat } of this.everyPile()) {
@@ -350,7 +377,7 @@ export class NertzScene extends Phaser.Scene {
   // --- what the players do --------------------------------------------------
 
   private get live(): boolean {
-    return this.phase === 'playing' && !this.promptShowing;
+    return this.phase === 'playing';
   }
 
   private toBoard(pointer: Phaser.Input.Pointer): { x: number; y: number } {
@@ -358,7 +385,13 @@ export class NertzScene extends Phaser.Scene {
   }
 
   private onDown(pointer: Phaser.Input.Pointer, object: Phaser.GameObjects.GameObject): void {
-    if (!this.live || this.drags.has(pointer.id)) return;
+    if (!this.live || this.drags.has(pointer.id) || this.chipDrags.has(pointer.id)) return;
+    const chip = this.chipSprites.indexOf(object as Phaser.GameObjects.Container);
+    if (chip >= 0) {
+      // One finger to a chip: a second would only fight the first for it.
+      if (!this.chipHeld(chip as Seat)) this.pickUpChip(pointer, chip as Seat);
+      return;
+    }
     if (this.stockZones.includes(object as Phaser.GameObjects.Zone)) {
       this.draw(object.getData('seat') as Seat);
       return;
@@ -399,6 +432,10 @@ export class NertzScene extends Phaser.Scene {
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
+    if (this.chipDrags.has(pointer.id)) {
+      this.moveChip(pointer);
+      return;
+    }
     const drag = this.drags.get(pointer.id);
     if (!drag) return;
     const board = this.toBoard(pointer);
@@ -414,6 +451,10 @@ export class NertzScene extends Phaser.Scene {
   }
 
   private onUp(pointer: Phaser.Input.Pointer): void {
+    if (this.chipDrags.has(pointer.id)) {
+      this.dropChip(pointer);
+      return;
+    }
     const drag = this.drags.get(pointer.id);
     if (!drag) return;
     this.drags.delete(pointer.id);
@@ -474,6 +515,10 @@ export class NertzScene extends Phaser.Scene {
     }
     this.drags.clear();
     this.restack();
+    if (this.chipDrags.size) {
+      this.chipDrags.clear();
+      this.placeChips(false);
+    }
   }
 
   /** The pile a dragged run was let go over, if it will take it. */
@@ -498,7 +543,13 @@ export class NertzScene extends Phaser.Scene {
     const result = apply(this.state, move);
     if (!result) return false;
     this.state = result.state;
-    this.talk = talkAfter(this.talk, this.state, move, result.recycled === true);
+    // Playing a card is not being stuck, so it takes that player's chip back.
+    // Turning the stock is not a play: it is what somebody waiting on the
+    // other player's chip does with their hands.
+    if (move.kind === 'play' && this.chips[move.seat]) {
+      this.chips = takeBackChip(this.chips, move.seat);
+      this.placeChip(move.seat, true);
+    }
     this.renderBoard(true);
     this.publish();
     return true;
@@ -506,9 +557,153 @@ export class NertzScene extends Phaser.Scene {
 
   private draw(seat: Seat): void {
     if (!this.live) return;
-    if (this.play({ kind: 'draw', seat })) return;
-    // Nothing to turn: still a reason to ask again if the prompt was waved away.
-    this.talk = drawRefused(this.talk);
+    this.play({ kind: 'draw', seat });
+  }
+
+  // --- the Stuck chips ------------------------------------------------------
+
+  private makeChips(): void {
+    for (const seat of SEATS) {
+      const face = this.add.graphics();
+      face.fillStyle(0x000000, 0.28);
+      face.fillCircle(1.5, 2.5, CHIP_RADIUS);
+      face.fillStyle(CHIP_FACE, 1);
+      face.fillCircle(0, 0, CHIP_RADIUS);
+      face.lineStyle(4, CHIP_EDGE, 1);
+      face.strokeCircle(0, 0, CHIP_RADIUS - 2);
+      // The notches round a poker chip's rim, so it reads as a chip at a glance.
+      face.fillStyle(CHIP_FACE, 1);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        face.fillCircle(Math.cos(a) * (CHIP_RADIUS - 2), Math.sin(a) * (CHIP_RADIUS - 2), 2.2);
+      }
+      const label = this.add.text(0, 0, 'STUCK', {
+        fontFamily: DISPLAY_FONT,
+        fontSize: '9px',
+        fontStyle: DISPLAY_WEIGHT,
+        color: CHIP_INK,
+        resolution: this.pixelRatio * textOversample(),
+      }).setOrigin(0.5);
+      const chip = this.add.container(0, 0, [face, label]);
+      // A container's hit area is measured from its top-left corner.
+      chip.setSize(CHIP_RADIUS * 2, CHIP_RADIUS * 2);
+      chip.setInteractive(
+        new Phaser.Geom.Circle(CHIP_RADIUS, CHIP_RADIUS, CHIP_RADIUS + 4),
+        Phaser.Geom.Circle.Contains,
+      );
+      chip.setAngle(seat === 1 ? 180 : 0);
+      this.chipLayer.add(chip);
+      this.chipSprites.push(chip);
+    }
+    this.placeChips(false);
+  }
+
+  private chipSpot(seat: Seat): { x: number; y: number } {
+    return this.chips[seat] ? chipMiddle(seat) : chipHome(seat);
+  }
+
+  private chipHeld(seat: Seat): boolean {
+    for (const drag of this.chipDrags.values()) if (drag.seat === seat) return true;
+    return false;
+  }
+
+  /** Sends a chip to where the rules say it is - unless a finger has it, in which case dropChip will. */
+  private placeChip(seat: Seat, animate: boolean, delay = 0): void {
+    const chip = this.chipSprites[seat];
+    if (!chip || this.chipHeld(seat)) return;
+    const to = this.chipSpot(seat);
+    this.tweens.killTweensOf(chip);
+    chip.setScale(1);
+    if (animate) {
+      this.tweens.add({ targets: chip, x: to.x, y: to.y, duration: MOVE_MS * 1.4, delay, ease: 'Cubic.easeOut' });
+    } else {
+      chip.setPosition(to.x, to.y);
+    }
+  }
+
+  private placeChips(animate: boolean, delay = 0): void {
+    for (const seat of SEATS) this.placeChip(seat, animate, delay);
+  }
+
+  private pickUpChip(pointer: Phaser.Input.Pointer, seat: Seat): void {
+    const chip = this.chipSprites[seat];
+    const board = this.toBoard(pointer);
+    this.tweens.killTweensOf(chip);
+    this.chipDrags.set(pointer.id, {
+      seat,
+      startX: board.x,
+      startY: board.y,
+      offsetX: chip.x - board.x,
+      offsetY: chip.y - board.y,
+      moved: false,
+      samples: [{ x: board.x, y: board.y, t: pointer.downTime }],
+    });
+    this.chipLayer.bringToTop(chip);
+  }
+
+  private moveChip(pointer: Phaser.Input.Pointer): void {
+    const drag = this.chipDrags.get(pointer.id)!;
+    const board = this.toBoard(pointer);
+    if (Math.abs(board.x - drag.startX) > TAP_SLOP || Math.abs(board.y - drag.startY) > TAP_SLOP) {
+      drag.moved = true;
+    }
+    drag.samples.push({ x: board.x, y: board.y, t: pointer.moveTime });
+    if (drag.samples.length > SAMPLE_LIMIT) drag.samples.shift();
+    this.chipSprites[drag.seat].setPosition(board.x + drag.offsetX, board.y + drag.offsetY);
+  }
+
+  /**
+   * A chip let go. Into the middle if it was dropped over the foundations or
+   * thrown toward them; a tap on a chip already in takes it back; anything
+   * else and it goes back to where it was.
+   */
+  private dropChip(pointer: Phaser.Input.Pointer): void {
+    const drag = this.chipDrags.get(pointer.id)!;
+    this.chipDrags.delete(pointer.id);
+    const { seat } = drag;
+    if (!this.live) {
+      this.placeChip(seat, true);
+      return;
+    }
+    const chip = this.chipSprites[seat];
+    const board = this.toBoard(pointer);
+    const rect: Rect = { x: chip.x - CHIP_RADIUS, y: chip.y - CHIP_RADIUS, width: CHIP_RADIUS * 2, height: CHIP_RADIUS * 2 };
+    const over = overlap(rect, middleZone()) > 0;
+    const thrown = drag.moved &&
+      isMiddleFlick(pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.upTime }), seat);
+
+    if (!drag.moved) {
+      if (this.chips[seat]) this.chips = takeBackChip(this.chips, seat);
+    } else if (over || thrown) {
+      this.chips = throwChip(this.chips, seat);
+    } else {
+      // Carried out of the middle, or never got there: it is not in.
+      this.chips = takeBackChip(this.chips, seat);
+    }
+    this.placeChip(seat, true);
+    // A chip under the other player's finger is on its way somewhere, not in.
+    const other: Seat = seat === 0 ? 1 : 0;
+    if (bothStuck(this.chips) && !this.chipHeld(other)) this.moveHandsOn();
+    else this.publish();
+  }
+
+  /** Both chips are in: every hand moves on a card, and the chips come home. */
+  private moveHandsOn(): void {
+    // A card off the waste is about to go back under the stock, so a thumb
+    // holding one lets go of it. Anything else being carried is unaffected.
+    for (const [id, drag] of this.drags) {
+      if (drag.from.kind !== 'waste') continue;
+      drag.sprites.forEach((s, i) => s.setPosition(drag.origins[i].x, drag.origins[i].y));
+      this.drags.delete(id);
+    }
+    this.state = unstick(this.state);
+    this.chips = noChips();
+    this.unstuck += 1;
+    this.renderBoard(true);
+    // The last chip is still on its way in: let it land, let both sit there a
+    // moment, then send them home. Read from the rules when it fires, so a
+    // chip thrown again in the meantime stays where it was thrown.
+    this.time.delayedCall(MOVE_MS * 1.4 + CHIP_SETTLE_MS, () => this.placeChips(true));
     this.publish();
   }
 
@@ -521,19 +716,12 @@ export class NertzScene extends Phaser.Scene {
     return true;
   }
 
-  /** One player's half of ending a round on which both are stuck. */
-  agreeToEnd(seat: Seat): void {
-    if (!this.promptShowing) return;
-    this.talk = agreeToEnd(this.talk, seat);
-    if (bothAgreed(this.talk)) this.endRound(undefined);
-    else this.publish();
-  }
-
-  /** Either player may say to keep going. */
-  continuePlay(): void {
-    if (!this.promptShowing) return;
-    this.talk = carryOn();
-    this.publish();
+  /**
+   * Ends the round without a Nertz, scored as it stands. From the pause
+   * menu, for a round nobody can get anything more out of.
+   */
+  endRoundNow(): void {
+    if (this.phase === 'playing') this.endRound(undefined);
   }
 
   nextRound(): void {
@@ -568,17 +756,7 @@ export class NertzScene extends Phaser.Scene {
 
   // --- what the page is told ------------------------------------------------
 
-  private get tableStuck(): boolean {
-    return this.phase === 'playing' && tableStuck(this.state);
-  }
-
-  private get promptShowing(): boolean {
-    return this.phase === 'playing' && promptShowing(this.state, this.talk);
-  }
-
   private publish(): void {
-    const stuck = this.tableStuck;
-    const prompt = this.promptShowing;
     this.report.changed({
       phase: this.phase,
       round: this.match.rounds.length + (this.phase === 'playing' ? 1 : 0),
@@ -588,9 +766,8 @@ export class NertzScene extends Phaser.Scene {
       left: [this.state.hands[0].nertz.length, this.state.hands[1].nertz.length],
       scores: roundScores(this.state),
       canNertz: [canCallNertz(this.state, 0), canCallNertz(this.state, 1)],
-      flipping: stuck && !prompt && !this.talk.dismissed,
-      prompt,
-      agreed: this.talk.agreed,
+      chips: this.chips,
+      unstuck: this.unstuck,
       last: this.last,
       rounds: this.match.rounds,
       winner: matchWinner(this.match),
