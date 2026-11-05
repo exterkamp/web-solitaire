@@ -129,3 +129,36 @@ describe('the rolling record, before it is full', () => {
     expect(mode).toEqual(summarize(recent));
   });
 });
+
+describe('the rolling record never contradicts itself', () => {
+  const lifetime = (extra: Partial<ModeRecord>): ModeRecord => ({
+    played: 0, won: 0, bestScore: 0, bestSeconds: 0, fewestMoves: 0,
+    totalSeconds: 0, currentStreak: 0, bestStreak: 0, ...extra,
+  });
+  const loss: GameResult = { won: false, seconds: 0, moves: 0, score: 0 };
+
+  it('takes no bests or streak from filler that rounds to no wins', () => {
+    const recent = Array.from({ length: 95 }, () => loss);
+    const mode = rollingRecord(
+      lifetime({ played: 295, won: 10, totalSeconds: 1000, bestSeconds: 60, fewestMoves: 40, bestStreak: 8 }),
+      recent,
+    );
+    expect(mode.won).toBe(0);
+    expect(mode.bestStreak).toBe(0);
+    expect(mode.bestSeconds).toBe(0);
+    expect(mode.fewestMoves).toBe(0);
+  });
+
+  it('counts the wins a running streak proves are in the filler', () => {
+    const mode = rollingRecord(lifetime({ played: 300, won: 3, totalSeconds: 300, currentStreak: 3, bestStreak: 3 }), []);
+    expect(mode.currentStreak).toBe(3);
+    expect(mode.won).toBeGreaterThanOrEqual(3);
+    expect(mode.bestStreak).toBeLessThanOrEqual(mode.won);
+  });
+
+  it('caps a best streak at the wins shown', () => {
+    const mode = rollingRecord(lifetime({ played: 1000, won: 100, totalSeconds: 10000, bestStreak: 40 }), []);
+    expect(mode.won).toBe(10);
+    expect(mode.bestStreak).toBe(10);
+  });
+});

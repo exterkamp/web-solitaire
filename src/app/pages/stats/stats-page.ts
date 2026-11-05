@@ -83,14 +83,6 @@ export class StatsPage {
     return this.span() === 'recent' ? this.stats.recentMode(variant) : this.stats.mode(variant);
   }
 
-  /**
-   * Whether this game has anything to show.
-   *
-   * A game nobody has played is a heading and a line saying so, rather than
-   * eight rows of dashes. With eleven games the difference is most of the
-   * page: an empty book should be a list of games to try, and a full one
-   * should be the numbers.
-   */
   /** Whether anything on the page is filled in from before the window began. */
   protected estimated(): boolean {
     return (
@@ -99,10 +91,18 @@ export class StatsPage {
     );
   }
 
+  /**
+   * Whether this game has anything to show.
+   *
+   * A game nobody has played is a heading and a line saying so, rather than
+   * eight rows of dashes. With eleven games the difference is most of the
+   * page: an empty book should be a list of games to try, and a full one
+   * should be the numbers.
+   */
   protected played(group: VariantGroup): boolean {
     // All time, whichever span is showing: a game played only before the
-    // rolling record began has been played, and its column of zeros is more
-    // honest than calling it untried.
+    // rolling record began has been played, and its Last 100 column is the
+    // estimate from its totals rather than nothing.
     return group.variants.some((variant) => this.stats.mode(variant).played > 0);
   }
 

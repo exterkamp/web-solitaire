@@ -163,10 +163,14 @@ function fillerGames(lifetime: ModeRecord, recent: readonly GameResult[]): numbe
  * kept one game apart from another - so somebody with three hundred games
  * behind them would otherwise open it to a page of zeros. Until the window
  * is full, its empty slots are filled with the older games' averages: their
- * win rate, their average winning time. The bests and the streak come from
- * the totals while any of that filler is in play, since one of those older
- * games may be the best. It is an estimate, and it shrinks a game at a time:
- * after a hundred new games none of it is left.
+ * win rate, their average winning time. The bests come from the totals
+ * while the filler has any wins in it, since one of those older games may
+ * be the best; filler with no wins in it cannot hold a best. The current
+ * streak is always the real one - the totals keep it exactly - and the
+ * filler is given at least the wins that streak proves are in it, so the
+ * table never says a streak of three next to one game won. It is an
+ * estimate, and it shrinks a game at a time: after a hundred new games none
+ * of it is left.
  */
 export function rollingRecord(lifetime: ModeRecord, recent: readonly GameResult[]): ModeRecord {
   const window = summarize(recent);
@@ -176,19 +180,33 @@ export function rollingRecord(lifetime: ModeRecord, recent: readonly GameResult[
   const olderPlayed = lifetime.played - window.played;
   const olderWon = Math.max(0, lifetime.won - window.won);
   const olderSeconds = Math.max(0, lifetime.totalSeconds - window.totalSeconds);
-  const fillerWon = Math.round((olderWon / olderPlayed) * filler);
+  const played = window.played + filler;
+  // The totals' streak is exact. If every kept game was a win, the streak
+  // runs back into the filler, and those wins are known rather than guessed.
+  const currentStreak = Math.min(lifetime.currentStreak, played);
+  const streakIntoFiller = window.currentStreak === window.played
+    ? Math.min(filler, Math.max(0, currentStreak - window.played))
+    : 0;
+  const fillerWon = Math.max(streakIntoFiller, Math.round((olderWon / olderPlayed) * filler));
   const fillerSeconds = olderWon ? Math.round((olderSeconds / olderWon) * fillerWon) : 0;
+  const won = window.won + fillerWon;
+  const olderBests = fillerWon > 0;
 
   return {
-    played: window.played + filler,
-    won: window.won + fillerWon,
+    played,
+    won,
     totalSeconds: window.totalSeconds + fillerSeconds,
-    bestScore: Math.max(window.bestScore, lifetime.bestScore),
-    bestSeconds: bestOf(window.bestSeconds, lifetime.bestSeconds),
-    fewestMoves: bestOf(window.fewestMoves, lifetime.fewestMoves),
-    // The totals' streak is always the real current one, whatever the window.
-    currentStreak: Math.min(lifetime.currentStreak, RECENT_WINDOW),
-    bestStreak: Math.min(Math.max(window.bestStreak, lifetime.bestStreak), RECENT_WINDOW),
+    bestScore: olderBests ? Math.max(window.bestScore, lifetime.bestScore) : window.bestScore,
+    bestSeconds: olderBests ? bestOf(window.bestSeconds, lifetime.bestSeconds) : window.bestSeconds,
+    fewestMoves: olderBests ? bestOf(window.fewestMoves, lifetime.fewestMoves) : window.fewestMoves,
+    currentStreak,
+    // No longer than the wins the table shows, and never shorter than the
+    // streak that is running now.
+    bestStreak: Math.max(
+      window.bestStreak,
+      currentStreak,
+      olderBests ? Math.min(lifetime.bestStreak, won) : 0,
+    ),
   };
 }
 
@@ -291,7 +309,12 @@ export class Stats {
   }
 
   recordWin(variant: Variant, summary: WinSummary): void {
-    const result = { won: true, seconds: summary.seconds, moves: summary.moves, score: summary.total };
+    // Normalised the way mergeRecent() reads it back, so the window says the
+    // same thing before a reload as after one.
+    const count = (value: number) => (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
+    const result = {
+      won: true, seconds: count(summary.seconds), moves: count(summary.moves), score: count(summary.total),
+    };
     this.update(variant, result, (mode) => {
       const streak = mode.currentStreak + 1;
       return {
