@@ -232,10 +232,22 @@ describe('stuck chips', () => {
     expect(chips).toEqual([false, true]);
   });
 
-  it('puts the top of the stock at the bottom', () => {
+  it('puts the card showing on the waste first in line, and turns the rest over after it', () => {
+    // Stock empty, the whole hand turned: w1 was turned first and w5 is showing.
+    const waste = ['A', '2', '3', '4', '5'].map((r) => card(r as Card['rank'], 'hearts'));
+    const next = cycleHand(hand({ waste }));
+    const order = [...next.stock].reverse().map((x) => x.id);
+    expect(order).toEqual([waste[4], waste[0], waste[1], waste[2], waste[3]].map((x) => x.id));
+    // ...and it is the first card the next turn picks up.
+    const turned = apply(state(next), { kind: 'draw', seat: 0 })!.state.hands[0].waste;
+    expect(turned[0].id).toBe(waste[4].id);
+  });
+
+  it('with nothing in the waste, moves the stock\'s last card to the front', () => {
     const [a, b, c] = [card('2', 'clubs', false), card('3', 'clubs', false), card('4', 'clubs', false)];
+    // c is drawn next and a last; after, a comes first.
     const next = cycleHand(hand({ stock: [a, b, c] }));
-    expect(next.stock.map((x) => x.id)).toEqual([c.id, a.id, b.id]);
+    expect(next.stock.map((x) => x.id)).toEqual([b.id, c.id, a.id]);
   });
 
   it('turns the waste back under the stock first, face down, in the order it would come up', () => {
@@ -244,8 +256,9 @@ describe('stuck chips', () => {
     const next = cycleHand(hand({ stock: [s1, s2], waste: [w1, w2] }));
     expect(next.waste).toEqual([]);
     expect(next.stock.every((x) => !x.faceUp)).toBe(true);
-    // Before the move on, the hand would turn s2, s1, w1, w2. After it, s2 is last.
-    expect([...next.stock].reverse().map((x) => x.id)).toEqual([s1.id, w1.id, w2.id, s2.id]);
+    // Before the move on, the hand would turn s2, s1, w1, w2. After it, w2 -
+    // the card that was showing - comes first.
+    expect([...next.stock].reverse().map((x) => x.id)).toEqual([w2.id, s2.id, s1.id, w1.id]);
   });
 
   it('changes which three come up next', () => {
@@ -253,7 +266,7 @@ describe('stuck chips', () => {
     const before = apply(s, { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
     const after = apply(unstick(s), { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
     expect(after).not.toEqual(before);
-    expect(after.slice(0, 2)).toEqual(before.slice(1));
+    expect(after.slice(1)).toEqual(before.slice(0, 2));
   });
 
   it('leaves the Nertz pile, the work piles and the foundations alone', () => {

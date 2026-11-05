@@ -273,18 +273,24 @@ export function bothStuck(chips: Chips): boolean {
 }
 
 /**
- * One hand, moved on a card: the waste goes back under the stock, face down
- * and in the order it would be turned, and then the top card of the stock
- * goes to the bottom. The hand is the same cards in the same cycle, but
- * every turn of three now falls one card later, so the cards that were
- * buried in the middle of a three come up on top.
+ * One hand, moved on a card, the way it is done at a table: the top card of
+ * the waste - the one showing - goes to the bottom of the waste, and the
+ * waste is turned over under the stock. So the card that was showing is the
+ * very first one turned next, and every turn of three after it falls one
+ * card off from where it fell before, bringing up cards that were buried in
+ * the middle of a three. With nothing in the waste, the last card of the
+ * stock stands in for it.
+ *
+ * In array terms the stock's last card is the next one drawn, so the hand
+ * laid out in draw order is `[...reversed waste, ...stock]` read from the
+ * end, and the card showing on the waste is the first of that array.
  */
 export function cycleHand(hand: Hand): Hand {
   const under = [...hand.waste].reverse().map((card) => ({ ...card, faceUp: false }));
   const pile = [...under, ...hand.stock];
   if (pile.length < 2) return { ...hand, stock: pile, waste: [] };
-  const top = pile.pop()!;
-  return { ...hand, stock: [top, ...pile], waste: [] };
+  const showing = pile.shift()!;
+  return { ...hand, stock: [...pile, showing], waste: [] };
 }
 
 /** Both players threw their chip in: every hand moves on a card. */
