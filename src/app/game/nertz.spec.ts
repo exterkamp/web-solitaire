@@ -232,41 +232,52 @@ describe('stuck chips', () => {
     expect(chips).toEqual([false, true]);
   });
 
-  it('puts the card showing on the waste first in line, and turns the rest over after it', () => {
-    // Stock empty, the whole hand turned: w1 was turned first and w5 is showing.
-    const waste = ['A', '2', '3', '4', '5'].map((r) => card(r as Card['rank'], 'hearts'));
-    const next = cycleHand(hand({ waste }));
-    const order = [...next.stock].reverse().map((x) => x.id);
-    expect(order).toEqual([waste[4], waste[0], waste[1], waste[2], waste[3]].map((x) => x.id));
-    // ...and it is the first card the next turn picks up.
+  // The case as it is played: a turn shows 2, 5, 7 with the 7 on top.
+  it('sends the first of the three showing to the bottom, so the next turn is 5, 7 and a new card', () => {
+    const [x, y] = [card('K', 'spades', false), card('Q', 'spades', false)];
+    const [two, five, seven] = [card('2', 'hearts', false), card('5', 'clubs', false), card('7', 'diamonds', false)];
+    const under = card('9', 'clubs');
+    // Stock top last: y is next after the turn, then x. The turn took 2, 5, 7 off the top.
+    let s = state({ stock: [x, y, seven, five, two], waste: [under] });
+    s = apply(s, { kind: 'draw', seat: 0 })!.state;
+    expect(s.hands[0].waste.map((c) => c.rank)).toEqual(['9', '2', '5', '7']);
+
+    const next = cycleHand(s.hands[0]);
+    expect(next.stock[0].id).toBe(two.id);
+    expect(next.stock.every((c) => !c.faceUp)).toBe(true);
+    // Only the three showing went back; the card under them stays put.
+    expect(next.waste.map((c) => c.id)).toEqual([under.id]);
+
     const turned = apply(state(next), { kind: 'draw', seat: 0 })!.state.hands[0].waste;
-    expect(turned[0].id).toBe(waste[4].id);
+    expect(turned.slice(-3).map((c) => c.id)).toEqual([five.id, seven.id, y.id]);
   });
 
-  it('with nothing in the waste, moves the stock\'s last card to the front', () => {
+  it('with nothing on the waste, sends the top of the stock to the bottom', () => {
     const [a, b, c] = [card('2', 'clubs', false), card('3', 'clubs', false), card('4', 'clubs', false)];
-    // c is drawn next and a last; after, a comes first.
+    // c is the top of the stock, taken first by the next turn.
     const next = cycleHand(hand({ stock: [a, b, c] }));
-    expect(next.stock.map((x) => x.id)).toEqual([b.id, c.id, a.id]);
+    expect(next.stock.map((x) => x.id)).toEqual([c.id, a.id, b.id]);
   });
 
-  it('turns the waste back under the stock first, face down, in the order it would come up', () => {
-    // The waste's first-drawn card is its bottom; the stock's next draw is its end.
-    const [w1, w2, s1, s2] = [card('5', 'hearts'), card('6', 'hearts'), card('7', 'clubs', false), card('8', 'clubs', false)];
-    const next = cycleHand(hand({ stock: [s1, s2], waste: [w1, w2] }));
+  it('puts back only what is on the waste when it holds fewer than three', () => {
+    const [w, s1] = [card('6', 'hearts'), card('8', 'clubs', false)];
+    const next = cycleHand(hand({ stock: [s1], waste: [w] }));
     expect(next.waste).toEqual([]);
-    expect(next.stock.every((x) => !x.faceUp)).toBe(true);
-    // Before the move on, the hand would turn s2, s1, w1, w2. After it, w2 -
-    // the card that was showing - comes first.
-    expect([...next.stock].reverse().map((x) => x.id)).toEqual([w2.id, s2.id, s1.id, w1.id]);
+    expect(next.stock.map((x) => x.id)).toEqual([w.id, s1.id]);
   });
 
   it('changes which three come up next', () => {
     const s = deal(4, seeded(7));
     const before = apply(s, { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
     const after = apply(unstick(s), { kind: 'draw', seat: 0 })!.state.hands[0].waste.map((x) => x.id);
-    expect(after).not.toEqual(before);
-    expect(after.slice(1)).toEqual(before.slice(0, 2));
+    expect(after.slice(0, 2)).toEqual(before.slice(1));
+    expect(after[2]).not.toBe(before[0]);
+  });
+
+  it('copes with a hand of one card or none', () => {
+    expect(cycleHand(hand()).stock).toEqual([]);
+    const lone = card('9', 'spades');
+    expect(cycleHand(hand({ waste: [lone] })).stock).toEqual([{ ...lone, faceUp: false }]);
   });
 
   it('leaves the Nertz pile, the work piles and the foundations alone', () => {
@@ -280,11 +291,6 @@ describe('stuck chips', () => {
     expect(next.foundations).toEqual(s.foundations);
   });
 
-  it('copes with a hand of one card or none', () => {
-    expect(cycleHand(hand()).stock).toEqual([]);
-    const lone = card('9', 'spades');
-    expect(cycleHand(hand({ waste: [lone] })).stock).toEqual([{ ...lone, faceUp: false }]);
-  });
 });
 
 describe('rounds and the match', () => {

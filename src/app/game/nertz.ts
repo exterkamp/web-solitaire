@@ -273,24 +273,27 @@ export function bothStuck(chips: Chips): boolean {
 }
 
 /**
- * One hand, moved on a card, the way it is done at a table: the top card of
- * the waste - the one showing - goes to the bottom of the waste, and the
- * waste is turned over under the stock. So the card that was showing is the
- * very first one turned next, and every turn of three after it falls one
- * card off from where it fell before, bringing up cards that were buried in
- * the middle of a three. With nothing in the waste, the last card of the
- * stock stands in for it.
+ * One hand, moved on a card.
  *
- * In array terms the stock's last card is the next one drawn, so the hand
- * laid out in draw order is `[...reversed waste, ...stock]` read from the
- * end, and the card showing on the waste is the first of that array.
+ * The three cards showing on the waste - the last turn, say 2, 5, 7 with the
+ * 7 on top - go back onto the stock as they came off it, and then the first
+ * of them, the 2, goes to the very bottom of the stock. So the next turn
+ * comes up 5, 7 and a card that was never in that three, and every turn
+ * after it falls one card later than it did. The rest of the waste stays
+ * where it is. With nothing on the waste, the top card of the stock - the
+ * first one the next turn would take - goes to the bottom.
+ *
+ * In array terms a pile's last card is its top: draw() takes the stock's
+ * last three and lays them on the waste in reverse, so putting them back is
+ * the same three reversed onto the end of the stock.
  */
 export function cycleHand(hand: Hand): Hand {
-  const under = [...hand.waste].reverse().map((card) => ({ ...card, faceUp: false }));
-  const pile = [...under, ...hand.stock];
-  if (pile.length < 2) return { ...hand, stock: pile, waste: [] };
-  const showing = pile.shift()!;
-  return { ...hand, stock: [...pile, showing], waste: [] };
+  const showing = hand.waste.slice(-DRAW_COUNT);
+  const waste = hand.waste.slice(0, hand.waste.length - showing.length);
+  const stock = [...hand.stock, ...[...showing].reverse().map((card) => ({ ...card, faceUp: false }))];
+  if (stock.length < 2) return { ...hand, stock, waste };
+  const top = stock.pop()!;
+  return { ...hand, stock: [top, ...stock], waste };
 }
 
 /** Both players threw their chip in: every hand moves on a card. */
