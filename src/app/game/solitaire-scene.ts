@@ -5,9 +5,12 @@ import {
 import { markBooted, renderScale } from './lite';
 import {
   BOARD_DROP_STEP,
+  BOARD_FLOOR,
   BOARD_MARGIN,
   CARD_HEIGHT,
   CARD_WIDTH,
+  FRAME_PAD,
+  GAME_HEIGHT,
   MIN_BOARD_DROP,
   TABLEAU_TOP_Y,
   TOP_ROW_Y,
@@ -146,6 +149,14 @@ const LAND_POP_SCALE = 1.07;
 // somewhere sensible". Generous, because a thumb on glass never holds still.
 const TAP_SLOP = 10;
 
+// How far a fixed layout (Tri Peaks, Pyramid, Golf, Black Hole) may be
+// raised up its board to fit a short screen: as far as keeps the game's
+// lettering, at TABLEAU_TOP_Y - 23, clear of the printed border.
+const MAX_RAISE = 85;
+// How far down the layout must sit for the rosette at the head of the table
+// to be clear of the game's lettering (see paintTableBorder).
+const ROSETTE_CLEAR_DROP = 60;
+
 // The score's chips sit in the band of felt between the top row and the
 // tableau (see TABLEAU_TOP_Y's own note), against the rail - the rail is 14
 // units, and the stack stops a couple short of it.
@@ -246,6 +257,8 @@ export class SolitaireScene {
   // Placeholder until init() sets the real one - this.table (and so
   // this.height) doesn't exist yet at field-initialiser time.
   private drop = 0;
+  // The page's box for the board, height over width, when it was built.
+  private readonly aspect?: number;
 
   private drag?: DragState;
   // Set while the board is animating something the player must not interrupt
@@ -263,6 +276,9 @@ export class SolitaireScene {
   timeScale = 1;
 
   constructor(parent: HTMLElement, init: BoardInit) {
+    // The shape of the box the board is shown in, so it can be built to fill
+    // it - see boardHeight.
+    this.aspect = parent.clientWidth > 0 ? parent.clientHeight / parent.clientWidth : undefined;
     this.init(init);
     this.board = createBoard({
       parent,
@@ -309,14 +325,14 @@ export class SolitaireScene {
     this.scoreDisplay = data.scoreDisplay;
     this.deckStyle = data.deckStyle;
     this.report = data.events;
-    this.drop = this.table.drops ? maxBoardDrop(this.floorY) : 0;
+    this.drop = this.table.drops ? maxBoardDrop(this.floorY) : this.fixedDrop;
     this.slotMap.clear();
     for (const slot of this.table.slots(this.handedness)) {
       this.slotMap.set(pileKey(slot.ref), {
         slot,
         // A game that lays itself out in columns says which column; one whose
         // board is not a grid gives the place outright.
-        x: slot.x ?? this.columnX(slot.column),
+        x: slot.x !== undefined ? slot.x + FRAME_PAD : this.columnX(slot.column),
         y: slot.y ?? (slot.row === 'top' ? TOP_ROW_Y : TABLEAU_TOP_Y + CARD_HEIGHT / 2),
       });
     }
@@ -330,7 +346,8 @@ export class SolitaireScene {
     void renderCourtArt(this.board);
 
     drawTableSurface(this.board);
-    paintTableBorder(this.board, this.table.id);
+    // The rosette only where the game's name is printed clear below it.
+    paintTableBorder(this.board, this.table.id, this.drop >= ROSETTE_CLEAR_DROP);
     this.toasts = toastsOf(this.board);
     // In the band between the top row and the tableau, to the right of the
     // game's name - and sliding down the board with it.
@@ -369,15 +386,39 @@ export class SolitaireScene {
   // 480 units; eight need a wider table rather than smaller cards, so the
   // pitch comes out the same in both games and every card is drawn from the
   // same textures. See freecell-table.ts.
+  //
+  // Plus a pad down each side for the printed border (see FRAME_PAD): every
+  // x a game gives is in its own width, and is moved over by the pad here.
   private get width(): number {
-    return this.table.width;
+    return this.table.width + 2 * FRAME_PAD;
   }
 
   // Scaled to this game's own width - see boardHeight's own note in
   // config.ts on why a fixed height was the wrong idea for any game whose
   // width isn't Klondike's.
+  //
+  // A game that places its own piles was laid out on a 920-unit board, and
+  // a screen squarer than that would cut its bottom row off: it gets the
+  // height it needs, less what its layout can be raised by (see fixedDrop).
   private get height(): number {
-    return boardHeight(this.width);
+    const fitted = boardHeight(this.width, this.aspect);
+    return this.table.drops ? fitted : Math.max(fitted, this.layoutNeeds() - MAX_RAISE);
+  }
+
+  // How far down the felt a fixed layout's lowest card reaches, plus the
+  // clearance every board keeps above its bottom rail.
+  private layoutNeeds(): number {
+    const bottoms = this.table.slots(this.handedness)
+      .map((slot) => (slot.y ?? TABLEAU_TOP_Y + CARD_HEIGHT / 2) + CARD_HEIGHT / 2);
+    return Math.max(...bottoms) + (GAME_HEIGHT - BOARD_FLOOR);
+  }
+
+  // Where a game that places its own piles sits on a board built to the
+  // screen's shape: its lowest card on the floor, where the thumb is, as a
+  // column game's is - lower on a tall screen, raised on a short one, but
+  // never so far its lettering meets the border at the top.
+  private get fixedDrop(): number {
+    return Math.max(-MAX_RAISE, this.height - this.layoutNeeds());
   }
 
   // Clear of the rail at whatever height this particular game came out to.
@@ -386,11 +427,11 @@ export class SolitaireScene {
   }
 
   private get columnPitch(): number {
-    return (this.width - 2 * BOARD_MARGIN) / this.table.columns;
+    return (this.table.width - 2 * BOARD_MARGIN) / this.table.columns;
   }
 
   private columnX(column: number): number {
-    return BOARD_MARGIN + this.columnPitch / 2 + column * this.columnPitch;
+    return FRAME_PAD + BOARD_MARGIN + this.columnPitch / 2 + column * this.columnPitch;
   }
 
   // Where a pile is printed on the felt, in the layout's own coordinates -
@@ -434,19 +475,18 @@ export class SolitaireScene {
    * pileBase a moment later, in the same render.
    */
   private updateDrop(animate: boolean): void {
-    // A game that placed every pile itself has already decided where the
-    // bottom of its board is, and sliding its layout down would only push it
-    // off the felt.
+    // A game that placed every pile itself does not slide as it plays: it
+    // sits where fixedDrop puts it for the board's shape, and stays.
     //
-    // Set to nothing rather than left alone: the field starts at the full
-    // drop, so returning early here left such a game drawing its cards 260
-    // units below its own printing - which for TriPeaks put the deck off the
-    // bottom edge of the board, where no press could reach it.
+    // Set rather than left alone: the field starts at whatever init chose,
+    // and the cards and the printing have to agree on it - a mismatch once
+    // left Tri Peaks drawing its deck off the bottom edge of the board.
     if (!this.table.drops) {
-      if (this.drop !== 0) {
-        this.drop = 0;
-        this.markings.setY(0);
-        this.chips?.setDrop(0);
+      const fixed = this.fixedDrop;
+      if (this.drop !== fixed) {
+        this.drop = fixed;
+        this.markings.setY(fixed);
+        this.chips?.setDrop(fixed);
       }
       return;
     }
@@ -568,7 +608,7 @@ export class SolitaireScene {
     // where a shuffle happens. Where each one is going is worked out now and
     // acted on after the riffle.
     const origin = this.table.dealOrigin(this.handedness);
-    const from = { x: origin.x, y: origin.y + this.drop };
+    const from = { x: origin.x + FRAME_PAD, y: origin.y + this.drop };
     const going: Placement[] = [];
 
     for (const pile of this.table.piles(this.session.state)) {

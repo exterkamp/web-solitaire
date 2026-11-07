@@ -380,17 +380,18 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
 // to lose to both of them.
 const BORDER_ALPHA = 0.42;
 const BORDER_DEPTH = -1100;
-const BORDER_BAND = 9;
-const BORDER_GAP = 5;
+const BORDER_BAND = 8;
+const BORDER_GAP = 4;
 const ROSETTE_SIZE = 150;
 
 /**
  * Prints the game's border round the felt, inside the rail, and a rosette
  * at the head of the table - the felt a tall screen leaves bare above the
- * layout, which slides up over it as the tableau needs the room.
+ * layout, which slides up over it as the tableau needs the room. Left off
+ * (`rosette: false`) where the layout's own lettering would sit on it.
  * Fixed to the table, not the layout: it does not slide with the markings.
  */
-export function paintTableBorder(board: Board, game: GameId): FeltPaint[] {
+export function paintTableBorder(board: Board, game: GameId, rosette = true): FeltPaint[] {
   const inset = RAIL_WIDTH + BORDER_GAP;
   const paint = { color: LABEL_GOLD_CSS, wear: 0.35, alpha: BORDER_ALPHA };
   // A frame's `depth` is its band's, across; where it sorts is set after.
@@ -400,7 +401,7 @@ export function paintTableBorder(board: Board, game: GameId): FeltPaint[] {
     width: board.width - inset * 2, height: board.height - inset * 2,
     depth: BORDER_BAND, stroke: 1.1,
   });
-  marks.push(paintOnFelt(board, { path: rosette(), viewBox: [200, 200], width: ROSETTE_SIZE, stroke: 0.9 },
+  if (rosette) marks.push(paintOnFelt(board, { path: rosettePath(), viewBox: [200, 200], width: ROSETTE_SIZE, stroke: 0.9 },
     { ...paint, alpha: 0.2, x: board.width / 2, y: inset + BORDER_BAND + 24 + ROSETTE_SIZE / 2 }));
   for (const mark of marks) mark.depth = BORDER_DEPTH;
   return marks;
@@ -411,7 +412,7 @@ export function paintTableBorder(board: Board, game: GameId): FeltPaint[] {
  * strands of one wave round a circle, each a little out of phase with the
  * last, weaving a net between two plain rings.
  */
-function rosette(): string[] {
+function rosettePath(): string[] {
   const c = 100;
   const curve = (r: (t: number) => number) => {
     let d = '';

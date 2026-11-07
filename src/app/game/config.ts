@@ -71,9 +71,28 @@ export const GAME_HEIGHT = 920;
 // GAME_HEIGHT keeps at 480 constant, and scale height with whatever width
 // the game in play actually asked for, rather than assuming every game
 // wants the same fixed number Klondike does.
-export function boardHeight(width: number): number {
-  return Math.round((width * GAME_HEIGHT) / GAME_WIDTH);
+//
+// And it was still only a guess at the screen, one ratio for every phone: a
+// screen squarer than .522 showed the board fitted to its height, with bare
+// page down both sides. So the board now takes the shape of the box it is
+// shown in, measured when it is built - `aspect`, that box's height over its
+// width - and the ratio above is only the fallback for a box not yet laid
+// out. Never shorter than MIN_ASPECT, the deepest hand plus the top row: a
+// screen squarer than that (a laptop) is fitted by height, sides and all,
+// rather than given a board a pile can run off.
+export const MIN_ASPECT = 720 / 480;
+
+export function boardHeight(width: number, aspect?: number): number {
+  const shape = aspect && Number.isFinite(aspect) ? aspect : GAME_HEIGHT / GAME_WIDTH;
+  return Math.round(width * Math.max(MIN_ASPECT, shape));
 }
+
+// Felt down each side of the layout, past the margin the columns keep: room
+// for the printed border (see paintTableBorder in table.ts) between the rail
+// and the outermost cards, so no slot is printed across it. Added to the
+// board's width rather than taken out of the columns', so the cards stay the
+// size they are.
+export const FRAME_PAD = 16;
 
 // Poker size is 2.5 x 3.5 inches - a 5:7 ratio - and cards look wrong at
 // anything else. The package keeps them in that proportion; 60 units wide is
@@ -130,10 +149,9 @@ export const FIRST_FOUNDATION_COLUMN = 3;
 // this board that no card ever covers.
 export const TABLEAU_TOP_Y = 162;
 
-// The lowest a card's bottom edge may reach, clear of the rail. 200 units
-// below where it sat when GAME_HEIGHT was 720 - the same 20-unit clearance
-// from the bottom of the board, on a board that's now 200 units taller.
-export const BOARD_FLOOR = 900;
+// The lowest a card's bottom edge may reach, clear of the rail and the
+// printed border inside it: 32 units off the bottom of the board.
+export const BOARD_FLOOR = 888;
 
 // How far down the whole layout slides when the tableau is not using its full
 // height, and in what steps.
@@ -160,7 +178,7 @@ export const BOARD_FLOOR = 900;
 // costs is a band of bare felt above the foundations, which is no loss: a
 // table is allowed to have table on it, and nothing was ever played up
 // there.
-export const MAX_BOARD_DROP = 460;
+export const MAX_BOARD_DROP = 448;
 export const BOARD_DROP_STEP = 65;
 
 // BOARD_FLOOR and MAX_BOARD_DROP above are only right at GAME_HEIGHT - the
@@ -170,7 +188,7 @@ export const BOARD_DROP_STEP = 65;
 // match, the extra room past 920 sits unused below a floor that never
 // moved - precisely the bug boardHeight was written to fix, one level up.
 // Derived from the two constants above rather than a second pair of magic
-// numbers: the 20-unit clearance BOARD_FLOOR keeps below GAME_HEIGHT, and
+// numbers: the 32-unit clearance BOARD_FLOOR keeps below GAME_HEIGHT, and
 // the 440-unit gap MAX_BOARD_DROP keeps below BOARD_FLOOR, both held
 // constant as height changes rather than re-picked for every board size.
 export function boardFloor(height: number): number {
