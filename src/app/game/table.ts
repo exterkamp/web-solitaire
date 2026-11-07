@@ -1,4 +1,5 @@
-import { Board, Sprite } from '@exterkamp/felt';
+import { Board, BorderPattern, FeltPaint, Sprite, paintFelt as paintOnFelt, paintFeltFrame } from '@exterkamp/felt';
+import type { GameId } from './table-game';
 import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
 
 // The table the game is played on: felt, the pool of light falling on it,
@@ -350,4 +351,77 @@ export function drawRecycleMark(board: Board, x: number, y: number, radius: numb
     g.closePath();
     g.fill();
   }, { key: `recycle-${radius}`, x, y, depth: -1000 });
+}
+
+
+// --- the printed border ----------------------------------------------------
+
+// Each game's felt is printed with its own running border just inside the
+// rail - one of felt's band ornaments, in the label's gold and worn into the
+// nap - so the twelve tables read as twelve layouts rather than one cloth
+// with different cards on it. Picked to suit the game where one suits:
+// peaks for Tri Peaks, waves for Seahaven, the stepped dentil for Pyramid.
+export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
+  klondike: 'greek-key',
+  freecell: 'interlace',
+  yukon: 'rope',
+  canfield: 'bead-and-reel',
+  spiderette: 'guilloche',
+  scorpion: 'running-dog',
+  seahaven: 'scallop',
+  tripeaks: 'chevron',
+  pyramid: 'dentil',
+  golf: 'rope',
+  blackhole: 'guilloche',
+  acesup: 'greek-key',
+};
+
+// Faint: it is printing on the cloth, under the slots and the cards, and has
+// to lose to both of them.
+const BORDER_ALPHA = 0.42;
+const BORDER_DEPTH = -1100;
+const BORDER_BAND = 9;
+const BORDER_GAP = 5;
+const ROSETTE_SIZE = 150;
+
+/**
+ * Prints the game's border round the felt, inside the rail, and a rosette
+ * at the head of the table - the felt a tall screen leaves bare above the
+ * layout, which slides up over it as the tableau needs the room.
+ * Fixed to the table, not the layout: it does not slide with the markings.
+ */
+export function paintTableBorder(board: Board, game: GameId): FeltPaint[] {
+  const inset = RAIL_WIDTH + BORDER_GAP;
+  const paint = { color: LABEL_GOLD_CSS, wear: 0.35, alpha: BORDER_ALPHA };
+  // A frame's `depth` is its band's, across; where it sorts is set after.
+  const marks = paintFeltFrame(board, TABLE_PATTERNS[game], {
+    ...paint,
+    x: board.width / 2, y: board.height / 2,
+    width: board.width - inset * 2, height: board.height - inset * 2,
+    depth: BORDER_BAND, stroke: 1.1,
+  });
+  marks.push(paintOnFelt(board, { path: rosette(), viewBox: [200, 200], width: ROSETTE_SIZE, stroke: 0.9 },
+    { ...paint, alpha: 0.2, x: board.width / 2, y: inset + BORDER_BAND + 24 + ROSETTE_SIZE / 2 }));
+  for (const mark of marks) mark.depth = BORDER_DEPTH;
+  return marks;
+}
+
+/**
+ * A guilloché rosette in a 200 x 200 box, generated rather than drawn:
+ * strands of one wave round a circle, each a little out of phase with the
+ * last, weaving a net between two plain rings.
+ */
+function rosette(): string[] {
+  const c = 100;
+  const curve = (r: (t: number) => number) => {
+    let d = '';
+    for (let i = 0; i <= 240; i++) {
+      const t = (i / 240) * Math.PI * 2;
+      d += `${i ? 'L' : 'M'}${(c + r(t) * Math.cos(t)).toFixed(2)} ${(c + r(t) * Math.sin(t)).toFixed(2)}`;
+    }
+    return `${d}Z`;
+  };
+  const strands = Array.from({ length: 6 }, (_, k) => curve((t) => 72 + 14 * Math.sin(12 * t + (k * Math.PI) / 3)));
+  const heart = Array.from({ length: 4 }, (_, k) => curve((t) => 30 + 12 * Math.sin(8 * t + (k * Math.PI) / 2)));
+  return [curve(() => 92), curve(() => 52), ...strands, ...heart];
 }

@@ -1,5 +1,6 @@
 import {
-  Board, BoardPointer, Sprite, Tween, cardsReady, createBoard, defineStack, flipCard, riffleShuffle,
+  Board, BoardPointer, Sprite, Toaster, Tween, cardsReady, createBoard, defineStack, flipCard, formatNumber,
+  riffleShuffle, toastsOf,
 } from '@exterkamp/felt';
 import { markBooted, renderScale } from './lite';
 import {
@@ -29,7 +30,7 @@ import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { GameSession } from './session';
 import { firstBoardDealt } from './first-board';
 import {
-  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface,
+  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintTableBorder,
 } from './table';
 
 // The board: everything you can see and everything you can do to it.
@@ -223,6 +224,8 @@ export class SolitaireScene {
   private readonly setBoardPaused: (paused: boolean) => void;
   // The score, in chips. See chip.ts.
   private chips?: ScoreChips;
+  // What a move scored, rising off the card that scored it. See scored().
+  private toasts?: Toaster;
   // The side each card is turning to, while it turns: flipCard only says so
   // when it lands, and a render half way through must not start another.
   private readonly facing = new WeakMap<CardSprite, boolean>();
@@ -284,6 +287,7 @@ export class SolitaireScene {
   destroy(): void {
     this.stopInput();
     this.chips?.destroy();
+    this.toasts?.destroy();
     this.board.destroy();
   }
 
@@ -326,6 +330,8 @@ export class SolitaireScene {
     void renderCourtArt(this.board);
 
     drawTableSurface(this.board);
+    paintTableBorder(this.board, this.table.id);
+    this.toasts = toastsOf(this.board);
     // In the band between the top row and the tableau, to the right of the
     // game's name - and sliding down the board with it.
     this.chips = new ScoreChips(
@@ -999,8 +1005,10 @@ export class SolitaireScene {
    */
   draw(): void {
     if (this.locked) return;
+    const before = this.scoreNow();
     if (!this.session.play({ kind: 'draw' })) return;
     this.renderBoard(true);
+    if (this.stockSlot) this.scored(before, this.stockSlot);
     this.publish();
   }
 
@@ -1128,12 +1136,40 @@ export class SolitaireScene {
   }
 
   private play(move: Move, publish = true): boolean {
+    const before = this.scoreNow();
     const result = this.session.play(move);
     if (!result) return false;
     this.renderBoard(true);
+    if (move.kind === 'play') this.scored(before, move.to);
     if (publish) this.publish();
     if (this.session.won) this.onWin();
     return true;
+  }
+
+  private scoreNow(): number | undefined {
+    return this.table.view(this.session.state).score;
+  }
+
+  /**
+   * What a move just scored, as a felt float: "+10" rising off the card it
+   * landed on, or "-100" off the stock a recycle cost. Shown whichever way
+   * the score itself is shown - a number in the bar or chips on the felt -
+   * since it says which move earned it, which neither of those does. Not for
+   * an undo: taking a move back is not scoring. Said by the HUD's own live
+   * region rather than by the float.
+   */
+  private scored(before: number | undefined, ref: PileRef): void {
+    const after = this.scoreNow();
+    if (before === undefined || after === undefined || after === before || !this.toasts) return;
+    const pile = this.table.piles(this.session.state).find((p) => samePile(p.ref, ref));
+    const at = pile?.cards.length
+      ? this.cardPosition(ref, pile.cards.length - 1, pile.cards)
+      : this.pileBase(ref);
+    const gain = after > before;
+    this.toasts.float(formatNumber(after - before, { sign: 'always' }), at.x, at.y - CARD_HEIGHT / 2 + 6, {
+      color: gain ? '#ffd166' : '#ff8a7a',
+      size: gain ? 22 : 20,
+    });
   }
 
   private onWin(): void {
