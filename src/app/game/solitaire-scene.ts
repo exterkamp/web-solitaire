@@ -15,7 +15,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
-import { ScoreChips } from './chip';
+import { CHIP_STACK_REACH, ScoreChips } from './chip';
 import { DeckTheme } from './deck-theme';
 import { DeckStyle } from './deck-style';
 import { CardSprite, ghostSuit, renderCourtArt, setDeck } from './card-sprite';
@@ -145,12 +145,10 @@ const LAND_POP_SCALE = 1.07;
 // somewhere sensible". Generous, because a thumb on glass never holds still.
 const TAP_SLOP = 10;
 
-// The score's chip tray: the band of felt between the top row and the
-// tableau (see TABLEAU_TOP_Y's own note), and enough width for a toppled
-// stack to spill sideways without reaching the lettering it sits beside.
-// Tall rather than wide - no ceiling wall, so a stack too tall for its base
-// is free to lean and spill rather than piling up against an invisible lid.
-const CHIP_TRAY_WIDTH = 190;
+// The score's chips sit in the band of felt between the top row and the
+// tableau (see TABLEAU_TOP_Y's own note), against the rail - the rail is 14
+// units, and the stack stops a couple short of it.
+const CHIP_RAIL_CLEARANCE = 16;
 
 interface DragState {
   pointer: number;
@@ -325,9 +323,12 @@ export class SolitaireScene {
     void renderCourtArt(this.board);
 
     drawTableSurface(this.board);
+    // In the band between the top row and the tableau, to the right of the
+    // game's name - and sliding down the board with it.
     this.chips = new ScoreChips(
-      this.board, this.width - BOARD_MARGIN - CHIP_TRAY_WIDTH / 2, TABLEAU_TOP_Y - 18,
+      this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18,
     );
+    this.chips.setDrop(this.drop);
 
     // The lettering is painted once, so its face has to be in first.
     await fontsReady().catch(() => undefined);
@@ -436,6 +437,7 @@ export class SolitaireScene {
       if (this.drop !== 0) {
         this.drop = 0;
         this.markings.setY(0);
+        this.chips?.setDrop(0);
       }
       return;
     }
@@ -457,6 +459,7 @@ export class SolitaireScene {
     } else {
       this.markings.setY(next);
     }
+    this.chips?.setDrop(next, animate ? MOVE_MS : 0);
   }
 
   // How far down its pile each card sits, squeezed to fit if the pile is

@@ -1,6 +1,6 @@
 ---
 name: add-solitaire-game
-description: Add a new solitaire variant to web-solitaire. Use when asked to implement, add, or port a new game/variant (e.g. "add Forty Thieves", "implement Klondike's cousin X") into this repo. Not for changes to an existing game's rules, and not for phaser-card-engine itself.
+description: Add a new solitaire variant to web-solitaire. Use when asked to implement, add, or port a new game/variant (e.g. "add Forty Thieves", "implement Klondike's cousin X") into this repo. Not for changes to an existing game's rules, and not for the felt engine itself.
 ---
 
 # Adding a solitaire game
@@ -32,7 +32,7 @@ In `src/app/game/table-game.ts`:
 
 ## 2. The rules module — `src/app/game/<name>.ts`
 
-Pure functions over a state. No Phaser, no Angular, no DOM. Every move
+Pure functions over a state. No felt, no Angular, no DOM. Every move
 returns a new state rather than mutating the one it was given (this is what
 makes undo a stack of old states). Reuse `card-rules.ts` for standard
 build-down/alternating-colour logic — write your own `rankAbove`/`rankBelow`
@@ -48,7 +48,7 @@ Implement `TableGame<S>` from `table-game.ts`. Key decisions, not defaults:
   exact `x`/`y` instead, plus `drops: false`, and mark `printed`/`target`
   per-slot. Only reach for `x`/`y` if the layout genuinely isn't a grid.
 - `width`: only widen past the default if the column count needs it
-  (Seahaven's ten columns is the existing example) — Phaser fits the board to
+  (Seahaven's ten columns is the existing example) — felt fits the board to
   the screen either way, but a wider board makes every card smaller.
 - `homeFor`: omit it if the game has no foundations to flick a card to (a
   present-but-wrong answer is worse than no answer).
@@ -56,7 +56,7 @@ Implement `TableGame<S>` from `table-game.ts`. Key decisions, not defaults:
   new number to show. Three fields have been added across seven games total —
   treat a fourth as a sign to double check the game really needs it.
 
-**Never import `phaser-card-engine` here.** Rendering is the shared board's
+**Never import `@exterkamp/felt` here.** Rendering is the shared board's
 job (see CLAUDE.md's engine-boundary section); a table module only describes
 state and layout.
 

@@ -69,6 +69,13 @@ class DeckPreviewBoard {
   selector: 'app-deck-preview',
   template: '<div class="deck-preview" #host aria-hidden="true"></div>',
   styles: `
+    /* As wide as the column it is in. A custom element is inline, and in a
+       centred column it shrinks to its content - the canvas - which felt
+       then fits to the box it is in: a loop the browser has to break. */
+    :host {
+      display: block;
+      width: 100%;
+    }
     .deck-preview {
       width: 100%;
       max-width: 17rem;

@@ -95,7 +95,7 @@
   color: #fdfdfd;
 }
 
-// The board's box. Phaser measures this element and fits the 480x900 canvas
+// The board's box. felt measures this element and fits the 480x900 canvas
 // inside it, so it needs to be allowed to shrink - `min-height: 0` is what
 // stops a flex child refusing to go below its content's height, which for a
 // canvas is the full 900.

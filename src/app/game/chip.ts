@@ -28,10 +28,19 @@ export const CHIP_SET = new ChipSet([
   { value: 1, color: '#f2ede2', spot: '#8a7a5c', ink: '#3a3128' },
 ]);
 
-// Logical size, the same units a card's width is measured in - about
+// Logical size, the same units a card's width is measured in - a little under
 // half a card across, so a whole stack of them still reads as something
 // sitting beside the game rather than competing with it.
-const CHIP_DIAMETER = 34;
+export const CHIP_DIAMETER = 28;
+
+// Six to a column, then a new column to the right: short enough that the
+// stack never climbs into the top row's cards, and three columns - eighteen
+// chips, a score past 1,500 - fit between the game's name and the rail.
+const PER_COLUMN = 6;
+const COLUMNS = 3;
+
+/** How wide the stack can get, from the middle of its first column to the far edge of its last. */
+export const CHIP_STACK_REACH = (COLUMNS - 1) * CHIP_DIAMETER * 1.12 + CHIP_DIAMETER / 2;
 
 // How far above its place a new chip starts, and how long it takes to land.
 const DROP_HEIGHT = 46;
@@ -67,6 +76,7 @@ export class ScoreChips {
   private readonly pieces: Pieces;
   private stack?: ChipStack;
   private shown: number[] = [];
+  private drop = 0;
 
   constructor(private readonly board: Board, private readonly x: number, private readonly y: number) {
     this.pieces = createPieces(board, { set: CHIP_SET, diameter: CHIP_DIAMETER });
@@ -86,7 +96,7 @@ export class ScoreChips {
     this.stack = undefined;
     this.shown = chips;
     if (!chips.length) return;
-    this.stack = this.pieces.stack({ id: 'score', x: this.x, y: this.y, chips, messy: 0.8 });
+    this.stack = this.pieces.stack({ id: 'score', x: this.x, y: this.y + this.drop, chips, messy: 0.8, perColumn: PER_COLUMN });
     this.stack.chips.forEach((chip, i) => {
       if (i < kept) return;
       const to = chip.y;
@@ -98,6 +108,16 @@ export class ScoreChips {
         this.board.tweens.add({ targets: chip, y: to, duration: DROP_MS, ease: bounceOut });
       });
     });
+  }
+
+  /**
+   * Slides the stack with the board, which sits lower when the tableau is
+   * not using its height (see updateDrop): it lives in the band beside the
+   * game's name, and that band moves.
+   */
+  setDrop(drop: number, duration = 0): void {
+    this.drop = drop;
+    this.stack?.moveTo(this.x, this.y + drop, duration);
   }
 
   destroy(): void {
