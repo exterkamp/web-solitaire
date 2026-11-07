@@ -230,7 +230,9 @@ export class SolitaireScene {
   // One sprite per card, kept for the life of the deal and moved rather than
   // rebuilt. Keyed by card id, which is why a card's id has to be stable.
   private sprites = new Map<string, CardSprite>();
-  private slotHighlights = new Map<string, Sprite>();
+  // The gold outline a pile lights up in when the run in hand would be taken
+  // there. One, moved to whichever pile it is: see showHighlight.
+  private highlight?: Sprite;
   // The stock's slot as a thing that can be pressed rather than as printing
   // on the felt. Only games that have a stock get one. See printLayout.
   private stockSlot?: PileRef;
@@ -268,9 +270,10 @@ export class SolitaireScene {
       height: this.height,
       backgroundColor: FELT_CLEAR_COLOR,
       pixelRatio: renderScale(),
-      // Flat: this is a table seen from straight above, and every card on it
-      // lies on it. A thrown or turning card still lifts off it.
-      pickUp: false,
+      // A card in the hand is lifted off the felt and swings with the pull,
+      // felt's pick-up - driven by this board's own drag (see onCardDown),
+      // since the gestures here are its own rather than felt's draggable.
+      pickUp: true,
     });
     this.markings = new Markings(this.board);
     this.setBoardPaused = pausable(this.board, () => this.timeScale);
@@ -531,17 +534,10 @@ export class SolitaireScene {
     // of felt on this board that no card ever covers.
     put(drawSectionLabel(board, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label));
 
-    // One highlight per pile a card can be dropped on, kept hidden until a
-    // run is dragged over it. Made once rather than per drag: a picture
-    // painted in the middle of a gesture is a stutter in the middle of a
-    // gesture.
-    for (const slot of this.table.slots(this.handedness)) {
-      if (!isTarget(slot)) continue;
-      const at = this.slotPosition(slot.ref);
-      const g = drawHighlight(board, at.x, at.y, CARD_WIDTH, CARD_HEIGHT);
-      put(g);
-      this.slotHighlights.set(pileKey(slot.ref), g);
-    }
+    // The highlight, kept hidden until a run is dragged over a pile that
+    // would take it. Made once rather than per drag: a picture painted in the
+    // middle of a gesture is a stutter in the middle of a gesture.
+    this.highlight = drawHighlight(board, 0, 0, CARD_WIDTH, CARD_HEIGHT);
 
     this.markings.setY(this.drop);
   }
@@ -835,6 +831,9 @@ export class SolitaireScene {
       this.board.tweens.killTweensOf(s);
       this.stacking.bringToTop(s);
     }
+    // Up off the felt, and the rest of the run with it as one piece.
+    this.board.pickUp?.lift(sprites[0]);
+    this.board.pickUp?.carry(sprites[0], sprites.slice(1));
   }
 
   // Whether a press is over a pile's slot, wherever the board has slid it.
@@ -911,6 +910,7 @@ export class SolitaireScene {
     const to = landed ?? thrown ?? tapped;
 
     this.drag = undefined;
+    this.board.pickUp?.drop(drag.sprites[0]);
     const played = to
       ? this.play({ kind: 'play', from: drag.from, to, count: drag.count })
       : false;
@@ -982,6 +982,7 @@ export class SolitaireScene {
     const drag = this.drag;
     if (!drag) return;
     this.drag = undefined;
+    this.board.pickUp?.drop(drag.sprites[0]);
     this.showHighlight(undefined);
     drag.sprites.forEach((sprite, i) => sprite.setPosition(drag.origins[i].x, drag.origins[i].y));
     this.restack();
@@ -1242,12 +1243,33 @@ export class SolitaireScene {
   // The pile a dragged run is currently over, lit up - but only where the
   // move would actually be allowed. A highlight that appears over a pile that
   // will refuse the card is worse than none: it is an invitation to a mistake.
+  //
+  // On the card the run would land on - the top of the pile, which on a
+  // tableau column is its last face-up card, far down from where the pile
+  // starts - and over it, under the run in hand. On an empty pile, the slot.
   private showHighlight(ref: PileRef | undefined): void {
+    const highlight = this.highlight;
+    if (!highlight) return;
     // Whatever dropTarget answered, which is only ever a pile that will take
     // the cards - so this no longer has to re-ask, and cannot disagree with
     // what the release is about to do.
-    const key = ref ? pileKey(ref) : undefined;
-    for (const [at, sprite] of this.slotHighlights) sprite.visible = at === key;
+    if (!ref) {
+      highlight.visible = false;
+      return;
+    }
+    const pile = this.table.piles(this.session.state).find((p) => samePile(p.ref, ref));
+    const top = pile?.cards[pile.cards.length - 1];
+    const sprite = top && this.sprites.get(top.id);
+    if (pile && top && sprite) {
+      const at = this.cardPosition(ref, pile.cards.length - 1, pile.cards);
+      highlight.setPosition(at.x, at.y);
+      highlight.depth = sprite.depth + 0.5;
+    } else {
+      const at = this.pileBase(ref);
+      highlight.setPosition(at.x, at.y);
+      highlight.depth = -900;
+    }
+    highlight.visible = true;
   }
 
   // --- the cascade ---------------------------------------------------------

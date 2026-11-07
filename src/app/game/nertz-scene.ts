@@ -178,7 +178,8 @@ export class NertzScene {
       height: NERTZ_HEIGHT,
       backgroundColor: FELT_CLEAR_COLOR,
       pixelRatio: renderScale(),
-      pickUp: false,
+      // Lifted and swinging in the hand - see onDown.
+      pickUp: true,
     });
     this.markings = new Markings(this.board);
     this.setBoardPaused = pausable(this.board, () => this.timeScale);
@@ -432,6 +433,9 @@ export class NertzScene {
     // Cancel any tween still carrying these, or it fights the thumb.
     for (const s of sprites) this.board.tweens.killTweensOf(s);
     for (const s of sprites) this.stacking.bringToTop(s);
+    // Up off the felt, and the rest of the run with it as one piece.
+    this.board.pickUp?.lift(sprites[0]);
+    this.board.pickUp?.carry(sprites[0], sprites.slice(1));
   }
 
   private onMove(pointer: BoardPointer): void {
@@ -461,6 +465,7 @@ export class NertzScene {
     const drag = this.drags.get(pointer.id);
     if (!drag) return;
     this.drags.delete(pointer.id);
+    this.board.pickUp?.drop(drag.sprites[0]);
 
     const head = drag.sprites[0];
     const landed = drag.moved ? this.dropTarget(drag, { x: head.x, y: head.y }) : undefined;
@@ -514,11 +519,13 @@ export class NertzScene {
 
   private releaseAll(): void {
     for (const drag of this.drags.values()) {
+      this.board.pickUp?.drop(drag.sprites[0]);
       drag.sprites.forEach((s, i) => s.setPosition(drag.origins[i].x, drag.origins[i].y));
     }
     this.drags.clear();
     this.restack();
     if (this.chipDrags.size) {
+      for (const drag of this.chipDrags.values()) this.board.pickUp?.drop(this.chipSprites[drag.seat]);
       this.chipDrags.clear();
       this.placeChips(false);
     }
@@ -651,6 +658,7 @@ export class NertzScene {
     });
     this.chipStacking.bringToTop(chip);
     chip.depth += CHIP_DEPTH;
+    this.board.pickUp?.lift(chip);
   }
 
   private moveChip(pointer: BoardPointer): void {
@@ -673,6 +681,7 @@ export class NertzScene {
     const drag = this.chipDrags.get(pointer.id)!;
     this.chipDrags.delete(pointer.id);
     const { seat } = drag;
+    this.board.pickUp?.drop(this.chipSprites[seat]);
     if (!this.live) {
       this.placeChip(seat, true);
       return;
@@ -705,6 +714,7 @@ export class NertzScene {
     // holding one lets go of it. Anything else being carried is unaffected.
     for (const [id, drag] of this.drags) {
       if (drag.from.kind !== 'waste') continue;
+      this.board.pickUp?.drop(drag.sprites[0]);
       drag.sprites.forEach((s, i) => s.setPosition(drag.origins[i].x, drag.origins[i].y));
       this.drags.delete(id);
     }
