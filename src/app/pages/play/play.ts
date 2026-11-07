@@ -12,8 +12,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import Phaser from 'phaser';
-import { BOARD_SCENE, createBoardGame } from '../../game/board';
+import { createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
 import { DrawCount } from '../../game/klondike';
 import { GameId, asGameId, GAME_TITLES } from '../../game/table-game';
@@ -38,7 +37,7 @@ import { Stats, variantOf } from '../../stats';
 // The board, and everything around it that is not drawn on felt.
 //
 // The split is worth stating because it is the whole architecture of this
-// game: Phaser owns the cards and nothing else. The score, the clock, the
+// game: felt owns the cards and nothing else. The score, the clock, the
 // buttons and the win panel are DOM, laid over the canvas, because they are
 // text and buttons - things a browser already draws better than a canvas
 // can, with focus rings and screen-reader labels that come for free.
@@ -58,7 +57,7 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
 
-  private game?: Phaser.Game;
+  private game?: SolitaireScene;
   private clock?: ReturnType<typeof setInterval>;
 
   // What the scene last said about itself. One signal rather than several, so
@@ -197,11 +196,11 @@ export class Play implements AfterViewInit, OnDestroy {
     // is in every other solitaire: otherwise the win rate is a measure of how
     // often you finished the ones you were winning.
     this.recordAbandoned();
-    this.game?.destroy(true);
+    this.game?.destroy();
   }
 
   private scene(): SolitaireScene | undefined {
-    return this.game?.scene.getScene(BOARD_SCENE) as SolitaireScene | undefined;
+    return this.game;
   }
 
   // --- leaving, and not leaving by accident -------------------------------
@@ -373,7 +372,7 @@ export class Play implements AfterViewInit, OnDestroy {
 
   // --- Gamepad ---
 
-  // The pad polls on its own loop, outside Phaser's pause, and the DOM
+  // The pad polls on its own loop, outside the board's pause, and the DOM
   // overlays that stop a thumb do nothing to a button press. So while the
   // pause menu or the win panel is up, the game actions no-op; Start stays
   // live so the pad can bring the game back out.

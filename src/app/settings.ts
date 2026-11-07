@@ -4,7 +4,7 @@ import {
   DEFAULT_HIGHLIGHT, DEFAULT_PAPER, DeckStyle, colorCss, courtStart, cssColor,
   customStyle, themeStyle,
 } from './game/deck-style';
-import { defaultInk } from 'phaser-card-engine';
+import { defaultInk } from '@exterkamp/felt/core';
 import { DEFAULT_TARGET, DEFAULT_WORK_PILES, WORK_PILE_CHOICES } from './game/nertz';
 import { DrawCount } from './game/klondike';
 import { Quality, getQuality, setQuality } from './game/lite';

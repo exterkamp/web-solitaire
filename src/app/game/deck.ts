@@ -15,5 +15,5 @@
 // caller here passed a freshly built deck, so there was nothing to protect -
 // and every one of them says `shuffledDeck(random)` now, which is the same
 // two calls with the seam taken out.
-export { buildDeck, cardName, shuffle, shuffledDeck } from 'phaser-card-engine';
-export type { Card } from 'phaser-card-engine';
+export { buildDeck, cardName, shuffle, shuffledDeck } from '@exterkamp/felt/core';
+export type { Card } from '@exterkamp/felt/core';

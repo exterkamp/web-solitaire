@@ -30,15 +30,12 @@
               },
               {
                 "glob": "**/*",
-                "input": "node_modules/phaser-card-engine/assets/cards",
+                "input": "node_modules/@exterkamp/felt/assets/cards",
                 "output": "cards"
               }
             ],
             "styles": [
               "src/styles.scss"
-            ],
-            "allowedCommonJsDependencies": [
-              "phaser"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [

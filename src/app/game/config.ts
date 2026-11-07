@@ -1,4 +1,4 @@
-import { CARD_HEIGHT, CARD_WIDTH, cardFaceMetrics } from 'phaser-card-engine';
+import { CARD_HEIGHT, CARD_WIDTH, cardFaceMetrics } from '@exterkamp/felt/core';
 
 // Portrait, phone-first base resolution. Phaser's Scale.FIT mode scales this
 // uniformly to whatever the device screen is, so these are logical units,
@@ -205,5 +205,5 @@ export {
   isRed,
   rankValue,
   sameColor,
-} from 'phaser-card-engine';
-export type { Rank, Suit } from 'phaser-card-engine';
+} from '@exterkamp/felt/core';
+export type { Rank, Suit } from '@exterkamp/felt/core';

@@ -12,15 +12,14 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import Phaser from 'phaser';
 import { createNertzGame } from '../../game/board';
-import { NERTZ_SCENE, NertzScene, NertzView } from '../../game/nertz-scene';
+import { NertzScene, NertzView } from '../../game/nertz-scene';
 import { Seat } from '../../game/nertz';
 import { Settings } from '../../settings';
 
 // Two-player Nertz, and everything around the board that is not drawn on felt.
 //
-// The same split as the solitaire page: Phaser owns the cards, and the
+// The same split as the solitaire page: felt owns the cards, and the
 // numbers, buttons and panels are DOM laid over it. What is different is that
 // there are two people looking at it from opposite ends, so everything a
 // player reads or presses is made twice - once the right way up and once
@@ -36,7 +35,7 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
   private readonly settings = inject(Settings);
   private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
-  private game?: Phaser.Game;
+  private game?: NertzScene;
 
   // Top first, which is the order they are laid out in.
   protected readonly seats: readonly Seat[] = [1, 0];
@@ -92,11 +91,11 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.onPopState);
     clearTimeout(this.movedOnTimer);
-    this.game?.destroy(true);
+    this.game?.destroy();
   }
 
   private scene(): NertzScene | undefined {
-    return this.game?.scene.getScene(NERTZ_SCENE) as NertzScene | undefined;
+    return this.game;
   }
 
   private onChanged(view: NertzView): void {

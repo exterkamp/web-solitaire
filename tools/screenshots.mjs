@@ -85,19 +85,17 @@ const until = async (expression, what, ms = 60000) => {
   return false;
 };
 
-const SCENE = `window.__game.scene.getScene('solitaire')`;
+const SCENE = `window.__game`;
 
-// A point on the board, in page coordinates: board units to canvas pixels (the
-// scene scales its root by the device pixel ratio), canvas pixels to CSS
-// pixels (Phaser fits the canvas into the box the page gave it), and then into
-// the page. Same three transforms the smoke test makes, for the same reason -
-// a tap that misses the card is a screenshot of nothing happening.
+// A point on the board, in page coordinates: board units to CSS pixels (felt
+// fits the canvas into the box the page gave it), and then into the page.
+// Same two transforms the smoke test makes, for the same reason - a tap that
+// misses the card is a screenshot of nothing happening.
 const onPage = (expression) => `(() => {
-  const canvas = document.querySelector('canvas');
+  const canvas = ${SCENE}.board.canvas;
   const box = canvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const scale = box.width / canvas.width;
-  const place = (at) => ({ x: box.left + at.x * ratio * scale, y: box.top + at.y * ratio * scale });
+  const scale = box.width / ${SCENE}.board.width;
+  const place = (at) => ({ x: box.left + at.x * scale, y: box.top + at.y * scale });
   const found = ${expression};
   return Array.isArray(found) ? found.map(place) : place(found);
 })()`;
@@ -125,7 +123,7 @@ async function tap(at) {
     });
     await sleep(60);
   }
-  await until(`!${SCENE}.drag && ${SCENE}.tweens.getTweens().length === 0`, 'the board to rest', 8000);
+  await until(`!${SCENE}.drag && ${SCENE}.board.tweens.count === 0`, 'the board to rest', 8000);
 }
 
 // A few moves, played the way a player would play them - real presses at the
@@ -188,8 +186,8 @@ async function board(game, rounds, name = game, thumb = false) {
   if (!await until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, game)) return;
   // Headless Chrome has no GPU and runs this board at about a frame a second,
   // so the deal is a twenty-second animation unless the clocks are wound on.
-  await evaluate(`(${SCENE}.tweens.timeScale = 20, ${SCENE}.time.timeScale = 20, true)`);
-  await until(`${SCENE}.busy === false && ${SCENE}.tweens.getTweens().length === 0`, `${game} deal`);
+  await evaluate(`(${SCENE}.timeScale = 20, true)`);
+  await until(`${SCENE}.busy === false && ${SCENE}.board.tweens.count === 0`, `${game} deal`);
   // Long enough for the last frame of the deal to be on the canvas rather
   // than merely scheduled.
   await sleep(600);

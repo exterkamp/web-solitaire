@@ -5,7 +5,7 @@ import {
   DeckTheme,
   colorCss,
   cssColor,
-} from 'phaser-card-engine';
+} from '@exterkamp/felt/core';
 
 // What a deck looks like, as the package wants it.
 //
