@@ -9,7 +9,7 @@
 // nothing, a win that never reaches the page.
 //
 //   npx ng build
-//   (cd dist/web-solitaire/browser && python3 -m http.server 4380) &
+//   node tools/serve-dist.mjs &    # the build, with nginx's fallback to index.html
 //   node tools/smoke.mjs --host=http://localhost:4380
 //
 // Exits non-zero on the first thing it doesn't like, and writes a screenshot
