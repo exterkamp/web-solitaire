@@ -438,7 +438,11 @@ export class NertzScene {
         const sprite = this.sprites.get(card.id);
         if (!sprite || held.has(sprite)) return;
         const to = this.position(seatOf(card), pile, index, cards.length, card);
-        if ((this.facing.get(sprite) ?? sprite.card.faceUp) !== card.faceUp) this.flipSprite(sprite, card.faceUp);
+        // A foundation finished with its king is closed: the king goes on
+        // face down, so nobody keeps looking at it for a place to play.
+        const closed = pile.kind === 'foundation' && card.rank === 'K' && index === cards.length - 1;
+        const faceUp = card.faceUp && !closed;
+        if ((this.facing.get(sprite) ?? sprite.card.faceUp) !== faceUp) this.flipSprite(sprite, faceUp);
         const angle = to.angle ?? sprite.angle;
         const turns = Math.abs(sprite.angle - angle) > 0.1;
         if (animate && (Math.abs(sprite.x - to.x) > 0.5 || Math.abs(sprite.y - to.y) > 0.5 || turns)) {
