@@ -83,6 +83,7 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
       deckStyle: this.settings.deckStyle(),
       target: this.settings.nertzTarget(),
       workPiles: this.settings.nertzWorkPiles(),
+      showShuffle: this.settings.showShuffle(),
       events: { changed: (view) => this.onChanged(view) },
     });
     this.armBackGuard();

@@ -1,4 +1,4 @@
-import { Board, BoardPointer, Sprite, createBoard, flipCard } from '@exterkamp/felt';
+import { Board, BoardPointer, Sprite, cardsReady, createBoard, defineStack, flipCard, riffleShuffle } from '@exterkamp/felt';
 import { markBooted, renderScale } from './lite';
 import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
@@ -63,6 +63,8 @@ export interface NertzInit {
   deckStyle?: DeckStyle;
   target: number;
   workPiles?: number;
+  /** Whether a round opens with each player riffling their deck. */
+  showShuffle?: boolean;
   events: NertzEvents;
 }
 
@@ -70,6 +72,10 @@ const MOVE_MS = 170;
 const FLIP_MS = 110;
 const DEAL_MS = 260;
 const DEAL_STAGGER_MS = 14;
+// The round's deal, after the riffle: a card every this-many milliseconds
+// off each player's stock, both players at once.
+const ROUND_DEAL_STAGGER_MS = 62;
+const CARRY_MS = 200;
 // A press that travels less than this is a tap. Generous: a thumb on glass
 // never holds still.
 const TAP_SLOP = 10;
@@ -144,6 +150,12 @@ export class NertzScene {
   private state!: NertzState;
   private match!: Match;
   private phase: NertzPhase = 'playing';
+  // The riffle and the deal at the top of a round, while nobody may play.
+  // Counted rather than flagged, so a round restarted mid-deal leaves the
+  // old deal nothing to finish.
+  private dealing = 0;
+  private deals = 0;
+  private showShuffle = true;
   private last: RoundResult | undefined;
 
   // The Stuck chips. See nertz.ts's Chips.
@@ -203,6 +215,7 @@ export class NertzScene {
     this.deckStyle = data.deckStyle;
     this.target = data.target;
     this.workPiles = data.workPiles ?? DEFAULT_WORK_PILES;
+    this.showShuffle = data.showShuffle ?? true;
     this.report = data.events;
   }
 
@@ -271,20 +284,85 @@ export class NertzScene {
     this.unstuck = 0;
     this.placeChips(false);
 
-    let n = 0;
+    // Every card starts in its owner's hands, face down: the deck is
+    // riffled, set down on the stock, and dealt from there.
     for (const { cards, seat } of this.everyPile()) {
-      for (const card of cards) {
-        const stock = this.layout.handSpot(seat, 'stock');
-        const sprite = this.makeSprite(card, stock.x, stock.y);
-        // Dealt out of the stock, a card at a time.
-        sprite.setAlpha(0);
-        this.board.tweens.add({
-          targets: sprite, alpha: 1, duration: 1, delay: n++ * DEAL_STAGGER_MS * 0.2,
-        });
-      }
+      const stock = this.layout.handSpot(seat, 'stock');
+      for (const card of cards) this.makeSprite({ ...card, faceUp: false }, stock.x, stock.y);
     }
-    this.renderBoard(true, DEAL_MS);
+    this.restack();
+    void this.shuffleAndDeal(++this.deals);
     this.publish();
+  }
+
+  /**
+   * The top of a round: each player's deck riffled in front of them - both at
+   * once, the way two people sit down and shuffle - then squared on their
+   * stock and dealt from it, the Nertz pile counted off first and the work
+   * row after, a card at a time.
+   */
+  private async shuffleAndDeal(deal: number): Promise<void> {
+    this.dealing = deal;
+    const stale = () => this.board.isDestroyed || this.deals !== deal;
+    await cardsReady(this.board);
+    if (stale()) return;
+
+    const decks = SEATS.map((seat) => {
+      const hand = this.state.hands[seat];
+      const ids = [...hand.stock, ...hand.nertz, ...hand.work.flat()].map((card) => card.id);
+      return ids.map((id) => this.sprites.get(id)).filter((s): s is CardSprite => !!s);
+    });
+    const shuffle = this.showShuffle && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (shuffle) {
+      await Promise.all(SEATS.map(async (seat) => {
+        const stock = this.layout.handSpot(seat, 'stock');
+        // In front of the player, between their hand and their work row: a
+        // pack cut in half on the stock would put a half off the table.
+        const at = { x: this.layout.width / 2, y: stock.y + (seat === 0 ? -1 : 1) * (CARD_HEIGHT + 24) };
+        const deck = decks[seat];
+        for (const sprite of deck) sprite.setPosition(at.x, at.y);
+        await riffleShuffle(this.board, deck, defineStack({ id: `riffle-${seat}`, x: at.x, y: at.y }), {
+          duration: 140, stagger: 4,
+        });
+        if (stale()) return;
+        // The riffle squares a pack upright; the far player's is theirs again.
+        for (const sprite of deck) sprite.setAngle(seat === 1 ? 180 : 0);
+        await this.board.tweens.to(deck, { x: stock.x, y: stock.y, duration: CARRY_MS, ease: 'Cubic.easeInOut' });
+      }));
+      if (stale()) return;
+    }
+
+    // Off the stock: the Nertz pile first, then one to each work pile.
+    let longest = 0;
+    for (const seat of SEATS) {
+      const hand = this.state.hands[seat];
+      const going: { card: Card; pile: NertzPile; index: number; count: number }[] = [
+        ...hand.nertz.map((card, index) => ({ card, pile: { kind: 'nertz' } as NertzPile, index, count: hand.nertz.length })),
+        ...hand.work.flatMap((cards, w) => cards.map((card, index) => ({
+          card, pile: { kind: 'work', index: w } as NertzPile, index, count: cards.length,
+        }))),
+      ];
+      longest = Math.max(longest, going.length);
+      going.forEach(({ card, pile, index, count }, i) => {
+        const sprite = this.sprites.get(card.id);
+        if (!sprite) return;
+        const to = this.position(seat, pile, index, count);
+        this.board.tweens.add({
+          targets: sprite, x: to.x, y: to.y,
+          duration: DEAL_MS, delay: i * ROUND_DEAL_STAGGER_MS, ease: 'Cubic.easeOut',
+          onStart: () => this.stacking.bringToTop(sprite),
+          onComplete: () => {
+            if (card.faceUp && !stale()) this.flipSprite(sprite, true);
+          },
+        });
+      });
+    }
+    after(this.board, longest * ROUND_DEAL_STAGGER_MS + DEAL_MS + FLIP_MS * 2, () => {
+      if (stale()) return;
+      this.dealing = 0;
+      this.renderBoard(false);
+      this.publish();
+    });
   }
 
   private makeSprite(card: Card, x: number, y: number): CardSprite {
@@ -378,7 +456,7 @@ export class NertzScene {
   // --- what the players do --------------------------------------------------
 
   private get live(): boolean {
-    return this.phase === 'playing';
+    return this.phase === 'playing' && !this.dealing;
   }
 
   // felt's pointers arrive in board units already.
