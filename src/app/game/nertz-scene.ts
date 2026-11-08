@@ -138,6 +138,19 @@ function seatOf(card: Card): Seat {
   return card.id.startsWith('p1-') ? 1 : 0;
 }
 
+// Foundations are built by two players slapping cards down at speed, so they
+// land askew: each card a little off centre and turned, by an amount fixed
+// to the card itself so a re-render never shuffles the mess around.
+const MESS_SHIFT = 5;
+const MESS_TURN = 9;
+
+function mess(card: Card): { dx: number; dy: number; turn: number } {
+  let h = 2166136261;
+  for (let i = 0; i < card.id.length; i++) h = Math.imul(h ^ card.id.charCodeAt(i), 16777619);
+  const unit = (shift: number) => (((h >>> shift) & 0xff) / 255) * 2 - 1;
+  return { dx: unit(0) * MESS_SHIFT, dy: unit(8) * MESS_SHIFT, turn: unit(16) * MESS_TURN };
+}
+
 export class NertzScene {
   readonly board: Board;
   private theme!: DeckTheme;
@@ -401,8 +414,12 @@ export class NertzScene {
 
   // --- drawing the state ----------------------------------------------------
 
-  private position(seat: Seat, pile: NertzPile, index: number, count: number): { x: number; y: number } {
+  private position(seat: Seat, pile: NertzPile, index: number, count: number, card?: Card): { x: number; y: number; angle?: number } {
     const at = this.layout.cardSpot(seat, pile, index, count, this.workPiles);
+    if (pile.kind === 'foundation' && card) {
+      const m = mess(card);
+      return { x: at.x + m.dx, y: at.y + m.dy, angle: (seatOf(card) === 1 ? 180 : 0) + m.turn };
+    }
     // A deep pile reads as one: a sliver of thickness toward the middle of
     // the table, so a Nertz pile of thirteen is not mistaken for a card.
     if (pile.kind === 'nertz' || pile.kind === 'stock') {
@@ -420,12 +437,15 @@ export class NertzScene {
       cards.forEach((card, index) => {
         const sprite = this.sprites.get(card.id);
         if (!sprite || held.has(sprite)) return;
-        const to = this.position(seatOf(card), pile, index, cards.length);
+        const to = this.position(seatOf(card), pile, index, cards.length, card);
         if ((this.facing.get(sprite) ?? sprite.card.faceUp) !== card.faceUp) this.flipSprite(sprite, card.faceUp);
-        if (animate && (Math.abs(sprite.x - to.x) > 0.5 || Math.abs(sprite.y - to.y) > 0.5)) {
-          this.board.tweens.add({ targets: sprite, x: to.x, y: to.y, duration, ease: 'Cubic.easeOut' });
+        const angle = to.angle ?? sprite.angle;
+        const turns = Math.abs(sprite.angle - angle) > 0.1;
+        if (animate && (Math.abs(sprite.x - to.x) > 0.5 || Math.abs(sprite.y - to.y) > 0.5 || turns)) {
+          this.board.tweens.add({ targets: sprite, x: to.x, y: to.y, angle, duration, ease: 'Cubic.easeOut' });
         } else {
           sprite.setPosition(to.x, to.y);
+          sprite.setAngle(angle);
         }
       });
     }
