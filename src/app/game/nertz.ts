@@ -94,6 +94,29 @@ export function canPlayOnWork(card: Card, pile: readonly Card[]): boolean {
   return isRed(card.suit) !== isRed(top.suit) && rankValue(top.rank) - rankValue(card.rank) === 1;
 }
 
+/**
+ * Whether a run can go *behind* a work pile - under its first card, so the
+ * pile ends up the run and then itself: a red four put behind a black
+ * three and a red two makes four, three, two.
+ *
+ * It is a shortcut for three moves anyone could make with an empty work
+ * pile to hand - the pile over to the empty one, the run where the pile
+ * was, the pile back on top of it - and so it is only allowed when the
+ * player has one: an empty work pile other than the one being built on.
+ * The run's last card has to take the pile's first, as any build would.
+ */
+export function canPlayBehindWork(
+  cards: readonly Card[], pile: readonly Card[], spareEmpty: boolean,
+): boolean {
+  if (!spareEmpty || cards.length === 0 || pile.length === 0) return false;
+  return canPlayOnWork(pile[0], cards.slice(-1));
+}
+
+/** Whether a player has an empty work pile besides `except`, for canPlayBehindWork. */
+function hasSpareWork(hand: Hand, except: number): boolean {
+  return hand.work.some((pile, i) => i !== except && pile.length === 0);
+}
+
 /** Whether `card` can go on a foundation: an ace on an empty one, else the next of its suit. */
 export function canPlayOnFoundation(card: Card, pile: readonly Card[]): boolean {
   if (pile.length === 0) return card.rank === 'A';
@@ -132,8 +155,10 @@ export function canDrop(
     return !!pile && cards.length === 1 && canPlayOnFoundation(cards[0], pile);
   }
   if (to.kind === 'work') {
-    const pile = state.hands[seat].work[to.index];
-    return !!pile && canPlayOnWork(cards[0], pile);
+    const hand = state.hands[seat];
+    const pile = hand.work[to.index];
+    if (!pile) return false;
+    return canPlayOnWork(cards[0], pile) || canPlayBehindWork(cards, pile, hasSpareWork(hand, to.index));
   }
   return false;
 }
@@ -186,7 +211,11 @@ function play(state: NertzState, move: NertzMove & { kind: 'play' }): NertzResul
   let foundations = state.foundations;
   let up = state.up;
   if (to.kind === 'work') {
-    nextHand.work[to.index].push(...cards);
+    const target = nextHand.work[to.index];
+    // On the end when it builds there, and behind the pile when it only
+    // builds there that way (see canPlayBehindWork).
+    if (canPlayOnWork(cards[0], hand.work[to.index])) target.push(...cards);
+    else target.unshift(...cards);
   } else if (to.kind === 'foundation') {
     foundations = foundations.map((pile, i) => (i === to.index ? [...pile, ...cards] : pile));
     up = [...up] as [number, number];
@@ -231,9 +260,13 @@ export function autoTarget(
     if (home !== undefined) return { kind: 'foundation', index: home };
   }
   const work = state.hands[seat].work;
-  for (let index = 0; index < work.length; index++) {
-    if (from.kind === 'work' && from.index === index) continue;
+  const others = work.map((_, index) => index).filter((index) => !(from.kind === 'work' && from.index === index));
+  // On the end of a pile first; behind one only if nothing takes it there.
+  for (const index of others) {
     if (work[index].length > 0 && canPlayOnWork(cards[0], work[index])) return { kind: 'work', index };
+  }
+  for (const index of others) {
+    if (work[index].length > 0 && canDrop(state, seat, cards, { kind: 'work', index })) return { kind: 'work', index };
   }
   return undefined;
 }

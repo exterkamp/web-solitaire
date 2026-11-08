@@ -3,7 +3,7 @@ import { Card } from './deck';
 import { seeded } from './random';
 import {
   Hand, Match, NertzState, addRound, apply, autoTarget, bothStuck, canCallNertz, canDrop,
-  canPlayOnFoundation, canPlayOnWork, cycleHand, deal, finishRound, foundationFor, liftable,
+  canPlayBehindWork, canPlayOnFoundation, canPlayOnWork, cycleHand, deal, finishRound, foundationFor, liftable,
   matchWinner, newMatch, noChips, roundScores, takeBackChip, throwChip, unstick,
 } from './nertz';
 
@@ -202,6 +202,57 @@ describe('the hand', () => {
 
   it('has nothing to draw when both are empty', () => {
     expect(apply(state(), { kind: 'draw', seat: 0 })).toBeUndefined();
+  });
+});
+
+describe('playing behind a work pile', () => {
+  const three = () => card('3', 'spades');
+  const two = () => card('2', 'hearts');
+
+  it('puts a card under the pile when there is an empty work pile to spare', () => {
+    const four = card('4', 'diamonds');
+    const s = state({ waste: [four], work: [[three(), two()], [], [card('9', 'clubs')], [card('J', 'clubs')]] });
+    expect(canDrop(s, 0, [four], { kind: 'work', index: 0 })).toBe(true);
+    const r = apply(s, { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'work', index: 0 }, count: 1 });
+    expect(r?.state.hands[0].work[0].map((c) => c.rank)).toEqual(['4', '3', '2']);
+    expect(r?.state.hands[0].waste).toEqual([]);
+  });
+
+  it('is not allowed without a spare empty work pile', () => {
+    const four = card('4', 'diamonds');
+    const s = state({ waste: [four], work: [[three(), two()], [card('9', 'clubs')], [card('8', 'clubs')], [card('J', 'clubs')]] });
+    expect(canDrop(s, 0, [four], { kind: 'work', index: 0 })).toBe(false);
+  });
+
+  it('needs the run\'s last card to take the pile\'s first', () => {
+    expect(canPlayBehindWork([card('4', 'clubs')], [three(), two()], true)).toBe(false);
+    expect(canPlayBehindWork([card('5', 'hearts')], [three(), two()], true)).toBe(false);
+    expect(canPlayBehindWork([card('5', 'clubs'), card('4', 'hearts')], [three(), two()], true)).toBe(true);
+    expect(canPlayBehindWork([card('4', 'hearts')], [], true)).toBe(false);
+  });
+
+  it('moves a run from another work pile behind, in order', () => {
+    const s = state({ work: [[three(), two()], [], [card('6', 'clubs'), card('5', 'hearts'), card('4', 'clubs')], [card('J', 'clubs')]] });
+    expect(canDrop(s, 0, [card('4', 'clubs')], { kind: 'work', index: 0 })).toBe(false);
+    const r = apply(s, { kind: 'play', seat: 0, from: { kind: 'work', index: 2 }, to: { kind: 'work', index: 0 }, count: 2 });
+    expect(r).toBeUndefined();
+    const t = state({ work: [[three(), two()], [], [card('6', 'clubs'), card('5', 'hearts'), card('4', 'hearts')], [card('J', 'clubs')]] });
+    const u = apply(t, { kind: 'play', seat: 0, from: { kind: 'work', index: 2 }, to: { kind: 'work', index: 0 }, count: 2 });
+    expect(u?.state.hands[0].work[0].map((c) => c.rank)).toEqual(['5', '4', '3', '2']);
+    expect(u?.state.hands[0].work[2].map((c) => c.rank)).toEqual(['6']);
+  });
+
+  it('still builds on the end first', () => {
+    const ace = card('A', 'clubs');
+    const s = state({ waste: [ace], work: [[three(), two()], [], [], []] });
+    const r = apply(s, { kind: 'play', seat: 0, from: { kind: 'waste' }, to: { kind: 'work', index: 0 }, count: 1 });
+    expect(r?.state.hands[0].work[0].map((c) => c.rank)).toEqual(['3', '2', 'A']);
+  });
+
+  it('is where a tap sends a card nothing else takes', () => {
+    const four = card('4', 'diamonds');
+    const s = state({ waste: [four], work: [[three(), two()], [], [card('9', 'clubs')], [card('J', 'clubs')]] });
+    expect(autoTarget(s, 0, { kind: 'waste' }, 1)).toEqual({ kind: 'work', index: 0 });
   });
 });
 
