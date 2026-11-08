@@ -12,8 +12,7 @@ import {
   noChips, roundScores, sameNertzPile, takeBackChip, throwChip, unstick,
 } from './nertz';
 import {
-  CHIP_RADIUS, NERTZ_HEIGHT, NERTZ_WIDTH, Rect, cardSpot, chipHome, chipMiddle, foundationZone, handSpot,
-  middleZone, overlap, pileSpot, workZone, FOUNDATION_INDICES, workIndices,
+  CHIP_RADIUS, NertzLayout, Rect, nertzHeightFor, overlap, FOUNDATION_INDICES, workIndices,
 } from './nertz-layout';
 import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
 import { PointerSample, pointerVelocity } from './gesture';
@@ -169,13 +168,19 @@ export class NertzScene {
   // One drag per finger, which is the whole of what makes this two-player:
   // each pointer carries its own hand and neither knows about the other.
   private drags = new Map<number, Drag>();
+  // Where everything sits, at the height this board was built.
+  private readonly layout: NertzLayout;
 
   constructor(parent: HTMLElement, init: NertzInit) {
     this.init(init);
+    // Built to the shape of the box it is shown in, so the felt reaches both
+    // sides of the screen - see NertzLayout.
+    const aspect = parent.clientWidth > 0 ? parent.clientHeight / parent.clientWidth : undefined;
+    this.layout = new NertzLayout(nertzHeightFor(aspect));
     this.board = createBoard({
       parent,
-      width: NERTZ_WIDTH,
-      height: NERTZ_HEIGHT,
+      width: this.layout.width,
+      height: this.layout.height,
       backgroundColor: FELT_CLEAR_COLOR,
       pixelRatio: renderScale(),
       // Lifted and swinging in the hand - see onDown.
@@ -232,16 +237,16 @@ export class NertzScene {
     const board = this.board;
     const put = (sprite: Sprite) => this.markings.add(sprite);
     for (const index of FOUNDATION_INDICES) {
-      const z = foundationZone(index);
+      const z = this.layout.foundationZone(index);
       put(drawSlot(board, z.x + CARD_WIDTH / 2, z.y + CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT));
     }
     for (const seat of SEATS) {
       for (const index of workIndices(this.workPiles)) {
-        const at = pileSpot(seat, { kind: 'work', index }, this.workPiles);
+        const at = this.layout.pileSpot(seat, { kind: 'work', index }, this.workPiles);
         put(drawSlot(board, at.x, at.y, CARD_WIDTH, CARD_HEIGHT));
       }
       for (const kind of ['nertz', 'waste', 'stock'] as const) {
-        const at = handSpot(seat, kind);
+        const at = this.layout.handSpot(seat, kind);
         put(drawSlot(board, at.x, at.y, CARD_WIDTH, CARD_HEIGHT));
         if (kind === 'stock') {
           // The empty stock is a slot rather than a card, and is the one
@@ -269,7 +274,7 @@ export class NertzScene {
     let n = 0;
     for (const { cards, seat } of this.everyPile()) {
       for (const card of cards) {
-        const stock = handSpot(seat, 'stock');
+        const stock = this.layout.handSpot(seat, 'stock');
         const sprite = this.makeSprite(card, stock.x, stock.y);
         // Dealt out of the stock, a card at a time.
         sprite.setAlpha(0);
@@ -319,7 +324,7 @@ export class NertzScene {
   // --- drawing the state ----------------------------------------------------
 
   private position(seat: Seat, pile: NertzPile, index: number, count: number): { x: number; y: number } {
-    const at = cardSpot(seat, pile, index, count, this.workPiles);
+    const at = this.layout.cardSpot(seat, pile, index, count, this.workPiles);
     // A deep pile reads as one: a sliver of thickness toward the middle of
     // the table, so a Nertz pile of thirteen is not mistaken for a card.
     if (pile.kind === 'nertz' || pile.kind === 'stock') {
@@ -394,7 +399,7 @@ export class NertzScene {
     if (!(sprite instanceof CardSprite)) {
       // An empty stock: a slot rather than a card.
       for (const seat of SEATS) {
-        const at = handSpot(seat, 'stock');
+        const at = this.layout.handSpot(seat, 'stock');
         if (Math.abs(pointer.x - at.x) <= CARD_WIDTH / 2 && Math.abs(pointer.y - at.y) <= CARD_HEIGHT / 2) {
           this.draw(seat);
           return;
@@ -542,9 +547,9 @@ export class NertzScene {
       if (area < MIN_OVERLAP || !canDrop(this.state, drag.seat, cards, pile)) return;
       if (!best || area > best.area) best = { pile, area };
     };
-    for (const index of FOUNDATION_INDICES) consider({ kind: 'foundation', index }, foundationZone(index));
+    for (const index of FOUNDATION_INDICES) consider({ kind: 'foundation', index }, this.layout.foundationZone(index));
     for (const index of workIndices(this.workPiles)) {
-      consider({ kind: 'work', index }, workZone(drag.seat, index, this.state.hands[drag.seat].work[index].length, this.workPiles));
+      consider({ kind: 'work', index }, this.layout.workZone(drag.seat, index, this.state.hands[drag.seat].work[index].length, this.workPiles));
     }
     return (best as { pile: NertzPile } | undefined)?.pile;
   }
@@ -617,7 +622,7 @@ export class NertzScene {
   }
 
   private chipSpot(seat: Seat): { x: number; y: number } {
-    return this.chips[seat] ? chipMiddle(seat) : chipHome(seat);
+    return this.chips[seat] ? this.layout.chipMiddle(seat) : this.layout.chipHome(seat);
   }
 
   private chipHeld(seat: Seat): boolean {
@@ -689,7 +694,7 @@ export class NertzScene {
     const chip = this.chipSprites[seat];
     const board = this.toBoard(pointer);
     const rect: Rect = { x: chip.x - CHIP_RADIUS, y: chip.y - CHIP_RADIUS, width: CHIP_RADIUS * 2, height: CHIP_RADIUS * 2 };
-    const over = overlap(rect, middleZone()) > 0;
+    const over = overlap(rect, this.layout.middleZone()) > 0;
     const thrown = drag.moved &&
       isMiddleFlick(pointerVelocity(drag.samples, { x: board.x, y: board.y, t: pointer.event.timeStamp }), seat);
 
@@ -761,7 +766,7 @@ export class NertzScene {
   }
 
   gameSize(): { width: number; height: number } {
-    return { width: NERTZ_WIDTH, height: NERTZ_HEIGHT };
+    return { width: this.layout.width, height: this.layout.height };
   }
 
   private endRound(nertz: Seat | undefined): void {
