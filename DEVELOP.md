@@ -340,7 +340,7 @@ because none of it draws anything.
 
 ```bash
 npx ng build
-(cd dist/web-solitaire/browser && python3 -m http.server 4380) &
+node tools/serve-dist.mjs &   # nginx's fallback to index.html, so a reload works
 npm run smoke -- --host=http://localhost:4380
 ```
 
