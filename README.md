@@ -1,8 +1,9 @@
 # web-solitaire
 
-Twelve solitaires, in a browser, for one person. No account, no server, no
-network — the game is a directory of static files, and everything it remembers
-about you is in your browser's own storage.
+Eighteen card games, in a browser, for one person — fifteen solitaires, two
+games of squares played for a score, and blackjack against the dealer. No
+account, no server, no network — the game is a directory of static files, and
+everything it remembers about you is in your browser's own storage.
 
 **Play it: [solitaire.exterkamp.codes](https://solitaire.exterkamp.codes)**
 
@@ -46,8 +47,8 @@ about you is in your browser's own storage.
 <table>
 <tr>
 <td width="20%" align="center"><img src="docs/screenshots/pokersquares.webp" alt="Poker Squares, part way through a hand"><br><b>Poker Squares</b></td>
-<td width="20%"></td>
-<td width="20%"></td>
+<td width="20%" align="center"><img src="docs/screenshots/cribbagesquares.webp" alt="Cribbage Squares, part way through a hand"><br><b>Cribbage Squares</b></td>
+<td width="20%" align="center"><img src="docs/screenshots/blackjack.webp" alt="Blackjack, a hand being played"><br><b>Blackjack</b></td>
 <td width="20%"></td>
 <td width="20%"></td>
 </tr>
@@ -95,9 +96,8 @@ empty refills from it before you can use it.
 rank ignoring suit, but pick up only a run that is all one suit — so every
 convenient placement is a card buried on purpose. A suit leaves as a finished
 king-to-ace run, all thirteen at once, and the deck will not deal while any
-column stands empty. It is here rather than Spider because ten columns of a
-double deck come out at about thirty-six pixels a card on a phone, and the
-cards are the game.
+column stands empty. Seven columns at Klondike's card size, for anybody who
+wants the game without Spider's smaller cards.
 
 **Scorpion** is Yukon's grip with Spider's order. A face-up card comes away
 with everything piled on it, in whatever state those cards are in, and may
@@ -133,7 +133,7 @@ to the top.
 
 *And the quick ones, which build nothing and sort nothing:*
 
-**Tri Peaks** was the first of these and is the reason there are four. Three
+**Tri Peaks** was the first of these and is the reason the rest are here. Three
 peaks of cards, one card face up beside the deck, and any card you can see
 that is one rank either side of it can be taken — the ranks go round the
 corner, so an ace follows a king. The whole game is noticing, and it takes two
@@ -169,12 +169,29 @@ never be thrown away, which is where the name and the difficulty come from.
 The only decision in it is what to move into an empty column. You win about
 one hand in thirty-five.
 
+*And the ones played for a score, where every hand ends on a number:*
+
 **Poker Squares** turns the deck a card at a time into a five-by-five grid,
 anywhere there is room, and never lets a card move again. The five rows and
 five columns are ten poker hands, scored on the American table as they fill:
 a pair is two, a royal flush a hundred. Two hundred wins, and every hand ends
 on a score either way, so the record book keeps your best. There is no undo:
 the next card is already showing.
+
+**Cribbage Squares** is the same idea at the cribbage board: sixteen cards into
+a four-by-four grid, each touching one already down, and then a starter turned
+that belongs to all eight rows and columns at once. Fifteens, pairs, runs,
+flushes and his nobs, as cribbage counts them; sixty-one, once round the board,
+wins.
+
+**Blackjack** is you against the dealer through a two-deck shoe, with the
+common casino rules: the dealer stands on every seventeen, a blackjack pays
+three to two, double on any two cards, split a pair once, no insurance. A shoe
+is won by leaving it with more chips than you sat down with, and the chips
+come with you to the next one. The table is printed the way a casino's is,
+your chips sit in a pile behind your cards, and a bet is tossed off it into
+the betting circle — paid into the circle from the house when you win, swept
+away to it when you lose.
 
 </td>
 <td width="50%" valign="top">
@@ -200,9 +217,17 @@ the next card is already showing.
   a throw the foundations will not accept costs nothing — it lands as an
   ordinary drop would have. Games with no foundations have no such gesture,
   because there would be nothing for it to mean.
+* **Press an empty cell** in Poker Squares and Cribbage Squares to put the
+  turned card there — or drag it. In La Belle Lucie's last deal, a tap on a
+  buried card is the merci.
+* **Buttons** play Blackjack: bet 10, 20 or 50, then hit, stand, double or
+  split. A line under the table says what the cards add up to, and how the
+  last hand went.
 * **Undo** as far back as you like, including past a win. Undoing costs
   nothing: a score is a measure of the game you played, and an undone move is
-  a game that did not happen.
+  a game that did not happen. Except in the squares games and Blackjack, where
+  every move turns a card nobody has seen — an undo there would be a look at
+  the next one, so there is no Undo button at all.
 * **Finish** appears once every card is face up and the rest of the game is a
   formality, and plays it out. Only in the games that have such a position:
   in the Spider family a suit goes home the moment it is finished, so the
@@ -248,23 +273,36 @@ interruption rather than the play. The time bonus is the other half of that
 bargain — finishing quickly is still worth something, thinking slowly is not
 worth anything at all.
 
-That is Klondike's, and Klondike is the only game here with a score in that
-sense. Tri Peaks keeps its own: every card taken without turning the deck is
-worth more than the last, and clearing a peak is worth fifteen.
+That is Klondike's, and Klondike is the only solitaire here with a score in
+that sense. Tri Peaks keeps its own: every card taken without turning the deck
+is worth more than the last, and clearing a peak is worth fifteen.
 
-The other ten have never had a score, and none is invented for them. What
-the board shows instead is whichever number that game's players actually
-watch — free cells in FreeCell and Seahaven, cards still face down in Yukon
-and the Spider family, rows left in the deck in Spiderette, cards left in the
-reserve in Canfield, cards still standing in Pyramid, Golf and Aces Up. A score bolted onto a game that does not have one is a
-number that measures nothing.
+The games played for a score keep the one they are played for, and nothing
+else: the poker hands in Poker Squares (200 wins), the cribbage count in
+Cribbage Squares (61 wins), and your chips at Blackjack, shown as a stack on
+the felt whatever the score setting says. No time bonus in any of them — the
+points are the game, and playing quickly is not.
+
+The rest have never had a score, and none is invented for them. What the
+board shows instead is whichever number that game's players actually watch —
+free cells in FreeCell and Seahaven, cards still face down in Yukon and the
+Spider family, rows left in the deck in Spider and Spiderette, cards left in
+the reserve in Canfield, cards still to go up in Calculation, redeals and then
+the merci in La Belle Lucie, cards still standing in Pyramid, Golf and Aces
+Up. A score bolted onto a game that does not have one is a number that
+measures nothing.
 
 ## What is remembered
 
 Games played and won, win rate, best time, fewest moves, average length of a
-win, current streak and longest streak — kept separately for each game, in
-your browser's own storage. A game counts as played once you have made a move
-in it, so dealing a hand, looking at it and dealing another is free.
+win, current streak and longest streak — kept separately for each game, and
+for Klondike's draw and Spider's suits, in your browser's own storage. A game
+counts as played once you have made a move in it, so dealing a hand, looking
+at it and dealing another is free. In the games played for a score the best
+score is the best of every hand, won or not; Blackjack's is your biggest
+bankroll, and your chips are kept from one shoe to the next.
+
+A hand left mid-game is kept too, and offered back from that game's page.
 
 Clearing your browser's storage clears the record. That is a real limitation
 and a deliberate one: the alternative is an account, a password, and somewhere
@@ -290,10 +328,13 @@ in a waiting room.
 
 ## Building it
 
-Angular for the pages, [felt](https://github.com/exterkamp/felt) for the board, and a hard line between them. One
-board runs all twelve games; each game is a rules module of pure functions
-plus a description of where its piles are printed. Adding the twelfth touched
-two shared files and added three of its own.
+Angular for the pages, [felt](https://github.com/exterkamp/felt) for the
+board, and a hard line between them. One board runs every game; each game is
+a rules module of pure functions plus a description of where its piles are
+printed — and, for the games that need them, its own buttons, the printing on
+its cloth, or a seat at the table for its chips. felt does the drawing: the
+cards, the fans, the lettering bent round a blackjack table, and the chips
+tossed into the circle.
 
 ```bash
 npm install

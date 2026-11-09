@@ -201,6 +201,26 @@
       </a>
       <p class="menu__note">{{ line('pokersquares') }}</p>
     </div>
+
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/cribbagesquares.webp')" routerLink="/setup/cribbagesquares">
+        <span>Cribbage Squares</span>
+        @if (inProgress('cribbagesquares')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('cribbagesquares') }}</p>
+    </div>
+
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/blackjack.webp')" routerLink="/setup/blackjack">
+        <span>Blackjack</span>
+        @if (inProgress('blackjack')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('blackjack') }}</p>
+    </div>
   </div>
 
   <h2 class="menu__family">Two players</h2>

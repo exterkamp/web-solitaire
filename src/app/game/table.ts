@@ -1,5 +1,5 @@
 import { Board, BorderPattern, FeltPaint, Sprite, paintFelt as paintOnFelt, paintFeltFrame } from '@exterkamp/felt';
-import type { GameId } from './table-game';
+import type { GameId, PrintMark } from './table-game';
 import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
 
 // The table the game is played on: felt, the pool of light falling on it,
@@ -378,6 +378,8 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
   blackhole: 'guilloche',
   acesup: 'greek-key',
   pokersquares: 'dentil',
+  cribbagesquares: 'running-dog',
+  blackjack: 'chevron',
 };
 
 // Faint: it is printing on the cloth, under the slots and the cards, and has
@@ -409,6 +411,17 @@ export function paintTableBorder(board: Board, game: GameId, rosette = true): Fe
     { ...paint, alpha: 0.2, x: board.width / 2, y: inset + BORDER_BAND + 24 + ROSETTE_SIZE / 2 }));
   for (const mark of marks) mark.depth = BORDER_DEPTH;
   return marks;
+}
+
+/**
+ * A game's own printing, in the gold its name is lettered in and worn into
+ * the cloth the same way. Each mark is placed by its middle, `padX` over for
+ * the border every board's x is measured inside of.
+ */
+export function paintPrinting(board: Board, marks: readonly PrintMark[], padX: number): FeltPaint[] {
+  return marks.map(({ x, y, alpha = 0.85, ...mark }) =>
+    paintOnFelt(board, 'text' in mark ? { font: DISPLAY_FONT, weight: DISPLAY_WEIGHT, ...mark } : mark,
+      { color: LABEL_GOLD_CSS, wear: 0.3, alpha, x: x + padX, y }));
 }
 
 /**

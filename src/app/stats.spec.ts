@@ -27,7 +27,7 @@ describe('the record book', () => {
   it('files every game under a variant it keeps', () => {
     const games: GameId[] = [
       'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
-      'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares',
+      'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares', 'cribbagesquares', 'blackjack',
     ];
     for (const game of games) {
       expect(ALL_VARIANTS).toContain(variantOf(game, 1));
@@ -52,7 +52,7 @@ describe('the record book', () => {
   // Only the two games that have a score get a row for one.
   it('marks exactly the scored games as scored', () => {
     expect(VARIANT_GROUPS.filter((g) => g.scored).map((g) => g.title))
-      .toEqual(['Klondike', 'Tri Peaks', 'Poker Squares']);
+      .toEqual(['Klondike', 'Tri Peaks', 'Poker Squares', 'Cribbage Squares', 'Blackjack']);
   });
 });
 

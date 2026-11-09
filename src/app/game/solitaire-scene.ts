@@ -1,6 +1,6 @@
 import {
   Board, BoardPointer, Sprite, Toaster, Tween, cardsReady, createBoard, defineStack, flipCard, formatNumber,
-  riffleShuffle, toastsOf,
+  riffleShuffle, stackOffsets, toastsOf,
 } from '@exterkamp/felt';
 import { markBooted, renderScale } from './lite';
 import {
@@ -19,7 +19,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
-import { CHIP_STACK_REACH, ScoreChips } from './chip';
+import { CHIP_DIAMETER, CHIP_STACK_REACH, ChipTable, ScoreChips } from './chip';
 import { DeckTheme } from './deck-theme';
 import { DeckStyle } from './deck-style';
 import { CardSprite, ghostSuit, renderCourtArt, setDeck } from './card-sprite';
@@ -33,7 +33,7 @@ import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { GameSession, SessionSnapshot } from './session';
 import { firstBoardDealt } from './first-board';
 import {
-  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintTableBorder,
+  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintPrinting, paintTableBorder,
 } from './table';
 
 // The board: everything you can see and everything you can do to it.
@@ -238,6 +238,9 @@ export class SolitaireScene {
   private readonly setBoardPaused: (paused: boolean) => void;
   // The score, in chips. See chip.ts.
   private chips?: ScoreChips;
+  // Or, for a seat played for chips, the stack and the circle. See
+  // TableGame.chipSeat.
+  private chipTable?: ChipTable;
   // What a move scored, rising off the card that scored it. See scored().
   private toasts?: Toaster;
   // The side each card is turning to, while it turns: flipCard only says so
@@ -306,6 +309,7 @@ export class SolitaireScene {
   destroy(): void {
     this.stopInput();
     this.chips?.destroy();
+    this.chipTable?.destroy();
     this.toasts?.destroy();
     this.board.destroy();
   }
@@ -355,10 +359,22 @@ export class SolitaireScene {
     this.toasts = toastsOf(this.board);
     // In the band between the top row and the tableau, to the right of the
     // game's name - and sliding down the board with it.
-    this.chips = new ScoreChips(
-      this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18,
-    );
-    this.chips.setDrop(this.drop);
+    // Or, at a seat played for chips, your stack and your bet - see
+    // TableGame.chipSeat. A stack's x is the middle of its first column.
+    const seat = this.table.chipSeat;
+    if (seat) {
+      const place = (at: { x: number; y: number }, columns = 1) =>
+        ({ x: FRAME_PAD + at.x - (columns > 1 ? CHIP_STACK_REACH / 2 : 0), y: at.y });
+      this.chipTable = new ChipTable(this.board, {
+        bank: place(seat.bank, 3), bet: place(seat.bet), house: place(seat.house),
+      });
+      this.chipTable.setDrop(this.drop);
+    } else {
+      this.chips = new ScoreChips(
+        this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18,
+      );
+      this.chips.setDrop(this.drop);
+    }
 
     // The lettering is painted once, so its face has to be in first.
     await fontsReady().catch(() => undefined);
@@ -416,6 +432,9 @@ export class SolitaireScene {
   private layoutNeeds(): number {
     const bottoms = this.table.slots(this.handedness)
       .map((slot) => (slot.y ?? TABLEAU_TOP_Y + CARD_HEIGHT / 2) + CARD_HEIGHT / 2);
+    // A seat's chips are part of the layout too, and need the felt they sit on.
+    const seat = this.table.chipSeat;
+    if (seat) bottoms.push(seat.bank.y + CHIP_DIAMETER);
     return Math.max(...bottoms) + (GAME_HEIGHT - BOARD_FLOOR);
   }
 
@@ -466,6 +485,16 @@ export class SolitaireScene {
     return cards.map((_, i) => this.table.fanStep(ref, cards, i));
   }
 
+  private across(ref: PileRef): boolean {
+    return this.table.fansAcross?.(ref) ?? false;
+  }
+
+  // How wide a spread hand may get: the table between the rails, less the
+  // card at each end.
+  private get acrossRoom(): number {
+    return this.table.width - 2 * BOARD_MARGIN - CARD_WIDTH;
+  }
+
   private fanDepth(ref: PileRef, cards: readonly Card[]): number {
     return this.fanSteps(ref, cards).reduce((sum, step) => sum + step, 0);
   }
@@ -493,6 +522,7 @@ export class SolitaireScene {
         this.drop = fixed;
         this.markings.setY(fixed);
         this.chips?.setDrop(fixed);
+        this.chipTable?.setDrop(fixed);
       }
       return;
     }
@@ -500,7 +530,7 @@ export class SolitaireScene {
       .piles(this.session.state)
       // Only the piles that hang downward: a pile that fans up out of its
       // slot, like a draw-three waste, needs room above rather than below.
-      .filter((pile) => !this.table.fansUp(pile.ref))
+      .filter((pile) => !this.table.fansUp(pile.ref) && !this.across(pile.ref))
       .map((pile) => this.fanDepth(pile.ref, pile.cards));
     const deepest = Math.max(0, ...depths);
     const slack = this.floorY - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
@@ -515,6 +545,7 @@ export class SolitaireScene {
       this.markings.setY(next);
     }
     this.chips?.setDrop(next, animate ? MOVE_MS : 0);
+    this.chipTable?.setDrop(next, animate ? MOVE_MS : 0);
   }
 
   // How far down its pile each card sits, squeezed to fit if the pile is
@@ -524,6 +555,12 @@ export class SolitaireScene {
   // needed by the deepest pile a game can produce - which is what it was for,
   // and why it now almost never happens.
   private fanOffsets(ref: PileRef, cards: readonly Card[]): number[] {
+    // A hand spread across the table is felt's own fan: squeezed evenly to
+    // the room between the rails once it would reach them.
+    if (this.across(ref)) {
+      const stack = defineStack({ id: pileKey(ref), x: 0, y: 0, fan: 'right', maxSpread: this.acrossRoom });
+      return stackOffsets(stack, this.fanSteps(ref, cards).slice(1));
+    }
     const steps = this.fanSteps(ref, cards);
     const total = steps.reduce((sum, step) => sum + step, 0);
     const room = this.floorY - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
@@ -541,6 +578,11 @@ export class SolitaireScene {
   private cardPosition(ref: PileRef, index: number, cards: readonly Card[]): { x: number; y: number } {
     const base = this.pileBase(ref);
     const offsets = this.fanOffsets(ref, cards);
+    if (this.across(ref)) {
+      // Centred on the slot, so a hand grows out both ways as it is dealt.
+      const spread = offsets[offsets.length - 1] ?? 0;
+      return { x: base.x - spread / 2 + offsets[index], y: base.y };
+    }
     if (!this.table.fansUp(ref)) return { x: base.x, y: base.y + offsets[index] };
     // Upward, measured from the card at the end of the pile rather than from
     // the one at the start: the newest card stays in the slot and the older
@@ -585,6 +627,8 @@ export class SolitaireScene {
     // the band between the top row and the tableau, which is the only strip
     // of felt on this board that no card ever covers.
     put(drawSectionLabel(board, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label));
+    // And whatever else this game has printed on its cloth.
+    for (const mark of paintPrinting(board, this.table.printing ?? [], FRAME_PAD)) put(mark);
 
     // The highlight, kept hidden until a run is dragged over a pile that
     // would take it. Made once rather than per drag: a picture painted in the
@@ -836,6 +880,7 @@ export class SolitaireScene {
   private publish(): void {
     const view = this.table.view(this.session.state);
     this.renderChips(view.score);
+    this.chipTable?.show(view.score ?? 0, view.bet ?? 0);
     this.report.changed({
       // Whatever this game keeps: a score and a stock, or free cells.
       ...view,
@@ -1133,6 +1178,18 @@ export class SolitaireScene {
     return this.play({ kind: 'play', from: ref, to, count: liftable.length });
   }
 
+  /** One of the game's own buttons, pressed. See GameView.actions. */
+  act(action: string): boolean {
+    if (this.locked) return false;
+    // No "+20" rising off the table: the game played with buttons is played
+    // for chips, and the chips themselves fly to say what a hand paid.
+    if (!this.session.act(action)) return false;
+    this.renderBoard(true);
+    this.publish();
+    if (this.session.won) this.onWin();
+    return true;
+  }
+
   /** The board's own dimensions, for placing DOM over it. */
   gameSize(): { width: number; height: number } {
     return { width: this.width, height: this.height };
@@ -1269,7 +1326,7 @@ export class SolitaireScene {
     const session = this.session;
     const seconds = session.elapsed();
     // Not for a game played to a target: there the points are the game.
-    const bonus = this.table.target === undefined ? timeBonus(seconds) : 0;
+    const bonus = this.table.forPoints ? 0 : timeBonus(seconds);
     const score = this.table.view(session.state).score ?? 0;
     // Let the cards fall for a moment before the page says anything. The
     // cascade *is* the reward; a panel over it half a second in is a
@@ -1361,7 +1418,7 @@ export class SolitaireScene {
       // as the pile is long: a run dropped anywhere down a column is meant
       // for that column, not for the felt beside it.
       const offsets = this.fanOffsets(slot.ref, pile);
-      const depth = this.table.fansUp(slot.ref) ? 0 : (offsets[offsets.length - 1] ?? 0);
+      const depth = this.table.fansUp(slot.ref) || this.across(slot.ref) ? 0 : (offsets[offsets.length - 1] ?? 0);
       zones.push({
         ref: slot.ref,
         rect: {

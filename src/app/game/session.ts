@@ -161,7 +161,18 @@ export class GameSession<S> {
    * changes nothing at all - not the state, not the history, not the clock.
    */
   play(move: Move): TableMoveResult<S> | undefined {
-    const result = this.game.apply(this.current, move);
+    return this.record(this.game.apply(this.current, move));
+  }
+
+  /**
+   * One of the game's own buttons, pressed: the same as a move in every way
+   * the history and the clock care about. See TableGame.act.
+   */
+  act(action: string): TableMoveResult<S> | undefined {
+    return this.record(this.game.act?.(this.current, action));
+  }
+
+  private record(result: TableMoveResult<S> | undefined): TableMoveResult<S> | undefined {
     if (!result) return undefined;
 
     this.history.push(this.current);

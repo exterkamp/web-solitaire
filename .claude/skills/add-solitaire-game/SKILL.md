@@ -52,10 +52,14 @@ Implement `TableGame<S>` from `table-game.ts`. Key decisions, not defaults:
   the screen either way, but a wider board makes every card smaller.
 - `homeFor`: omit it if the game has no foundations to flick a card to (a
   present-but-wrong answer is worse than no answer).
-- A game played for points rather than to clear the table (Poker Squares)
-  sets `target` — the hand ends on a score, short hands are recorded with it,
-  no time bonus. `undoable: false` turns undo off where a move reveals an
-  unseen card, and `placeAt` makes a press on an empty pile a move.
+- A game played for points rather than to clear the table (the squares
+  games, Blackjack) sets `forPoints: { unit }` — the hand ends on a score,
+  short hands are recorded with it and the `note` its view gives, no time
+  bonus. `undoable: false` turns undo off where a move reveals an unseen
+  card, and `placeAt` makes a press on an empty pile a move.
+- A game played with buttons rather than by moving cards (Blackjack) gives
+  `actions` and a `status` line in its view and implements `act` — the
+  session records an action exactly like a move.
 - `GameView` (from `view()`): only add a new field if the game has a genuinely
   new number to show. Three fields have been added across seven games total —
   treat a fourth as a sign to double check the game really needs it.

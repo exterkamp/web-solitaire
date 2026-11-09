@@ -33,6 +33,9 @@ import { calculationTable } from '../../game/calculation-table';
 import { lucieTable } from '../../game/lucie-table';
 import { blackHoleTable } from '../../game/blackhole-table';
 import { pokerSquaresTable } from '../../game/pokersquares-table';
+import { cribbageSquaresTable } from '../../game/cribbagesquares-table';
+import { blackjackTable } from '../../game/blackjack-table';
+import { loadBank, saveBank } from '../../bankroll';
 import { formatDuration } from '../../format';
 import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
@@ -55,9 +58,10 @@ import { Autosave, SavedGames } from '../../saved-games';
   templateUrl: './play.html',
 })
 export class Play implements AfterViewInit, OnDestroy {
-  // Protected rather than private: the template reads scoreDisplay() to
-  // decide whether the numeric score is shown or visually hidden in favour
-  // of the chip stack on the felt. See play.html.
+  // Protected rather than private: the template reads it, and scoreDisplay
+  // below is the setting as this game applies it - whether the numeric score
+  // is shown or visually hidden in favour of the chip stack on the felt. See
+  // play.html.
   protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
   private readonly savedGames = inject(SavedGames);
@@ -114,7 +118,7 @@ export class Play implements AfterViewInit, OnDestroy {
   protected readonly showStuck = computed(
     () =>
       this.settings.warnStuck() &&
-      this.target === undefined &&
+      !this.forPoints &&
       this.view().stuck &&
       !this.win() &&
       this.waved() !== this.view().moves,
@@ -139,16 +143,20 @@ export class Play implements AfterViewInit, OnDestroy {
   // And a saved Spider keeps its suits.
   private readonly suits: SuitCount = this.saved ? asSuitCount(this.saved.suits) : this.settings.spiderSuits();
   private readonly table = makeTable(this.gameId, this.drawCount, this.suits);
-  // The score a hand is won at, in the game played for points. See
-  // TableGame.target.
-  protected readonly target = this.table.target;
+  // What a game played for points calls its points. See TableGame.forPoints.
+  protected readonly forPoints = this.table.forPoints;
   protected readonly undoable = this.table.undoable !== false;
+  // Chips on the felt or a number in the bar - the setting's choice, except
+  // in the game whose score is chips, where it is always chips.
+  protected readonly scoreDisplay = computed(() =>
+    this.table.scoreIsChips ? 'chips' : this.settings.scoreDisplay(),
+  );
   // A hand of that game that ended short of it. Not stuck - there is nothing
   // to look for - but over, with a score, and shown whatever the "warn when
   // stuck" setting says, because it is the end of the game rather than a
   // hint about one.
   protected readonly handOver = computed(
-    () => this.target !== undefined && this.view().stuck && !this.win(),
+    () => !!this.forPoints && this.view().stuck && !this.win(),
   );
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount, this.suits);
@@ -177,7 +185,14 @@ export class Play implements AfterViewInit, OnDestroy {
         this.stats.recordLoss(this.variant, score);
         this.counted = true;
       }
-      this.announcement.set(`Hand over. ${score} points, ${(this.target ?? 0) - score} short of ${this.target}.`);
+      this.announcement.set(`Hand over. ${score} ${this.forPoints?.unit}. ${this.view().note ?? ''}`);
+    });
+    // Blackjack's chips go with you to the next shoe - whatever is in front
+    // of you, not counting a bet still on the table, which a shoe dealt over
+    // mid-hand forfeits.
+    effect(() => {
+      const chips = this.view().score;
+      if (this.gameId === 'blackjack' && this.view().moves > 0 && chips !== undefined) saveBank(chips);
     });
     effect(() => {
       if (this.showStuck()) {
@@ -210,7 +225,7 @@ export class Play implements AfterViewInit, OnDestroy {
       backColor: this.settings.backColor(),
       handedness: this.settings.handedness(),
       showShuffle: this.settings.showShuffle(),
-      scoreDisplay: this.settings.scoreDisplay(),
+      scoreDisplay: this.scoreDisplay(),
       deckStyle: this.settings.deckStyle(),
       resume: this.saved?.snapshot,
       events: {
@@ -410,6 +425,10 @@ export class Play implements AfterViewInit, OnDestroy {
 
   protected finish(): void {
     this.scene()?.finish();
+  }
+
+  protected act(action: string): void {
+    this.scene()?.act(action);
   }
 
   protected keepLooking(): void {
@@ -649,6 +668,10 @@ function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
       return acesUpTable();
     case 'pokersquares':
       return pokerSquaresTable();
+    case 'cribbagesquares':
+      return cribbageSquaresTable();
+    case 'blackjack':
+      return blackjackTable(loadBank);
     default:
       return klondikeTable(drawCount);
   }
