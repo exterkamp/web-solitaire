@@ -124,6 +124,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     freecell: 'Nothing hidden · almost always winnable',
     yukon: 'No deck to turn · dig for what is buried',
     canfield: 'Thirteen in reserve · the gambling one',
+    spider: 'Two decks, ten columns · one, two or four suits',
     spiderette: 'Build down by rank · carry a suit at a time',
     scorpion: 'One suit only · the hardest here',
     seahaven: 'Ten columns, four cells · kings only in a gap',

@@ -26,7 +26,7 @@ describe('the record book', () => {
 
   it('files every game under a variant it keeps', () => {
     const games: GameId[] = [
-      'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
+      'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
       'tripeaks', 'pyramid', 'golf', 'acesup',
     ];
     for (const game of games) {
@@ -35,13 +35,18 @@ describe('the record book', () => {
     }
   });
 
-  // Klondike is two games and is recorded as two; everything else is one.
+  it('keeps Spider\'s suits apart, and Spiderette out of Spider', () => {
+    expect([1, 2, 4].map((n) => variantOf('spider', 1, n as 1 | 2 | 4))).toEqual(['spider-1', 'spider-2', 'spider-4']);
+    expect(variantOf('spiderette', 1, 4)).toBe('spiderette');
+  });
+
+  // Klondike is two games and Spider three; everything else is one.
   it('keeps draw-one and draw-three apart, and only those', () => {
     expect(variantOf('klondike', 1)).toBe('klondike-1');
     expect(variantOf('klondike', 3)).toBe('klondike-3');
     expect(variantOf('golf', 3)).toBe('golf');
     expect(VARIANT_GROUPS.filter((g) => g.variants.length > 1).map((g) => g.title))
-      .toEqual(['Klondike']);
+      .toEqual(['Klondike', 'Spider']);
   });
 
   // Only the two games that have a score get a row for one.

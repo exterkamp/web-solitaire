@@ -13,6 +13,7 @@ import { pyramidTable } from './pyramid-table';
 import { scorpionTable } from './scorpion-table';
 import { seahavenTable } from './seahaven-table';
 import { spideretteTable } from './spiderette-table';
+import { spiderTable } from './spider-table';
 import { tripeaksTable } from './tripeaks-table';
 import { yukonTable } from './yukon-table';
 
@@ -23,7 +24,7 @@ import { yukonTable } from './yukon-table';
 // only that one.
 
 const TABLES: TableGame<any>[] = [
-  klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spideretteTable(),
+  klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spiderTable(1), spiderTable(4), spideretteTable(),
   scorpionTable(), seahavenTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(),
 ];
 

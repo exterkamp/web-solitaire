@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DrawCount } from './game/klondike';
+import { SuitCount, asSuitCount } from './game/spider';
 import { SessionSnapshot } from './game/session';
 import { GameId } from './game/table-game';
 import { Stats, variantOf } from './stats';
@@ -23,6 +24,8 @@ export interface SavedGame {
   // The rules it was dealt under. Klondike's draw can be changed on the setup
   // page while a game is saved, and the saved game keeps its own.
   drawCount: DrawCount;
+  // And Spider's suits, the same way. Absent for every other game.
+  suits?: SuitCount;
   savedAt: number;
   // For the setup page's "move 34 · 4:12", without reading the state.
   moves: number;
@@ -136,7 +139,7 @@ export class SavedGames {
   /** Deals over a saved game: it goes in the record book as a loss. */
   abandon(game: GameId): void {
     const saved = this.get(game);
-    if (saved && saved.moves > 0 && !saved.counted) this.stats.recordLoss(variantOf(game, saved.drawCount));
+    if (saved && saved.moves > 0 && !saved.counted) this.stats.recordLoss(variantOf(game, saved.drawCount, asSuitCount(saved.suits)));
     this.clear(game);
   }
 

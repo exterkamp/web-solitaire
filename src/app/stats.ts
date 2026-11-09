@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { DrawCount } from './game/klondike';
+import { SuitCount } from './game/spider';
 import { GameId } from './game/table-game';
 import { WinSummary } from './game/solitaire-scene';
 
@@ -25,6 +26,9 @@ export type Variant =
   | 'freecell'
   | 'yukon'
   | 'canfield'
+  | 'spider-1'
+  | 'spider-2'
+  | 'spider-4'
   | 'spiderette'
   | 'scorpion'
   | 'seahaven'
@@ -34,11 +38,13 @@ export type Variant =
   | 'blackhole'
   | 'acesup';
 
-export function variantOf(game: GameId, drawCount: DrawCount): Variant {
+export function variantOf(game: GameId, drawCount: DrawCount, suits: SuitCount = 1): Variant {
   // Klondike is the only game here that is two games. Everything else is
   // recorded under its own name, which is also its game id - the menu leans
   // on that when it adds a game's variants together.
   if (game === 'klondike') return drawCount === 3 ? 'klondike-3' : 'klondike-1';
+  // And Spider, three: one suit, two or four, each a different game to win.
+  if (game === 'spider') return `spider-${suits}`;
   return game;
 }
 
@@ -48,6 +54,9 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   freecell: 'FreeCell',
   yukon: 'Yukon',
   canfield: 'Canfield',
+  'spider-1': 'One suit',
+  'spider-2': 'Two suits',
+  'spider-4': 'Four suits',
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
@@ -59,7 +68,7 @@ export const VARIANT_LABELS: Record<Variant, string> = {
 };
 
 const VARIANTS: Variant[] = [
-  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion',
+  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spider-1', 'spider-2', 'spider-4', 'spiderette', 'scorpion',
   'seahaven', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
@@ -87,6 +96,7 @@ export const VARIANT_GROUPS: readonly VariantGroup[] = [
   { title: 'FreeCell', variants: ['freecell'], scored: false },
   { title: 'Yukon', variants: ['yukon'], scored: false },
   { title: 'Canfield', variants: ['canfield'], scored: false },
+  { title: 'Spider', variants: ['spider-1', 'spider-2', 'spider-4'], scored: false },
   { title: 'Spiderette', variants: ['spiderette'], scored: false },
   { title: 'Scorpion', variants: ['scorpion'], scored: false },
   { title: 'Seahaven Towers', variants: ['seahaven'], scored: false },
@@ -287,7 +297,9 @@ export class Stats {
    * having once you are choosing between them.
    */
   game(game: GameId): { played: number; won: number } {
-    const variants = VARIANTS.filter((v) => v.startsWith(game));
+    // By name and dash, not by prefix alone: Spider's variants are not
+    // Spiderette's, whatever the letters say.
+    const variants = VARIANTS.filter((v) => v === game || v.startsWith(`${game}-`));
     return variants.reduce(
       (total, variant) => {
         const mode = this.mode(variant);

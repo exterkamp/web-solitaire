@@ -16,10 +16,10 @@ about you is in your browser's own storage.
 <td width="25%" align="center"><img src="docs/screenshots/canfield.webp" alt="Canfield, part way through a hand"><br><b>Canfield</b></td>
 </tr>
 <tr>
+<td align="center"><img src="docs/screenshots/spider.webp" alt="Spider in two suits, part way through a hand"><br><b>Spider</b></td>
 <td align="center"><img src="docs/screenshots/spiderette.webp" alt="Spiderette, part way through a hand"><br><b>Spiderette</b></td>
 <td align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
 <td align="center"><img src="docs/screenshots/seahaven.webp" alt="Seahaven Towers, freshly dealt"><br><b>Seahaven Towers</b></td>
-<td></td>
 </tr>
 </table>
 

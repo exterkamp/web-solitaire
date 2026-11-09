@@ -21,6 +21,8 @@ import { freecellTable } from '../../game/freecell-table';
 import { yukonTable } from '../../game/yukon-table';
 import { tripeaksTable } from '../../game/tripeaks-table';
 import { spideretteTable } from '../../game/spiderette-table';
+import { spiderTable } from '../../game/spider-table';
+import { SuitCount, asSuitCount } from '../../game/spider';
 import { scorpionTable } from '../../game/scorpion-table';
 import { pyramidTable } from '../../game/pyramid-table';
 import { golfTable } from '../../game/golf-table';
@@ -127,9 +129,11 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly saved = this.savedGames.get(this.gameId);
   // A saved game keeps the draw it was dealt with.
   private readonly drawCount = this.saved?.drawCount ?? this.settings.drawCount();
-  private readonly table = makeTable(this.gameId, this.drawCount);
+  // And a saved Spider keeps its suits.
+  private readonly suits: SuitCount = this.saved ? asSuitCount(this.saved.suits) : this.settings.spiderSuits();
+  private readonly table = makeTable(this.gameId, this.drawCount, this.suits);
   // Which column of the record book this hand is going into.
-  private readonly variant = variantOf(this.gameId, this.drawCount);
+  private readonly variant = variantOf(this.gameId, this.drawCount, this.suits);
 
   constructor() {
     // The tab says which game is on the felt, not just the site name.
@@ -234,6 +238,7 @@ export class Play implements AfterViewInit, OnDestroy {
     this.savedGames.save({
       game: this.gameId,
       drawCount: this.drawCount,
+      suits: this.gameId === 'spider' ? this.suits : undefined,
       savedAt: Date.now(),
       moves: view.moves,
       counted: this.winRecorded || undefined,
@@ -576,7 +581,7 @@ export class Play implements AfterViewInit, OnDestroy {
 // adding a thirteenth is one line here rather than a conditional that grows a limb
 // each time - and the switch is exhaustive over GameId, so leaving a game out
 // is a compile error rather than a board that quietly deals Klondike.
-function makeTable(game: GameId, drawCount: DrawCount) {
+function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
   switch (game) {
     case 'freecell':
       return freecellTable();
@@ -584,6 +589,8 @@ function makeTable(game: GameId, drawCount: DrawCount) {
       return yukonTable();
     case 'canfield':
       return canfieldTable();
+    case 'spider':
+      return spiderTable(suits);
     case 'spiderette':
       return spideretteTable();
     case 'seahaven':

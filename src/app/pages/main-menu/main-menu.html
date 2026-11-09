@@ -75,6 +75,16 @@
     </div>
 
     <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/spider.webp')" routerLink="/setup/spider">
+        <span>Spider</span>
+        @if (inProgress('spider')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('spider') }}</p>
+    </div>
+
+    <div class="game">
       <a class="button" style="background-image: url('/game-thumbs/spiderette.webp')" routerLink="/setup/spiderette">
         <span>Spiderette</span>
         @if (inProgress('spiderette')) {

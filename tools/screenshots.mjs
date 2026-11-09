@@ -238,11 +238,18 @@ if (!thumbsOnly && wanted('setup-klondike')) {
 // does almost nothing in that game by design: a pair is two cards and has to
 // be dragged. Its picture is a pyramid, which is what it should be.
 for (const [game, rounds] of [
-  ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spiderette', 3],
+  ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spider', 3], ['spiderette', 3],
   ['scorpion', 3], ['seahaven', 0],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
 ]) {
-  if (wanted(game)) await board(game, rounds, game, true);
+  if (!wanted(game)) continue;
+  // Spider in two suits, black and red: one suit is a picture of nothing
+  // but spades, and four is too busy at this size to read as a game.
+  if (game === 'spider') {
+    await send('Page.navigate', { url: `${host}/` });
+    await evaluate(`localStorage.setItem('solitaire.spiderSuits', '2')`);
+  }
+  await board(game, rounds, game, true);
 }
 
 done(0);

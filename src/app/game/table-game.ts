@@ -22,6 +22,7 @@ export type GameId =
   | 'freecell'
   | 'yukon'
   | 'canfield'
+  | 'spider'
   | 'spiderette'
   | 'scorpion'
   | 'seahaven'
@@ -33,7 +34,7 @@ export type GameId =
   | 'acesup';
 
 export const GAME_IDS: readonly GameId[] = [
-  'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
+  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
   'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
@@ -47,6 +48,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   freecell: 'FreeCell',
   yukon: 'Yukon',
   canfield: 'Canfield',
+  spider: 'Spider',
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',

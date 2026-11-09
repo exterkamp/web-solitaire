@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
 import { DrawCount } from '../../game/klondike';
+import { SUIT_COUNTS, SuitCount, asSuitCount } from '../../game/spider';
 import { GameId, asGameId } from '../../game/table-game';
 import { formatDuration, formatPercent } from '../../format';
 import { SavedGames } from '../../saved-games';
@@ -118,6 +119,28 @@ const GUIDES: Record<GameId, Guide> = {
       'and paid five a card for whatever you got up - two thousand six ' +
       'hundred if you got them all - which is a business rather than a ' +
       'charity: a hand goes out perhaps one time in thirty.',
+  },
+  spider: {
+    title: 'Spider',
+    summary: 'Two decks across ten columns: build down by rank, carry only a run of one suit.',
+    setup:
+      'A hundred and four cards. Fifty-four go out in ten columns - six to ' +
+      'each of the first four, five to the rest - with only the top card of ' +
+      'each face up. The other fifty are the deck, five deals of ten. With ' +
+      'one suit the decks are eight sets of spades, with two they are spades ' +
+      'and hearts, and with four they are two ordinary decks.',
+    play:
+      'Build down by rank and ignore suit - any nine goes on any ten. But ' +
+      'only a run that is all one suit can be picked up and moved, so a card ' +
+      'placed on the wrong suit is buried until it can come away alone. An ' +
+      'empty column takes anything, and the deck will not deal while one is ' +
+      'open. Dealing puts one card face up onto every column at once.',
+    winning:
+      'Eight complete suits, king down to ace, each leaving the table the ' +
+      'moment it is finished. One suit is a game most people win; two is ' +
+      'where it starts to fight back; four, the real game, is lost far more ' +
+      'often than it is won. The smaller cards ten columns need are the ' +
+      'price of playing it on a phone.',
   },
   spiderette: {
     title: 'Spiderette',
@@ -284,6 +307,14 @@ const GUIDES: Record<GameId, Guide> = {
   },
 };
 
+const SUIT_LABELS: Record<SuitCount, string> = { 1: 'One', 2: 'Two', 4: 'Four' };
+const SUIT_NOTES: Record<SuitCount, string> = {
+  1: 'Every run is a run you can carry. The gentle one, and most hands go out.',
+  2: 'Black and red: half the cards you could build on are the wrong suit.',
+  4: 'The real game, two of each suit, and much the hardest of the three.',
+};
+const suitWords = (count: SuitCount): string => (count === 1 ? 'one suit' : `${SUIT_LABELS[count].toLowerCase()} suits`);
+
 @Component({
   imports: [RouterLink, ChipSelect],
   selector: 'app-game-setup',
@@ -314,6 +345,7 @@ export class GameSetup {
     const ms = saved.snapshot.playedMs;
     if (ms !== undefined) parts.push(formatDuration(Math.round(ms / 1000)));
     if (this.game === 'klondike') parts.push(saved.drawCount === 3 ? 'draw three' : 'draw one');
+    if (this.game === 'spider') parts.push(suitWords(asSuitCount(saved.suits)));
     return parts.join(' · ');
   }
 
@@ -340,11 +372,16 @@ export class GameSetup {
       : 'Three at a time, two free passes through the deck, and much the harder of the two.',
   );
 
+  protected readonly suitCounts = SUIT_COUNTS;
+  protected readonly suitLabel = (count: SuitCount): string => SUIT_LABELS[count];
+
+  protected readonly suitNote = computed(() => SUIT_NOTES[this.settings.spiderSuits()]);
+
   // This variant's own record rather than the game's: draw-three next to
   // draw-one is the comparison worth having, and the menu already shows the
   // two of them added together.
   protected record(): string | undefined {
-    const mode = this.stats.mode(variantOf(this.game, this.settings.drawCount()));
+    const mode = this.stats.mode(variantOf(this.game, this.settings.drawCount(), this.settings.spiderSuits()));
     if (!mode.played) return undefined;
     return `${mode.won} of ${mode.played} won · ${formatPercent(mode.won / mode.played)}`;
   }

@@ -125,9 +125,9 @@ src/app/game/
   table-game.ts      the interface a game implements for the board
   klondike.ts        the rules. no felt, no Angular, no DOM
   klondike.spec.ts   and their tests
-  freecell.ts  yukon.ts  canfield.ts  spiderette.ts        the same,
-  scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         eleven more
-  golf.ts  blackhole.ts  acesup.ts                          times
+  freecell.ts  yukon.ts  canfield.ts  spider.ts            the same,
+  spiderette.ts  scorpion.ts  seahaven.ts  tripeaks.ts      twelve more
+  pyramid.ts  golf.ts  blackhole.ts  acesup.ts              times
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock

@@ -366,6 +366,7 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
   freecell: 'interlace',
   yukon: 'rope',
   canfield: 'bead-and-reel',
+  spider: 'interlace',
   spiderette: 'guilloche',
   scorpion: 'running-dog',
   seahaven: 'scallop',
