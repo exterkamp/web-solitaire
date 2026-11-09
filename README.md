@@ -41,6 +41,18 @@ about you is in your browser's own storage.
 </tr>
 </table>
 
+**Play for points** — every hand ends on a score.
+
+<table>
+<tr>
+<td width="20%" align="center"><img src="docs/screenshots/pokersquares.webp" alt="Poker Squares, part way through a hand"><br><b>Poker Squares</b></td>
+<td width="20%"></td>
+<td width="20%"></td>
+<td width="20%"></td>
+<td width="20%"></td>
+</tr>
+</table>
+
 It installs to a home screen and plays with the network off. There is no
 server to lose touch with, so "offline" here is only a question of whether the
 browser still has the files — and it keeps them.
@@ -140,10 +152,17 @@ never be thrown away, which is where the name and the difficulty come from.
 The only decision in it is what to move into an empty column. You win about
 one hand in thirty-five.
 
+**Poker Squares** turns the deck a card at a time into a five-by-five grid,
+anywhere there is room, and never lets a card move again. The five rows and
+five columns are ten poker hands, scored on the American table as they fill:
+a pair is two, a royal flush a hundred. Two hundred wins, and every hand ends
+on a score either way, so the record book keeps your best. There is no undo:
+the next card is already showing.
+
 </td>
 <td width="50%" valign="top">
 <p align="center">
-<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: twelve games in two families, then Record and Settings">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: the games in their families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
 <p align="center"><i>Every game gets a page before the board: what it is, how<br>it is dealt, how it is played, and what winning means.</i></p>

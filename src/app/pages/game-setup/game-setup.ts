@@ -331,6 +331,29 @@ const GUIDES: Record<GameId, Guide> = {
       'worth knowing before you start: it is a two-minute game and the ' +
       'shortest one here.',
   },
+  pokersquares: {
+    title: 'Poker Squares',
+    summary: 'Twenty-five cards into a five-by-five grid, scored as ten poker hands.',
+    setup:
+      'An empty grid of twenty-five places, and the deck. The top card is ' +
+      'turned to start; the other twenty-seven cards past the twenty-fifth ' +
+      'are never seen.',
+    play:
+      'Put the turned card in any empty place - press the place, or drag the ' +
+      'card there - and the next card turns. Once a card is down it stays ' +
+      'down, and nothing can be taken back: the next card is already showing. ' +
+      'Each of the five rows and five columns is a poker hand, scored as it ' +
+      'fills: royal flush 100, straight flush 75, four of a kind 50, full ' +
+      'house 25, flush 20, straight 15, three of a kind 10, two pair 5, one ' +
+      'pair 2. Flushes and straights need all five cards, and an ace counts ' +
+      'high or low in a straight.',
+    winning:
+      'The grid full and two hundred points, the target Morehead and ' +
+      'Mott-Smith set for it. Every hand ends with a score whether it ' +
+      'reaches that or not, and the record book keeps your best. Full houses ' +
+      'and fours are worth building toward; flushes are easiest kept to the ' +
+      'columns and straights to the rows, so that a card can help both.',
+  },
 };
 
 const SUIT_LABELS: Record<SuitCount, string> = { 1: 'One', 2: 'Two', 4: 'Four' };

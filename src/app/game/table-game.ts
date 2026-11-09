@@ -32,11 +32,13 @@ export type GameId =
   | 'pyramid'
   | 'golf'
   | 'blackhole'
-  | 'acesup';
+  | 'acesup'
+  // Play for points.
+  | 'pokersquares';
 
 export const GAME_IDS: readonly GameId[] = [
   'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation',
-  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
+  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
 ];
 
 /**
@@ -59,6 +61,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   golf: 'Golf',
   blackhole: 'Black Hole',
   acesup: 'Aces Up',
+  pokersquares: 'Poker Squares',
 };
 
 /** One pile, and what is in it. The board draws piles in the order given. */
@@ -175,7 +178,40 @@ export interface TableGame<S> {
    * rank right now, not to a suit.
    */
   homeFor?(card: Card, state: S): PileRef;
+  /**
+   * What a press on an empty pile means, for the game whose moves are made
+   * by choosing a place rather than a card.
+   *
+   * Absent everywhere but Poker Squares. There the card in hand is the only
+   * card that ever moves, so pressing the empty cell you want it in says
+   * everything a drag would, in one touch.
+   */
+  placeAt?(state: S, at: PileRef): Move | undefined;
   view(state: S): GameView;
+
+  // --- how a hand ends -----------------------------------------------------
+
+  /**
+   * The score a hand is won at, for a game played for points rather than to
+   * clear the table.
+   *
+   * Set, it changes three things. A hand that ends short of it is over
+   * rather than stuck - there is nothing to look for, only a score - and goes
+   * in the record book at the moment it ends, with that score. A hand that
+   * reaches it earns no time bonus, because the points are the game and
+   * placing twenty-five cards quickly is not. And the best score is the best
+   * of every hand, not only the ones that were won.
+   */
+  readonly target?: number;
+
+  /**
+   * Whether a move can be taken back. True unless said otherwise.
+   *
+   * False for the game where each move turns a card nobody has seen yet. An
+   * undo there is not changing your mind, it is looking ahead: put the card
+   * anywhere, see what comes next, take it back.
+   */
+  readonly undoable?: boolean;
 
   // --- how a hand arrives --------------------------------------------------
 

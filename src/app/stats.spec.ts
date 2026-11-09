@@ -27,7 +27,7 @@ describe('the record book', () => {
   it('files every game under a variant it keeps', () => {
     const games: GameId[] = [
       'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
-      'calculation', 'tripeaks', 'pyramid', 'golf', 'acesup',
+      'calculation', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares',
     ];
     for (const game of games) {
       expect(ALL_VARIANTS).toContain(variantOf(game, 1));
@@ -50,9 +50,9 @@ describe('the record book', () => {
   });
 
   // Only the two games that have a score get a row for one.
-  it('marks exactly the two scored games as scored', () => {
+  it('marks exactly the scored games as scored', () => {
     expect(VARIANT_GROUPS.filter((g) => g.scored).map((g) => g.title))
-      .toEqual(['Klondike', 'Tri Peaks']);
+      .toEqual(['Klondike', 'Tri Peaks', 'Poker Squares']);
   });
 });
 
@@ -79,6 +79,14 @@ describe('the rolling record', () => {
     expect(mode.totalSeconds).toBe(460);
     expect(mode.bestStreak).toBe(2);
     expect(mode.currentStreak).toBe(1);
+  });
+
+  it('keeps the best score of a hand that fell short, for the game played for points', () => {
+    const short: GameResult = { won: false, seconds: 0, moves: 0, score: 185 };
+    const mode = summarize([win(300, 25, 160), short, loss]);
+    expect(mode.bestScore).toBe(185);
+    expect(mode.won).toBe(1);
+    expect(mode.currentStreak).toBe(0);
   });
 
   it('forgets a best once it falls out of the window', () => {

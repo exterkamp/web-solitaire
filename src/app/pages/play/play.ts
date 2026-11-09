@@ -31,6 +31,7 @@ import { canfieldTable } from '../../game/canfield-table';
 import { seahavenTable } from '../../game/seahaven-table';
 import { calculationTable } from '../../game/calculation-table';
 import { blackHoleTable } from '../../game/blackhole-table';
+import { pokerSquaresTable } from '../../game/pokersquares-table';
 import { formatDuration } from '../../format';
 import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
@@ -112,6 +113,7 @@ export class Play implements AfterViewInit, OnDestroy {
   protected readonly showStuck = computed(
     () =>
       this.settings.warnStuck() &&
+      this.target === undefined &&
       this.view().stuck &&
       !this.win() &&
       this.waved() !== this.view().moves,
@@ -136,6 +138,17 @@ export class Play implements AfterViewInit, OnDestroy {
   // And a saved Spider keeps its suits.
   private readonly suits: SuitCount = this.saved ? asSuitCount(this.saved.suits) : this.settings.spiderSuits();
   private readonly table = makeTable(this.gameId, this.drawCount, this.suits);
+  // The score a hand is won at, in the game played for points. See
+  // TableGame.target.
+  protected readonly target = this.table.target;
+  protected readonly undoable = this.table.undoable !== false;
+  // A hand of that game that ended short of it. Not stuck - there is nothing
+  // to look for - but over, with a score, and shown whatever the "warn when
+  // stuck" setting says, because it is the end of the game rather than a
+  // hint about one.
+  protected readonly handOver = computed(
+    () => this.target !== undefined && this.view().stuck && !this.win(),
+  );
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount, this.suits);
 
@@ -153,6 +166,17 @@ export class Play implements AfterViewInit, OnDestroy {
             `time ${formatDuration(summary.seconds)}, ${summary.moves} moves.`,
         );
       }
+    });
+    // And it is counted the moment it ends, with its score - there is no
+    // dealing over a hand that is already finished.
+    effect(() => {
+      if (!this.handOver()) return;
+      const score = this.view().score ?? 0;
+      if (!this.counted) {
+        this.stats.recordLoss(this.variant, score);
+        this.counted = true;
+      }
+      this.announcement.set(`Hand over. ${score} points, ${(this.target ?? 0) - score} short of ${this.target}.`);
     });
     effect(() => {
       if (this.showStuck()) {
@@ -225,17 +249,19 @@ export class Play implements AfterViewInit, OnDestroy {
   // --- keeping the hand -----------------------------------------------------
 
   private autosave?: Autosave;
-  // Whether this hand's win is in the record book already. A win can be
-  // undone back into play, and a hand that has been counted as won is not
-  // counted again as lost when it is dealt over.
-  private winRecorded = this.saved?.counted ?? false;
+  // Whether this hand is in the record book already: won, or - in the game
+  // played for points - finished short. A win can be undone back into play,
+  // and a hand that has been counted is not counted again as lost when it is
+  // dealt over.
+  private counted = this.saved?.counted ?? false;
 
   private saveNow(): void {
     const game = this.game;
     if (!game) return;
     const view = this.view();
-    // An untouched deal is not worth coming back to, and a won one is over.
-    if (view.won || view.moves === 0) {
+    // An untouched deal is not worth coming back to, and a won one is over -
+    // as is one that ran out short of its target.
+    if (view.won || view.moves === 0 || this.handOver()) {
       this.savedGames.clear(this.gameId);
       return;
     }
@@ -245,7 +271,7 @@ export class Play implements AfterViewInit, OnDestroy {
       suits: this.gameId === 'spider' ? this.suits : undefined,
       savedAt: Date.now(),
       moves: view.moves,
-      counted: this.winRecorded || undefined,
+      counted: this.counted || undefined,
       snapshot: game.snapshot(),
     });
   }
@@ -394,7 +420,7 @@ export class Play implements AfterViewInit, OnDestroy {
     // behind the menu has to be running to be dealt onto.
     if (this.paused()) this.setPaused(false);
     this.recordAbandoned();
-    this.winRecorded = false;
+    this.counted = false;
     this.savedGames.clear(this.gameId);
     this.win.set(undefined);
     this.waved.set(undefined);
@@ -408,12 +434,12 @@ export class Play implements AfterViewInit, OnDestroy {
     // A deal nobody touched is not a loss. Dealing a game, looking at it and
     // dealing another is how a lot of solitaire is played, and a record book
     // that counts each of those as a defeat is a record book nobody looks at.
-    if (view.moves > 0 && !view.won && !this.winRecorded) this.stats.recordLoss(this.variant);
+    if (view.moves > 0 && !view.won && !this.counted) this.stats.recordLoss(this.variant);
   }
 
   private onWin(summary: WinSummary): void {
     this.stats.recordWin(this.variant, summary);
-    this.winRecorded = true;
+    this.counted = true;
     this.elapsed.set(summary.seconds);
     this.win.set(summary);
   }
@@ -581,14 +607,15 @@ export class Play implements AfterViewInit, OnDestroy {
   }
 }
 
-// Which game the board is handed. One place that knows all twelve of them, so
-// adding a thirteenth is one line here rather than a conditional that grows a limb
-// each time - and the switch is exhaustive over GameId, so leaving a game out
-// is a compile error rather than a board that quietly deals Klondike.
+// The games whose foundations, or discard heap, never give a card back - so
+// the stuck panel does not suggest taking one down.
 const NO_TAKING_BACK: readonly GameId[] = [
   'spider', 'spiderette', 'scorpion', 'calculation', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
+// Which game the board is handed. One place that knows all of them, so adding
+// another is one line here rather than a conditional that grows a limb each
+// time.
 function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
   switch (game) {
     case 'freecell':
@@ -617,6 +644,8 @@ function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
       return blackHoleTable();
     case 'acesup':
       return acesUpTable();
+    case 'pokersquares':
+      return pokerSquaresTable();
     default:
       return klondikeTable(drawCount);
   }

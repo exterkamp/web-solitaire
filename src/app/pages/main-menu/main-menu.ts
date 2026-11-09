@@ -134,6 +134,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     golf: 'One rank up or down · ninety seconds',
     blackhole: 'Nothing hidden, no deck · every move a choice',
     acesup: 'Four piles · the aces cannot be beaten',
+    pokersquares: 'Twenty-five cards, ten poker hands · make two hundred',
   };
 
   protected line(game: GameId): string {

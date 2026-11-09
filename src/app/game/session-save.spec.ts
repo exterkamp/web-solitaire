@@ -4,6 +4,7 @@ import { seeded } from './random';
 import { GameSession } from './session';
 import { TableGame } from './table-game';
 import { acesUpTable } from './acesup-table';
+import { pokerSquaresTable } from './pokersquares-table';
 import { blackHoleTable } from './blackhole-table';
 import { calculationTable } from './calculation-table';
 import { canfieldTable } from './canfield-table';
@@ -26,12 +27,14 @@ import { yukonTable } from './yukon-table';
 
 const TABLES: TableGame<any>[] = [
   klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spiderTable(1), spiderTable(4), spideretteTable(),
-  scorpionTable(), seahavenTable(), calculationTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(),
+  scorpionTable(), seahavenTable(), calculationTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(), pokerSquaresTable(),
 ];
 
 /** The first thing the board would do with a tap on any pile, or a draw. */
 function someMove<S>(table: TableGame<S>, state: S): Move | undefined {
   for (const pile of table.piles(state)) {
+    const placed = pile.cards.length ? undefined : table.placeAt?.(state, pile.ref);
+    if (placed) return placed;
     if (!pile.cards.length || !table.liftable(state, pile.ref, 1)) continue;
     const to = table.autoTarget(state, pile.ref, 1);
     if (to) return { kind: 'play', from: pile.ref, to, count: 1 };

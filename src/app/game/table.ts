@@ -376,6 +376,7 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
   golf: 'rope',
   blackhole: 'guilloche',
   acesup: 'greek-key',
+  pokersquares: 'dentil',
 };
 
 // Faint: it is printing on the cloth, under the slots and the cards, and has

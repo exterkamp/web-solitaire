@@ -5,7 +5,7 @@ description: Add a new solitaire variant to web-solitaire. Use when asked to imp
 
 # Adding a solitaire game
 
-Twelve games already follow one shape. A new one is normally **three new
+Every game here follows one shape. A new one is normally **three new
 files plus edits to five lists that have to stay exhaustive** — the compiler
 catches a missed list because `GameId` is a union and the switches over it are
 exhaustive, but the `Record<GameId, …>` maps and plain arrays below are not
@@ -52,6 +52,10 @@ Implement `TableGame<S>` from `table-game.ts`. Key decisions, not defaults:
   the screen either way, but a wider board makes every card smaller.
 - `homeFor`: omit it if the game has no foundations to flick a card to (a
   present-but-wrong answer is worse than no answer).
+- A game played for points rather than to clear the table (Poker Squares)
+  sets `target` — the hand ends on a score, short hands are recorded with it,
+  no time bonus. `undoable: false` turns undo off where a move reveals an
+  unseen card, and `placeAt` makes a press on an empty pile a move.
 - `GameView` (from `view()`): only add a new field if the game has a genuinely
   new number to show. Three fields have been added across seven games total —
   treat a fourth as a sign to double check the game really needs it.
@@ -68,9 +72,10 @@ win detection, and dead-end detection if the game can reach one.
 
 ## 5. Wire it into the app — four more edits
 
-- **`src/app/pages/play/play.ts`**: add a case to `makeTable`'s switch. It's
-  exhaustive over `GameId`, so a missed case is a compile error here — the one
-  step you can't silently skip.
+- **`src/app/pages/play/play.ts`**: add a case to `makeTable`'s switch. It
+  ends in `default: return klondikeTable(...)`, so a missed case is **not** a
+  compile error — it quietly deals Klondike. Also add the id to
+  `NO_TAKING_BACK` if the game's foundations never give a card back.
 - **`src/app/pages/main-menu/main-menu.ts`**: one line in the `blurbs: Record<GameId, string>` map.
 - **`src/app/pages/game-setup/game-setup.ts`**: one entry in `GUIDES: Record<GameId, Guide>`
   — title, summary, and the setup/play/winning rules from step 0.
