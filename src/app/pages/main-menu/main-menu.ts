@@ -137,6 +137,15 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     return `${record.won} of ${record.played} won · ${formatPercent(record.won / record.played)}`;
   }
 
+  // The badge on the picture: there is a hand here to pick up.
+  protected inProgress(game: GameId): boolean {
+    return !!this.savedGames.get(game);
+  }
+
+  protected nertzSaved(): boolean {
+    return !!this.savedGames.getNertz();
+  }
+
   protected nertzLine(): string {
     const saved = this.savedGames.getNertz();
     return saved ? `In progress · round ${saved.round}` : 'Two players, one phone · a race to the middle';
