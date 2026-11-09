@@ -841,7 +841,7 @@ export class SolitaireScene {
       ...view,
       moves: this.session.moves,
       showsMoves: this.table.showsMoves,
-      canUndo: this.session.canUndo,
+      canUndo: this.undoable && this.session.canUndo,
       canFinish: this.session.canFinish && !this.locked,
       stuck: this.session.stuck,
       won: this.session.won,
@@ -869,6 +869,9 @@ export class SolitaireScene {
       // waste back over is the only move on this board that can be made on a
       // pile with nothing in it.
       if (this.stockSlot && this.overSlot(this.stockSlot, pointer)) this.draw();
+      // Or the empty place a card is wanted in, for the game that is played
+      // by choosing where rather than what. See TableGame.placeAt.
+      else this.placeAtPointer(pointer);
       return;
     }
 
@@ -910,6 +913,15 @@ export class SolitaireScene {
     // Up off the felt, and the rest of the run with it as one piece.
     this.board.pickUp?.lift(sprites[0]);
     this.board.pickUp?.carry(sprites[0], sprites.slice(1));
+  }
+
+  private placeAtPointer(pointer: BoardPointer): void {
+    const placeAt = this.table.placeAt;
+    if (!placeAt) return;
+    const state = this.session.state;
+    const pile = this.table.piles(state).find((p) => !p.cards.length && this.overSlot(p.ref, pointer));
+    const move = pile && placeAt(state, pile.ref);
+    if (move) this.play(move);
   }
 
   // Whether a press is over a pile's slot, wherever the board has slid it.
@@ -1030,7 +1042,7 @@ export class SolitaireScene {
     if (!this.table.homeFor) return undefined;
     const cards = this.table.liftable(this.session.state, drag.from, 1);
     if (!cards) return undefined;
-    const home = this.table.homeFor(cards[0]);
+    const home = this.table.homeFor(cards[0], this.session.state);
     return this.table.canDrop(this.session.state, cards, home) ? home : undefined;
   }
 
@@ -1108,7 +1120,11 @@ export class SolitaireScene {
     const pile = this.table
       .piles(this.session.state)
       .find((p) => samePile(p.ref, ref));
-    if (!pile || pile.cards.length === 0) return false;
+    if (!pile) return false;
+    if (pile.cards.length === 0) {
+      const move = this.table.placeAt?.(this.session.state, ref);
+      return move ? this.play(move) : false;
+    }
     // The top card is what a press would lift.
     const liftable = this.table.liftable(this.session.state, ref, 1);
     if (!liftable) return false;
@@ -1154,7 +1170,7 @@ export class SolitaireScene {
    * rather than waiting for it.
    */
   undo(): void {
-    if (this.busy || this.finishing) return;
+    if (this.busy || this.finishing || !this.undoable) return;
     if (!this.session.undo()) return;
     this.stopCascade();
     this.renderBoard(true);
@@ -1216,6 +1232,12 @@ export class SolitaireScene {
     return true;
   }
 
+  // Off for the game where every move turns a card nobody has seen yet. See
+  // TableGame.undoable.
+  private get undoable(): boolean {
+    return this.table.undoable !== false;
+  }
+
   private scoreNow(): number | undefined {
     return this.table.view(this.session.state).score;
   }
@@ -1246,7 +1268,8 @@ export class SolitaireScene {
     this.startCascade();
     const session = this.session;
     const seconds = session.elapsed();
-    const bonus = timeBonus(seconds);
+    // Not for a game played to a target: there the points are the game.
+    const bonus = this.table.target === undefined ? timeBonus(seconds) : 0;
     const score = this.table.view(session.state).score ?? 0;
     // Let the cards fall for a moment before the page says anything. The
     // cascade *is* the reward; a panel over it half a second in is a
@@ -1307,9 +1330,15 @@ export class SolitaireScene {
     // sixty units wide and printed in an order that mirrors with handedness,
     // and a card has exactly one home - so asking the player to hit the right
     // one is asking them to aim at something the rules already know.
+    //
+    // Unless the slot it landed on will take it: in Calculation two
+    // foundations can want the same rank at once, and a card put on one of
+    // them on purpose stays there. Every other game's foundation refuses a
+    // card that is not its own, so for them this changes nothing.
+    const state = this.session.state;
     const to: PileRef =
-      best.ref.kind === 'foundation' && this.table.homeFor
-        ? this.table.homeFor(cards[0])
+      best.ref.kind === 'foundation' && this.table.homeFor && !this.table.canDrop(state, cards, best.ref)
+        ? this.table.homeFor(cards[0], state)
         : best.ref;
 
     // Legality is settled here rather than left to the move, because this

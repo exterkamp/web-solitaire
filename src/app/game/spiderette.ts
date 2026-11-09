@@ -167,7 +167,7 @@ function applyDeal(state: SpideretteState): MoveResult | undefined {
   if (!canDeal(state)) return undefined;
   const next = cloneState(state);
   const drawn: Card[] = [];
-  for (let column = 0; column < COLUMN_COUNT && next.stock.length; column++) {
+  for (let column = 0; column < next.tableau.length && next.stock.length; column++) {
     const card = next.stock.pop()!;
     card.faceUp = true;
     next.tableau[column].push(card);
@@ -193,14 +193,25 @@ function turnUp(state: SpideretteState, column: number): Card | undefined {
  * it on the table would only be leaving thirteen cards in the way.
  */
 function collect(state: SpideretteState): void {
-  for (let column = 0; column < COLUMN_COUNT; column++) {
+  for (let column = 0; column < state.tableau.length; column++) {
     const pile = state.tableau[column];
     const run = completedSuit(pile);
     if (!run) continue;
     pile.splice(pile.length - run.length, run.length);
-    state.foundations[foundationIndexOf(run[0].suit)] = run.map((card) => ({ ...card }));
+    state.foundations[homeOf(state, run[0])] = run.map((card) => ({ ...card }));
     turnUp(state, column);
   }
+}
+
+/**
+ * Where a finished suit is parked. One deck has a foundation per suit, each
+ * printed with its suit; Spider's two decks finish eight suits - eight of
+ * spades, in the one-suit game - so there they simply fill up in turn.
+ */
+function homeOf(state: SpideretteState, card: Card): number {
+  if (state.foundations.length === FOUNDATION_COUNT) return foundationIndexOf(card.suit);
+  const empty = state.foundations.findIndex((pile) => !pile.length);
+  return empty < 0 ? state.foundations.length - 1 : empty;
 }
 
 // --- reading the board ----------------------------------------------------
@@ -217,7 +228,7 @@ export function legalMoves(state: SpideretteState): Move[] {
       const from: PileRef = { kind: 'tableau', index: column };
       const cards = liftable(state, from, count);
       if (!cards) return;
-      for (let target = 0; target < COLUMN_COUNT; target++) {
+      for (let target = 0; target < state.tableau.length; target++) {
         if (target === column) continue;
         // A whole column moved into an empty one changes nothing and would
         // mean no game was ever over.
@@ -251,7 +262,7 @@ export function autoTarget(
   if (!cards) return undefined;
 
   const legal: PileRef[] = [];
-  for (let column = 0; column < COLUMN_COUNT; column++) {
+  for (let column = 0; column < state.tableau.length; column++) {
     if (from.kind === 'tableau' && from.index === column) continue;
     const to: PileRef = { kind: 'tableau', index: column };
     if (canDrop(state, cards, to)) legal.push(to);

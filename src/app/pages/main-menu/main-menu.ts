@@ -124,14 +124,18 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     freecell: 'Nothing hidden · almost always winnable',
     yukon: 'No deck to turn · dig for what is buried',
     canfield: 'Thirteen in reserve · the gambling one',
+    spider: 'Two decks, ten columns · one, two or four suits',
     spiderette: 'Build down by rank · carry a suit at a time',
     scorpion: 'One suit only · the hardest here',
     seahaven: 'Ten columns, four cells · kings only in a gap',
+    calculation: 'Count by ones, twos, threes and fours · all skill',
+    lucie: 'Eighteen fans · two redeals and a merci',
     tripeaks: 'Quick · clear the peaks a card at a time',
     pyramid: 'Pairs that add to thirteen',
     golf: 'One rank up or down · ninety seconds',
     blackhole: 'Nothing hidden, no deck · every move a choice',
     acesup: 'Four piles · the aces cannot be beaten',
+    pokersquares: 'Twenty-five cards, ten poker hands · make two hundred',
   };
 
   protected line(game: GameId): string {

@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { DrawCount } from './game/klondike';
+import { SuitCount } from './game/spider';
 import { GameId } from './game/table-game';
 import { WinSummary } from './game/solitaire-scene';
 
@@ -25,20 +26,28 @@ export type Variant =
   | 'freecell'
   | 'yukon'
   | 'canfield'
+  | 'spider-1'
+  | 'spider-2'
+  | 'spider-4'
   | 'spiderette'
   | 'scorpion'
   | 'seahaven'
+  | 'calculation'
+  | 'lucie'
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
   | 'blackhole'
-  | 'acesup';
+  | 'acesup'
+  | 'pokersquares';
 
-export function variantOf(game: GameId, drawCount: DrawCount): Variant {
+export function variantOf(game: GameId, drawCount: DrawCount, suits: SuitCount = 1): Variant {
   // Klondike is the only game here that is two games. Everything else is
   // recorded under its own name, which is also its game id - the menu leans
   // on that when it adds a game's variants together.
   if (game === 'klondike') return drawCount === 3 ? 'klondike-3' : 'klondike-1';
+  // And Spider, three: one suit, two or four, each a different game to win.
+  if (game === 'spider') return `spider-${suits}`;
   return game;
 }
 
@@ -48,19 +57,25 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   freecell: 'FreeCell',
   yukon: 'Yukon',
   canfield: 'Canfield',
+  'spider-1': 'One suit',
+  'spider-2': 'Two suits',
+  'spider-4': 'Four suits',
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
+  calculation: 'Calculation',
+  lucie: 'La Belle Lucie',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
   blackhole: 'Black Hole',
   acesup: 'Aces Up',
+  pokersquares: 'Poker Squares',
 };
 
 const VARIANTS: Variant[] = [
-  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion',
-  'seahaven', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
+  'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spider-1', 'spider-2', 'spider-4', 'spiderette', 'scorpion',
+  'seahaven', 'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
 ];
 
 /**
@@ -77,8 +92,8 @@ const VARIANTS: Variant[] = [
 export interface VariantGroup {
   title: string;
   variants: Variant[];
-  // Whether this game keeps a score. Only two do, and for the other nine that
-  // row would be a column of dashes pretending to be a fact about the game.
+  // Whether this game keeps a score. Only a few do, and for the rest that row
+  // would be a column of dashes pretending to be a fact about the game.
   scored: boolean;
 }
 
@@ -87,14 +102,18 @@ export const VARIANT_GROUPS: readonly VariantGroup[] = [
   { title: 'FreeCell', variants: ['freecell'], scored: false },
   { title: 'Yukon', variants: ['yukon'], scored: false },
   { title: 'Canfield', variants: ['canfield'], scored: false },
+  { title: 'Spider', variants: ['spider-1', 'spider-2', 'spider-4'], scored: false },
   { title: 'Spiderette', variants: ['spiderette'], scored: false },
   { title: 'Scorpion', variants: ['scorpion'], scored: false },
   { title: 'Seahaven Towers', variants: ['seahaven'], scored: false },
+  { title: 'Calculation', variants: ['calculation'], scored: false },
+  { title: 'La Belle Lucie', variants: ['lucie'], scored: false },
   { title: 'Tri Peaks', variants: ['tripeaks'], scored: true },
   { title: 'Pyramid', variants: ['pyramid'], scored: false },
   { title: 'Golf', variants: ['golf'], scored: false },
   { title: 'Black Hole', variants: ['blackhole'], scored: false },
   { title: 'Aces Up', variants: ['acesup'], scored: false },
+  { title: 'Poker Squares', variants: ['pokersquares'], scored: true },
 ];
 
 /** Every variant the book keeps, in order. For the spec, and for `game`. */
@@ -110,8 +129,9 @@ const LEGACY_KEY = 'solitaire.stats.v1';
 export interface ModeRecord {
   played: number;
   won: number;
-  // Of won games only. A best time from a game that was abandoned is not a
-  // time at all, and the same goes for the fewest moves.
+  // Of won games only - except the best score, which in the game played for
+  // points is the best of every hand. A best time from a game that was
+  // abandoned is not a time at all, and the same goes for the fewest moves.
   bestScore: number;
   bestSeconds: number;
   fewestMoves: number;
@@ -219,9 +239,11 @@ export function summarize(results: readonly GameResult[]): ModeRecord {
   let run = 0;
   for (const result of results) {
     mode.played += 1;
+    // Of every game: a loss scores nothing, except in the game played for
+    // points, where its score is as real as a win's.
+    mode.bestScore = Math.max(mode.bestScore, result.score);
     if (result.won) {
       mode.won += 1;
-      mode.bestScore = Math.max(mode.bestScore, result.score);
       mode.bestSeconds = bestOf(mode.bestSeconds, result.seconds);
       mode.fewestMoves = bestOf(mode.fewestMoves, result.moves);
       mode.totalSeconds += result.seconds;
@@ -287,7 +309,9 @@ export class Stats {
    * having once you are choosing between them.
    */
   game(game: GameId): { played: number; won: number } {
-    const variants = VARIANTS.filter((v) => v.startsWith(game));
+    // By name and dash, not by prefix alone: Spider's variants are not
+    // Spiderette's, whatever the letters say.
+    const variants = VARIANTS.filter((v) => v === game || v.startsWith(`${game}-`));
     return variants.reduce(
       (total, variant) => {
         const mode = this.mode(variant);
@@ -340,10 +364,15 @@ export class Stats {
    * game dealt, looked at and abandoned without a move is not a loss, because
    * counting it as one would make the record book punish curiosity.
    */
-  recordLoss(variant: Variant): void {
-    this.update(variant, { won: false, seconds: 0, moves: 0, score: 0 }, (mode) => ({
+  recordLoss(variant: Variant, score = 0): void {
+    // With a score only in the game played for points, where a hand that
+    // ends short of its target still ended on a number worth keeping. Every
+    // other loss is all zeros.
+    const points = Number.isFinite(score) && score > 0 ? Math.floor(score) : 0;
+    this.update(variant, { won: false, seconds: 0, moves: 0, score: points }, (mode) => ({
       ...mode,
       played: mode.played + 1,
+      bestScore: Math.max(mode.bestScore, points),
       currentStreak: 0,
     }));
   }

@@ -16,9 +16,15 @@ about you is in your browser's own storage.
 <td width="25%" align="center"><img src="docs/screenshots/canfield.webp" alt="Canfield, part way through a hand"><br><b>Canfield</b></td>
 </tr>
 <tr>
+<td align="center"><img src="docs/screenshots/spider.webp" alt="Spider in two suits, part way through a hand"><br><b>Spider</b></td>
 <td align="center"><img src="docs/screenshots/spiderette.webp" alt="Spiderette, part way through a hand"><br><b>Spiderette</b></td>
 <td align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
 <td align="center"><img src="docs/screenshots/seahaven.webp" alt="Seahaven Towers, freshly dealt"><br><b>Seahaven Towers</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/calculation.webp" alt="Calculation, part way through a hand"><br><b>Calculation</b></td>
+<td align="center"><img src="docs/screenshots/lucie.webp" alt="La Belle Lucie, part way through a hand"><br><b>La Belle Lucie</b></td>
+<td></td>
 <td></td>
 </tr>
 </table>
@@ -32,6 +38,18 @@ about you is in your browser's own storage.
 <td width="20%" align="center"><img src="docs/screenshots/golf.webp" alt="Golf, part way through a hand"><br><b>Golf</b></td>
 <td width="20%" align="center"><img src="docs/screenshots/blackhole.webp" alt="Black Hole, part way through a hand"><br><b>Black Hole</b></td>
 <td width="20%" align="center"><img src="docs/screenshots/acesup.webp" alt="Aces Up, part way through a hand"><br><b>Aces Up</b></td>
+</tr>
+</table>
+
+**Play for points** — every hand ends on a score.
+
+<table>
+<tr>
+<td width="20%" align="center"><img src="docs/screenshots/pokersquares.webp" alt="Poker Squares, part way through a hand"><br><b>Poker Squares</b></td>
+<td width="20%"></td>
+<td width="20%"></td>
+<td width="20%"></td>
+<td width="20%"></td>
 </tr>
 </table>
 
@@ -96,6 +114,23 @@ be shuffled through one, and the only room you have is the four cells — two of
 which start full. Ten columns across a phone means smaller cards; that is the
 price of seeing all fifty-two at once.
 
+**Spider** is the two-deck game Spiderette was cut down from: ten columns,
+fifty-four cards dealt and fifty more in five deals of ten, built down by rank
+in any suit but carried only in one. Choose one suit, two or four; the record
+book keeps the three apart, because they are three different games to win.
+
+**Calculation** is arithmetic. Four foundations start from an ace, a two, a
+three and a four and count up by ones, twos, threes and fours to a king,
+ignoring suit. Every card turned has to go up or onto one of four discard
+piles before the next, and which pile is the whole game — so a tap only ever
+sends a card up, and a discard is a drag.
+
+**La Belle Lucie** lays all fifty-two face up in eighteen fans. Only a fan's
+top card moves — home, or onto the next rank up in its own suit — and an empty
+fan stays empty. When it stops, gather, shuffle and deal again in threes;
+twice. Then, on the last deal, the merci: tap one buried card and it comes up
+to the top.
+
 *And the quick ones, which build nothing and sort nothing:*
 
 **Tri Peaks** was the first of these and is the reason there are four. Three
@@ -134,10 +169,17 @@ never be thrown away, which is where the name and the difficulty come from.
 The only decision in it is what to move into an empty column. You win about
 one hand in thirty-five.
 
+**Poker Squares** turns the deck a card at a time into a five-by-five grid,
+anywhere there is room, and never lets a card move again. The five rows and
+five columns are ten poker hands, scored on the American table as they fill:
+a pair is two, a royal flush a hundred. Two hundred wins, and every hand ends
+on a score either way, so the record book keeps your best. There is no undo:
+the next card is already showing.
+
 </td>
 <td width="50%" valign="top">
 <p align="center">
-<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: twelve games in two families, then Record and Settings">
+<img src="docs/screenshots/menu.webp" width="47%" alt="The menu: the games in their families, then Record and Settings">
 <img src="docs/screenshots/setup-klondike.webp" width="47%" alt="The Klondike page: what the game is, and how many cards to draw">
 </p>
 <p align="center"><i>Every game gets a page before the board: what it is, how<br>it is dealt, how it is played, and what winning means.</i></p>

@@ -75,6 +75,16 @@
     </div>
 
     <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/spider.webp')" routerLink="/setup/spider">
+        <span>Spider</span>
+        @if (inProgress('spider')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('spider') }}</p>
+    </div>
+
+    <div class="game">
       <a class="button" style="background-image: url('/game-thumbs/spiderette.webp')" routerLink="/setup/spiderette">
         <span>Spiderette</span>
         @if (inProgress('spiderette')) {
@@ -102,6 +112,26 @@
         }
       </a>
       <p class="menu__note">{{ line('seahaven') }}</p>
+    </div>
+
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/calculation.webp')" routerLink="/setup/calculation">
+        <span>Calculation</span>
+        @if (inProgress('calculation')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('calculation') }}</p>
+    </div>
+
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/lucie.webp')" routerLink="/setup/lucie">
+        <span>La Belle Lucie</span>
+        @if (inProgress('lucie')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('lucie') }}</p>
     </div>
   </div>
 
@@ -156,6 +186,20 @@
         }
       </a>
       <p class="menu__note">{{ line('acesup') }}</p>
+    </div>
+  </div>
+
+  <h2 class="menu__family">Play for points</h2>
+
+  <div class="game-grid">
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/pokersquares.webp')" routerLink="/setup/pokersquares">
+        <span>Poker Squares</span>
+        @if (inProgress('pokersquares')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('pokersquares') }}</p>
     </div>
   </div>
 

@@ -76,6 +76,20 @@
           <span class="hud__value">{{ view().run }}</span>
         </div>
       }
+      <!-- La Belle Lucie's two fallbacks, one after the other: the redeals,
+           and then the merci on the last deal. -->
+      @if (view().redeals !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Redeals</span>
+          <span class="hud__value">{{ view().redeals }}</span>
+        </div>
+      }
+      @if (view().merci !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Merci</span>
+          <span class="hud__value">{{ view().merci }}</span>
+        </div>
+      }
       @if (view().left !== undefined) {
         <div class="hud__stat">
           <span class="hud__label">Left</span>
@@ -157,8 +171,11 @@
       <h2 class="stuck__title">No moves</h2>
       <p class="stuck__note">
         Nothing on the table can be played, and turning the deck over will not
-        change that. Taking a card back off a foundation is still allowed, if
-        you can see something in it.
+        change that.
+        @if (takesBack) {
+          Taking a card back off a foundation is still allowed, if you can see
+          something in it.
+        }
       </p>
       <button type="button" class="button" (click)="newGame()">New deal</button>
       <button type="button" class="button button--quiet" (click)="keepLooking()">
@@ -167,10 +184,29 @@
     </div>
   }
 
+  @if (handOver()) {
+    <!-- The game played for points ends on a score, not on a dead end: there
+         is nothing left to look for, so nothing to keep looking at - only
+         how far short it fell. -->
+    <div class="stuck" role="dialog" aria-label="Hand over">
+      <h2 class="stuck__title">{{ view().score ?? 0 }} points</h2>
+      <p class="stuck__note">
+        The grid is full, {{ (target ?? 0) - (view().score ?? 0) }} short of
+        the {{ target }} that wins a hand.
+      </p>
+      <button type="button" class="button" (click)="newGame()">Deal again</button>
+      <a class="button button--quiet" routerLink="/stats">Record</a>
+    </div>
+  }
+
   <footer class="hud hud--actions">
-    <button type="button" class="action" [disabled]="!view().canUndo" (click)="undo()">
-      Undo
-    </button>
+    <!-- Not in the game where a move turns a card nobody has seen: there it
+         would never be allowed, and a button that is always grey is clutter. -->
+    @if (undoable) {
+      <button type="button" class="action" [disabled]="!view().canUndo" (click)="undo()">
+        Undo
+      </button>
+    }
     @if (view().canFinish) {
       <!-- Only once the game is already decided: every card face up, nothing
            hidden, and the rest of it a formality. -->
@@ -182,9 +218,11 @@
     <!-- Over the board rather than instead of it: the cards are still falling
          behind this, and that is the part worth watching. -->
     <div class="win" role="dialog" aria-label="Game won">
-      <h2 class="win__title">Out</h2>
+      <!-- "Out" is getting every card out, which is not what the game played
+           for points is won by. -->
+      <h2 class="win__title">{{ target === undefined ? 'Out' : summary.score + ' points' }}</h2>
       <dl class="win__lines">
-        @if (summary.total) {
+        @if (summary.total && target === undefined) {
           <div class="win__line">
             <dt>Score</dt>
             <dd>{{ summary.score.toLocaleString() }}</dd>

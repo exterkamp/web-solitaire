@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
 import { DrawCount } from '../../game/klondike';
+import { SUIT_COUNTS, SuitCount, asSuitCount } from '../../game/spider';
 import { GameId, asGameId } from '../../game/table-game';
 import { formatDuration, formatPercent } from '../../format';
 import { SavedGames } from '../../saved-games';
@@ -119,6 +120,28 @@ const GUIDES: Record<GameId, Guide> = {
       'hundred if you got them all - which is a business rather than a ' +
       'charity: a hand goes out perhaps one time in thirty.',
   },
+  spider: {
+    title: 'Spider',
+    summary: 'Two decks across ten columns: build down by rank, carry only a run of one suit.',
+    setup:
+      'A hundred and four cards. Fifty-four go out in ten columns - six to ' +
+      'each of the first four, five to the rest - with only the top card of ' +
+      'each face up. The other fifty are the deck, five deals of ten. With ' +
+      'one suit the decks are eight sets of spades, with two they are spades ' +
+      'and hearts, and with four they are two ordinary decks.',
+    play:
+      'Build down by rank and ignore suit - any nine goes on any ten. But ' +
+      'only a run that is all one suit can be picked up and moved, so a card ' +
+      'placed on the wrong suit is buried until it can come away alone. An ' +
+      'empty column takes anything, and the deck will not deal while one is ' +
+      'open. Dealing puts one card face up onto every column at once.',
+    winning:
+      'Eight complete suits, king down to ace, each leaving the table the ' +
+      'moment it is finished. One suit is a game most people win; two is ' +
+      'where it starts to fight back; four, the real game, is lost far more ' +
+      'often than it is won. The smaller cards ten columns need are the ' +
+      'price of playing it on a phone.',
+  },
   spiderette: {
     title: 'Spiderette',
     summary: 'Spider on one deck: build down by rank, but carry only a run of one suit.',
@@ -181,6 +204,51 @@ const GUIDES: Record<GameId, Guide> = {
       'ten short columns make it easier; good players win most of their ' +
       'hands. Ten columns across a phone means smaller cards, which is the ' +
       'price of seeing all fifty-two at once.',
+  },
+  calculation: {
+    title: 'Calculation',
+    summary: 'Four foundations counting by ones, twos, threes and fours - and four piles to wait on.',
+    setup:
+      'An ace, a two, a three and a four, of any suits, start the four ' +
+      'foundations, left to right. The other forty-eight cards are the ' +
+      'deck, and the four discard piles below start empty.',
+    play:
+      'Each foundation counts up in its own step and ignores suit: the first ' +
+      'by ones (A, 2, 3 … K), the second by twos (2, 4, 6, 8, 10, Q, A, 3, ' +
+      '5, 7, 9, J, K), the third by threes (3, 6, 9, Q, 2, 5, 8, J, A, 4, 7, ' +
+      '10, K) and the fourth by fours (4, 8, Q, 3, 7, J, 2, 6, 10, A, 5, 9, ' +
+      'K). Turn the deck one card at a time, and put each card on a ' +
+      'foundation that wants it or on any of the four discard piles before ' +
+      'turning the next. The top card of a discard pile may go up to a ' +
+      'foundation; nothing moves from one discard pile to another, and the ' +
+      'deck is gone through only once. Drag a card to the discard pile you ' +
+      'mean - which pile is the decision the game is made of, so a tap only ' +
+      'ever sends a card up.',
+    winning:
+      'All four foundations at their king, fifty-two cards up. Every card is ' +
+      'seen as it is turned and nothing is hidden after that, so this is ' +
+      'skill nearly all the way down: a beginner rarely gets out, and a ' +
+      'player who keeps each pile in some order - kings on one, say, so they ' +
+      'never bury anything - can win most hands.',
+  },
+  lucie: {
+    title: 'La Belle Lucie',
+    summary: 'Eighteen fans of cards, all face up, two redeals and one merci.',
+    setup:
+      'Seventeen fans of three cards and one of a single card, every card ' +
+      'face up, and four empty foundations.',
+    play:
+      'Only the top card of a fan moves: home to its foundation, built up in ' +
+      'suit from the ace, or onto the top card of another fan, one rank ' +
+      'lower in the same suit. A fan that empties stays empty - not even a ' +
+      'king may start one. When you are stuck, press the arrow to gather the ' +
+      'fans, shuffle them and deal them out again in threes; you may do that ' +
+      'twice. On the last deal you have one merci: tap any card buried in a ' +
+      'fan and it comes up to the top, to be played like any other.',
+    winning:
+      'All fifty-two home. A king buried above a lower card of its own suit ' +
+      'can only be freed by a redeal or the merci, and that is most of what ' +
+      'makes the game hard: watch where the kings land after each shuffle.',
   },
   tripeaks: {
     title: 'Tri Peaks',
@@ -282,7 +350,38 @@ const GUIDES: Record<GameId, Guide> = {
       'worth knowing before you start: it is a two-minute game and the ' +
       'shortest one here.',
   },
+  pokersquares: {
+    title: 'Poker Squares',
+    summary: 'Twenty-five cards into a five-by-five grid, scored as ten poker hands.',
+    setup:
+      'An empty grid of twenty-five places, and the deck. The top card is ' +
+      'turned to start; the other twenty-seven cards past the twenty-fifth ' +
+      'are never seen.',
+    play:
+      'Put the turned card in any empty place - press the place, or drag the ' +
+      'card there - and the next card turns. Once a card is down it stays ' +
+      'down, and nothing can be taken back: the next card is already showing. ' +
+      'Each of the five rows and five columns is a poker hand, scored as it ' +
+      'fills: royal flush 100, straight flush 75, four of a kind 50, full ' +
+      'house 25, flush 20, straight 15, three of a kind 10, two pair 5, one ' +
+      'pair 2. Flushes and straights need all five cards, and an ace counts ' +
+      'high or low in a straight.',
+    winning:
+      'The grid full and two hundred points, the target Morehead and ' +
+      'Mott-Smith set for it. Every hand ends with a score whether it ' +
+      'reaches that or not, and the record book keeps your best. Full houses ' +
+      'and fours are worth building toward; flushes are easiest kept to the ' +
+      'columns and straights to the rows, so that a card can help both.',
+  },
 };
+
+const SUIT_LABELS: Record<SuitCount, string> = { 1: 'One', 2: 'Two', 4: 'Four' };
+const SUIT_NOTES: Record<SuitCount, string> = {
+  1: 'Every run is a run you can carry. The gentle one, and most hands go out.',
+  2: 'Black and red: half the cards you could build on are the wrong suit.',
+  4: 'The real game, two of each suit, and much the hardest of the three.',
+};
+const suitWords = (count: SuitCount): string => (count === 1 ? 'one suit' : `${SUIT_LABELS[count].toLowerCase()} suits`);
 
 @Component({
   imports: [RouterLink, ChipSelect],
@@ -314,6 +413,7 @@ export class GameSetup {
     const ms = saved.snapshot.playedMs;
     if (ms !== undefined) parts.push(formatDuration(Math.round(ms / 1000)));
     if (this.game === 'klondike') parts.push(saved.drawCount === 3 ? 'draw three' : 'draw one');
+    if (this.game === 'spider') parts.push(suitWords(asSuitCount(saved.suits)));
     return parts.join(' · ');
   }
 
@@ -340,11 +440,16 @@ export class GameSetup {
       : 'Three at a time, two free passes through the deck, and much the harder of the two.',
   );
 
+  protected readonly suitCounts = SUIT_COUNTS;
+  protected readonly suitLabel = (count: SuitCount): string => SUIT_LABELS[count];
+
+  protected readonly suitNote = computed(() => SUIT_NOTES[this.settings.spiderSuits()]);
+
   // This variant's own record rather than the game's: draw-three next to
   // draw-one is the comparison worth having, and the menu already shows the
   // two of them added together.
   protected record(): string | undefined {
-    const mode = this.stats.mode(variantOf(this.game, this.settings.drawCount()));
+    const mode = this.stats.mode(variantOf(this.game, this.settings.drawCount(), this.settings.spiderSuits()));
     if (!mode.played) return undefined;
     return `${mode.won} of ${mode.played} won · ${formatPercent(mode.won / mode.played)}`;
   }

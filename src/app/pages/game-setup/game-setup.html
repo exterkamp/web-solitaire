@@ -57,6 +57,18 @@
     <p class="setup__detail setup__detail--tight">{{ drawNote() }}</p>
   }
 
+  @if (game === 'spider') {
+    <app-chip-select
+      label="Suits"
+      wide
+      [options]="suitCounts"
+      [value]="settings.spiderSuits()"
+      [display]="suitLabel"
+      (picked)="settings.spiderSuits.set($event)"
+    />
+    <p class="setup__detail setup__detail--tight">{{ suitNote() }}</p>
+  }
+
   @if (!saved) {
     <a class="button" [routerLink]="['/play', game]">Deal</a>
   }

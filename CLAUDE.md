@@ -32,7 +32,7 @@ Each game is three files under `src/app/game/`: `<name>.ts` (pure rules —
 no felt, no Angular, no DOM, every move returns a new state), `<name>-table.ts`
 (implements the shared `TableGame<S>` interface from `table-game.ts` — where
 its piles sit, and hands off to the rules), and `<name>.spec.ts`. One
-board, `solitaire-scene.ts`, runs all twelve games and knows nothing about any
+board, `solitaire-scene.ts`, runs every game and knows nothing about any
 of them specifically. See DEVELOP.md's "How it is put together" for the full
 version, including the flags that let non-grid boards (Tri Peaks, Pyramid,
 Golf, Black Hole) opt out of the column layout.

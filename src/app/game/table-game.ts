@@ -22,19 +22,24 @@ export type GameId =
   | 'freecell'
   | 'yukon'
   | 'canfield'
+  | 'spider'
   | 'spiderette'
   | 'scorpion'
   | 'seahaven'
+  | 'calculation'
+  | 'lucie'
   // Match what you can see and clear it away.
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
   | 'blackhole'
-  | 'acesup';
+  | 'acesup'
+  // Play for points.
+  | 'pokersquares';
 
 export const GAME_IDS: readonly GameId[] = [
-  'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
-  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
+  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation', 'lucie',
+  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
 ];
 
 /**
@@ -47,14 +52,18 @@ export const GAME_TITLES: Record<GameId, string> = {
   freecell: 'FreeCell',
   yukon: 'Yukon',
   canfield: 'Canfield',
+  spider: 'Spider',
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
+  calculation: 'Calculation',
+  lucie: 'La Belle Lucie',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
   blackhole: 'Black Hole',
   acesup: 'Aces Up',
+  pokersquares: 'Poker Squares',
 };
 
 /** One pile, and what is in it. The board draws piles in the order given. */
@@ -122,6 +131,11 @@ export interface GameView {
   // playing for and the second is how far there is to go.
   run?: number;
   left?: number;
+  // La Belle Lucie's two fallbacks, in the order they arrive: the redeals
+  // still to come, and then - on the last deal - whether the one merci is
+  // still to be had. Shown one after the other, never both.
+  redeals?: number;
+  merci?: number;
 }
 
 export interface TableGame<S> {
@@ -165,9 +179,46 @@ export interface TableGame<S> {
    * only pile TriPeaks could send a card to is the discard, and a flick that
    * meant the same as a tap would fire on every card somebody lifted to look
    * at.
+   *
+   * Given the state for the one game whose answer depends on it: in
+   * Calculation a card belongs to whichever foundation is counting to its
+   * rank right now, not to a suit.
    */
-  homeFor?(card: Card): PileRef;
+  homeFor?(card: Card, state: S): PileRef;
+  /**
+   * What a press on an empty pile means, for the game whose moves are made
+   * by choosing a place rather than a card.
+   *
+   * Absent everywhere but Poker Squares. There the card in hand is the only
+   * card that ever moves, so pressing the empty cell you want it in says
+   * everything a drag would, in one touch.
+   */
+  placeAt?(state: S, at: PileRef): Move | undefined;
   view(state: S): GameView;
+
+  // --- how a hand ends -----------------------------------------------------
+
+  /**
+   * The score a hand is won at, for a game played for points rather than to
+   * clear the table.
+   *
+   * Set, it changes three things. A hand that ends short of it is over
+   * rather than stuck - there is nothing to look for, only a score - and goes
+   * in the record book at the moment it ends, with that score. A hand that
+   * reaches it earns no time bonus, because the points are the game and
+   * placing twenty-five cards quickly is not. And the best score is the best
+   * of every hand, not only the ones that were won.
+   */
+  readonly target?: number;
+
+  /**
+   * Whether a move can be taken back. True unless said otherwise.
+   *
+   * False for the game where each move turns a card nobody has seen yet. An
+   * undo there is not changing your mind, it is looking ahead: put the card
+   * anywhere, see what comes next, take it back.
+   */
+  readonly undoable?: boolean;
 
   // --- how a hand arrives --------------------------------------------------
 

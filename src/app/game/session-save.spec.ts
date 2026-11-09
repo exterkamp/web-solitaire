@@ -4,7 +4,10 @@ import { seeded } from './random';
 import { GameSession } from './session';
 import { TableGame } from './table-game';
 import { acesUpTable } from './acesup-table';
+import { pokerSquaresTable } from './pokersquares-table';
 import { blackHoleTable } from './blackhole-table';
+import { calculationTable } from './calculation-table';
+import { lucieTable } from './lucie-table';
 import { canfieldTable } from './canfield-table';
 import { freecellTable } from './freecell-table';
 import { golfTable } from './golf-table';
@@ -13,6 +16,7 @@ import { pyramidTable } from './pyramid-table';
 import { scorpionTable } from './scorpion-table';
 import { seahavenTable } from './seahaven-table';
 import { spideretteTable } from './spiderette-table';
+import { spiderTable } from './spider-table';
 import { tripeaksTable } from './tripeaks-table';
 import { yukonTable } from './yukon-table';
 
@@ -23,13 +27,15 @@ import { yukonTable } from './yukon-table';
 // only that one.
 
 const TABLES: TableGame<any>[] = [
-  klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spideretteTable(),
-  scorpionTable(), seahavenTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(),
+  klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spiderTable(1), spiderTable(4), spideretteTable(),
+  scorpionTable(), seahavenTable(), calculationTable(), lucieTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(), pokerSquaresTable(),
 ];
 
 /** The first thing the board would do with a tap on any pile, or a draw. */
 function someMove<S>(table: TableGame<S>, state: S): Move | undefined {
   for (const pile of table.piles(state)) {
+    const placed = pile.cards.length ? undefined : table.placeAt?.(state, pile.ref);
+    if (placed) return placed;
     if (!pile.cards.length || !table.liftable(state, pile.ref, 1)) continue;
     const to = table.autoTarget(state, pile.ref, 1);
     if (to) return { kind: 'play', from: pile.ref, to, count: 1 };

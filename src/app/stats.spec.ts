@@ -26,8 +26,8 @@ describe('the record book', () => {
 
   it('files every game under a variant it keeps', () => {
     const games: GameId[] = [
-      'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
-      'tripeaks', 'pyramid', 'golf', 'acesup',
+      'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
+      'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares',
     ];
     for (const game of games) {
       expect(ALL_VARIANTS).toContain(variantOf(game, 1));
@@ -35,19 +35,24 @@ describe('the record book', () => {
     }
   });
 
-  // Klondike is two games and is recorded as two; everything else is one.
+  it('keeps Spider\'s suits apart, and Spiderette out of Spider', () => {
+    expect([1, 2, 4].map((n) => variantOf('spider', 1, n as 1 | 2 | 4))).toEqual(['spider-1', 'spider-2', 'spider-4']);
+    expect(variantOf('spiderette', 1, 4)).toBe('spiderette');
+  });
+
+  // Klondike is two games and Spider three; everything else is one.
   it('keeps draw-one and draw-three apart, and only those', () => {
     expect(variantOf('klondike', 1)).toBe('klondike-1');
     expect(variantOf('klondike', 3)).toBe('klondike-3');
     expect(variantOf('golf', 3)).toBe('golf');
     expect(VARIANT_GROUPS.filter((g) => g.variants.length > 1).map((g) => g.title))
-      .toEqual(['Klondike']);
+      .toEqual(['Klondike', 'Spider']);
   });
 
   // Only the two games that have a score get a row for one.
-  it('marks exactly the two scored games as scored', () => {
+  it('marks exactly the scored games as scored', () => {
     expect(VARIANT_GROUPS.filter((g) => g.scored).map((g) => g.title))
-      .toEqual(['Klondike', 'Tri Peaks']);
+      .toEqual(['Klondike', 'Tri Peaks', 'Poker Squares']);
   });
 });
 
@@ -74,6 +79,14 @@ describe('the rolling record', () => {
     expect(mode.totalSeconds).toBe(460);
     expect(mode.bestStreak).toBe(2);
     expect(mode.currentStreak).toBe(1);
+  });
+
+  it('keeps the best score of a hand that fell short, for the game played for points', () => {
+    const short: GameResult = { won: false, seconds: 0, moves: 0, score: 185 };
+    const mode = summarize([win(300, 25, 160), short, loss]);
+    expect(mode.bestScore).toBe(185);
+    expect(mode.won).toBe(1);
+    expect(mode.currentStreak).toBe(0);
   });
 
   it('forgets a best once it falls out of the window', () => {

@@ -7,6 +7,7 @@ import {
 import { defaultInk } from '@exterkamp/felt/core';
 import { DEFAULT_TARGET, DEFAULT_WORK_PILES, WORK_PILE_CHOICES } from './game/nertz';
 import { DrawCount } from './game/klondike';
+import { SuitCount, asSuitCount } from './game/spider';
 import { Quality, getQuality, setQuality } from './game/lite';
 import { Handedness, ScoreDisplay } from './game/settings-types';
 
@@ -22,6 +23,7 @@ import { Handedness, ScoreDisplay } from './game/settings-types';
 const DECK_THEME_KEY = 'solitaire.deckTheme';
 const BACK_COLOR_KEY = 'solitaire.backColor';
 const DRAW_COUNT_KEY = 'solitaire.drawCount';
+const SPIDER_SUITS_KEY = 'solitaire.spiderSuits';
 const HANDEDNESS_KEY = 'solitaire.handedness';
 const SCORE_DISPLAY_KEY = 'solitaire.scoreDisplay';
 const NERTZ_TARGET_KEY = 'solitaire.nertzTarget';
@@ -71,6 +73,10 @@ export class Settings {
   // is the harder of the two; one is the version most people have actually
   // played, and is the default for that reason rather than out of mercy.
   readonly drawCount = signal<DrawCount>(read(DRAW_COUNT_KEY) === '3' ? 3 : 1);
+
+  // Spider's suits. One by default, which is the Spider most people have
+  // played - the one a computer offered first.
+  readonly spiderSuits = signal<SuitCount>(asSuitCount(Number(read(SPIDER_SUITS_KEY))));
 
   // Which hand the phone is in, which decides which end of the top row the
   // stock sits at. The stock is tapped more than everything else on the board
@@ -180,6 +186,7 @@ export class Settings {
     effect(() => write(DECK_THEME_KEY, this.deckTheme()));
     effect(() => write(BACK_COLOR_KEY, backColorHex(this.backColor())));
     effect(() => write(DRAW_COUNT_KEY, String(this.drawCount())));
+    effect(() => write(SPIDER_SUITS_KEY, String(this.spiderSuits())));
     effect(() => write(HANDEDNESS_KEY, this.handedness()));
     effect(() => write(SCORE_DISPLAY_KEY, this.scoreDisplay()));
     effect(() => write(NERTZ_TARGET_KEY, String(this.nertzTarget())));

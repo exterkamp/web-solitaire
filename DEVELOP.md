@@ -125,9 +125,10 @@ src/app/game/
   table-game.ts      the interface a game implements for the board
   klondike.ts        the rules. no felt, no Angular, no DOM
   klondike.spec.ts   and their tests
-  freecell.ts  yukon.ts  canfield.ts  spiderette.ts        the same,
-  scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         eleven more
-  golf.ts  blackhole.ts  acesup.ts                          times
+  freecell.ts  yukon.ts  canfield.ts  spider.ts            the same,
+  spiderette.ts  scorpion.ts  seahaven.ts  calculation.ts   thirteen
+  tripeaks.ts  pyramid.ts  golf.ts  blackhole.ts  acesup.ts more times
+  lucie.ts  pokersquares.ts
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock
@@ -161,7 +162,7 @@ animates the answer. Where the two could disagree — what a tap means, which
 pile a dropped card is nearest — the scene decides, because those are facts
 about a thumb rather than about Klondike.
 
-**One board, twelve games.** `solitaire-scene.ts` owns everything about a screen
+**One board, every game.** `solitaire-scene.ts` owns everything about a screen
 and a thumb — picking a run up, following it, deciding what a release meant,
 and the fifty-two cards that fall out of a won game — and knows nothing about
 any particular game. Each game supplies a `TableGame` instead: its rules behind

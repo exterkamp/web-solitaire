@@ -366,14 +366,18 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
   freecell: 'interlace',
   yukon: 'rope',
   canfield: 'bead-and-reel',
+  spider: 'interlace',
   spiderette: 'guilloche',
   scorpion: 'running-dog',
   seahaven: 'scallop',
+  calculation: 'bead-and-reel',
+  lucie: 'scallop',
   tripeaks: 'chevron',
   pyramid: 'dentil',
   golf: 'rope',
   blackhole: 'guilloche',
   acesup: 'greek-key',
+  pokersquares: 'dentil',
 };
 
 // Faint: it is printing on the cloth, under the slots and the cards, and has
