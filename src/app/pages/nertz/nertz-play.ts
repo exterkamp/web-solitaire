@@ -16,7 +16,7 @@ import { createNertzGame } from '../../game/board';
 import { NertzScene, NertzSnapshot, NertzView } from '../../game/nertz-scene';
 import { Seat } from '../../game/nertz';
 import { Settings } from '../../settings';
-import { SavedGames } from '../../saved-games';
+import { Autosave, SavedGames } from '../../saved-games';
 
 // Two-player Nertz, and everything around the board that is not drawn on felt.
 //
@@ -93,14 +93,12 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
       events: { changed: (view) => this.onChanged(view) },
     });
     this.armBackGuard();
-    window.addEventListener('pagehide', this.saveNow);
+    this.autosave = new Autosave(() => this.saveNow());
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.onPopState);
-    window.removeEventListener('pagehide', this.saveNow);
-    this.saveNow();
-    clearTimeout(this.saveTimer);
+    this.autosave?.dispose();
     clearTimeout(this.movedOnTimer);
     this.game?.destroy();
   }
@@ -111,10 +109,9 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
 
   // --- keeping the match ----------------------------------------------------
 
-  private saveTimer?: ReturnType<typeof setTimeout>;
+  private autosave?: Autosave;
 
-  private readonly saveNow = (): void => {
-    clearTimeout(this.saveTimer);
+  private saveNow(): void {
     const game = this.game;
     if (!game) return;
     // Nothing played yet, or the match over: nothing to come back to.
@@ -125,13 +122,12 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     }
     const view = this.view();
     this.savedGames.saveNertz({ savedAt: Date.now(), round: view.round, totals: view.totals, match: snapshot });
-  };
+  }
 
   private onChanged(view: NertzView): void {
     const before = this.view();
     this.view.set(view);
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(this.saveNow, 250);
+    this.autosave?.soon();
     if (view.phase === 'match' && before.phase !== 'match') {
       this.announcement.set(`Player ${view.winner === 0 ? 'at the bottom' : 'at the top'} wins the match.`);
     } else if (view.phase === 'round' && before.phase === 'playing') {

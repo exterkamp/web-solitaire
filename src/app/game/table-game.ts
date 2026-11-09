@@ -32,7 +32,7 @@ export type GameId =
   | 'blackhole'
   | 'acesup';
 
-const GAME_IDS: readonly GameId[] = [
+export const GAME_IDS: readonly GameId[] = [
   'klondike', 'freecell', 'yukon', 'canfield', 'spiderette', 'scorpion', 'seahaven',
   'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];

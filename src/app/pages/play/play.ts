@@ -33,7 +33,7 @@ import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
-import { SavedGames } from '../../saved-games';
+import { Autosave, SavedGames } from '../../saved-games';
 
 // The board, and everything around it that is not drawn on felt.
 //
@@ -183,7 +183,7 @@ export class Play implements AfterViewInit, OnDestroy {
       events: {
         changed: (view) => {
           this.view.set(view);
-          this.saveSoon();
+          this.autosave?.soon();
         },
         won: (summary) => this.onWin(summary),
       },
@@ -196,9 +196,10 @@ export class Play implements AfterViewInit, OnDestroy {
     this.clock = setInterval(() => this.elapsed.set(this.scene()?.elapsed() ?? 0), 500);
     this.armBackGuard();
     this.startGamepad();
-    // The last chance a phone gives before it may kill the tab: the clock
-    // has moved on since the last move was saved.
-    window.addEventListener('pagehide', this.saveNow);
+    // A beat after each change rather than on every one - an automatic
+    // finish publishes fifty times in a few seconds, and each save writes the
+    // undo history out whole - and at once when the page is hidden or left.
+    this.autosave = new Autosave(() => this.saveNow());
   }
 
   ngOnDestroy(): void {
@@ -206,30 +207,22 @@ export class Play implements AfterViewInit, OnDestroy {
     if (this.konamiTimer) clearTimeout(this.konamiTimer);
     this.stopGamepad();
     window.removeEventListener('popstate', this.onPopState);
-    window.removeEventListener('pagehide', this.saveNow);
     // Leaving mid-hand keeps the hand: it is saved, and offered back from
     // the setup page. It goes in the record book as a loss only when it is
     // dealt over - see SavedGames.abandon.
-    this.saveNow();
+    this.autosave?.dispose();
     this.game?.destroy();
   }
 
   // --- keeping the hand -----------------------------------------------------
 
-  private saveTimer?: ReturnType<typeof setTimeout>;
+  private autosave?: Autosave;
+  // Whether this hand's win is in the record book already. A win can be
+  // undone back into play, and a hand that has been counted as won is not
+  // counted again as lost when it is dealt over.
+  private winRecorded = this.saved?.counted ?? false;
 
-  // A beat after the last change rather than on every one: an automatic
-  // finish publishes fifty times in a few seconds, and each save writes the
-  // undo history out whole.
-  private saveSoon(): void {
-    clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(this.saveNow, 250);
-  }
-
-  // An arrow property, so it can be handed to addEventListener as it is.
-  private readonly saveNow = (): void => {
-    clearTimeout(this.saveTimer);
-    this.saveTimer = undefined;
+  private saveNow(): void {
     const game = this.game;
     if (!game) return;
     const view = this.view();
@@ -243,9 +236,10 @@ export class Play implements AfterViewInit, OnDestroy {
       drawCount: this.drawCount,
       savedAt: Date.now(),
       moves: view.moves,
+      counted: this.winRecorded || undefined,
       snapshot: game.snapshot(),
     });
-  };
+  }
 
   private scene(): SolitaireScene | undefined {
     return this.game;
@@ -391,6 +385,7 @@ export class Play implements AfterViewInit, OnDestroy {
     // behind the menu has to be running to be dealt onto.
     if (this.paused()) this.setPaused(false);
     this.recordAbandoned();
+    this.winRecorded = false;
     this.savedGames.clear(this.gameId);
     this.win.set(undefined);
     this.waved.set(undefined);
@@ -404,11 +399,12 @@ export class Play implements AfterViewInit, OnDestroy {
     // A deal nobody touched is not a loss. Dealing a game, looking at it and
     // dealing another is how a lot of solitaire is played, and a record book
     // that counts each of those as a defeat is a record book nobody looks at.
-    if (view.moves > 0 && !view.won) this.stats.recordLoss(this.variant);
+    if (view.moves > 0 && !view.won && !this.winRecorded) this.stats.recordLoss(this.variant);
   }
 
   private onWin(summary: WinSummary): void {
     this.stats.recordWin(this.variant, summary);
+    this.winRecorded = true;
     this.elapsed.set(summary.seconds);
     this.win.set(summary);
   }
