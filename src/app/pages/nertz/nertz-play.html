@@ -96,7 +96,15 @@
       }
     </dl>
     <p class="panel__note">{{ view().rounds.length }} rounds, to {{ view().target }}</p>
-    <button type="button" class="button" [attr.data-rematch]="seat" (click)="rematch()">Rematch</button>
+    <!-- The same both-ends answer as Next round. -->
+    @if (ready()[seat]) {
+      <button type="button" class="button" [attr.data-rematch]="seat" disabled>Waiting for them…</button>
+    } @else {
+      @if (ready()[other(seat)]) {
+        <p class="panel__note">They want a rematch</p>
+      }
+      <button type="button" class="button" [attr.data-rematch]="seat" (click)="rematchWhenReady(seat)">Rematch</button>
+    }
     <button type="button" class="button button--quiet" (click)="exitToMenu()">Menu</button>
   </ng-template>
 

@@ -59,10 +59,10 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     rounds: [],
   });
 
-  // Who has pressed Next round on the score panel, by seat. The next round
-  // is dealt when both have, and not before: the panel is shown at both ends
-  // of the table, and either button alone used to deal over a player still
-  // reading theirs.
+  // Who has pressed Next round - or Rematch, once the match is over - by
+  // seat. The deal waits for both: the panel is shown at both ends of the
+  // table, and either button alone used to deal over a player still reading
+  // theirs. Cleared whenever the phase changes, so a press never carries over.
   protected readonly ready = signal<readonly [boolean, boolean]>([false, false]);
 
   protected readonly paused = signal(false);
@@ -133,7 +133,7 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
   private onChanged(view: NertzView): void {
     const before = this.view();
     this.view.set(view);
-    if (view.phase !== 'round') this.ready.set([false, false]);
+    if (view.phase !== before.phase) this.ready.set([false, false]);
     this.autosave?.soon();
     if (view.phase === 'match' && before.phase !== 'match') {
       this.announcement.set(`Player ${view.winner === 0 ? 'at the bottom' : 'at the top'} wins the match.`);
@@ -208,15 +208,23 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
 
   /** One player has finished with the score panel; both deals the round. */
   protected nextRound(seat: Seat): void {
-    const ready = this.ready().map((was, i) => was || i === seat) as [boolean, boolean];
-    if (!ready.every(Boolean)) {
-      this.ready.set(ready);
-      return;
-    }
-    this.ready.set([false, false]);
-    this.scene()?.nextRound();
+    if (this.bothReady(seat)) this.scene()?.nextRound();
   }
 
+  /** One player wants another match; both deals it. */
+  protected rematchWhenReady(seat: Seat): void {
+    if (this.bothReady(seat)) this.rematch();
+  }
+
+  // Marks a seat ready, and says whether that makes two.
+  private bothReady(seat: Seat): boolean {
+    const ready = this.ready().map((was, i) => was || i === seat) as [boolean, boolean];
+    const both = ready.every(Boolean);
+    this.ready.set(both ? [false, false] : ready);
+    return both;
+  }
+
+  /** Straight away: the pause menu's New match, which either player may call. */
   protected rematch(): void {
     if (this.paused()) this.setPaused(false);
     this.announcement.set('');
