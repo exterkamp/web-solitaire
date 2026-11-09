@@ -1,6 +1,6 @@
 import {
   Board, BoardPointer, Sprite, Toaster, Tween, cardsReady, createBoard, defineStack, flipCard, formatNumber,
-  riffleShuffle, toastsOf,
+  riffleShuffle, stackOffsets, toastsOf,
 } from '@exterkamp/felt';
 import { markBooted, renderScale } from './lite';
 import {
@@ -466,6 +466,16 @@ export class SolitaireScene {
     return cards.map((_, i) => this.table.fanStep(ref, cards, i));
   }
 
+  private across(ref: PileRef): boolean {
+    return this.table.fansAcross?.(ref) ?? false;
+  }
+
+  // How wide a spread hand may get: the table between the rails, less the
+  // card at each end.
+  private get acrossRoom(): number {
+    return this.table.width - 2 * BOARD_MARGIN - CARD_WIDTH;
+  }
+
   private fanDepth(ref: PileRef, cards: readonly Card[]): number {
     return this.fanSteps(ref, cards).reduce((sum, step) => sum + step, 0);
   }
@@ -500,7 +510,7 @@ export class SolitaireScene {
       .piles(this.session.state)
       // Only the piles that hang downward: a pile that fans up out of its
       // slot, like a draw-three waste, needs room above rather than below.
-      .filter((pile) => !this.table.fansUp(pile.ref))
+      .filter((pile) => !this.table.fansUp(pile.ref) && !this.across(pile.ref))
       .map((pile) => this.fanDepth(pile.ref, pile.cards));
     const deepest = Math.max(0, ...depths);
     const slack = this.floorY - (TABLEAU_TOP_Y + deepest + CARD_HEIGHT);
@@ -524,6 +534,12 @@ export class SolitaireScene {
   // needed by the deepest pile a game can produce - which is what it was for,
   // and why it now almost never happens.
   private fanOffsets(ref: PileRef, cards: readonly Card[]): number[] {
+    // A hand spread across the table is felt's own fan: squeezed evenly to
+    // the room between the rails once it would reach them.
+    if (this.across(ref)) {
+      const stack = defineStack({ id: pileKey(ref), x: 0, y: 0, fan: 'right', maxSpread: this.acrossRoom });
+      return stackOffsets(stack, this.fanSteps(ref, cards).slice(1));
+    }
     const steps = this.fanSteps(ref, cards);
     const total = steps.reduce((sum, step) => sum + step, 0);
     const room = this.floorY - (TABLEAU_TOP_Y + this.drop) - CARD_HEIGHT;
@@ -541,6 +557,11 @@ export class SolitaireScene {
   private cardPosition(ref: PileRef, index: number, cards: readonly Card[]): { x: number; y: number } {
     const base = this.pileBase(ref);
     const offsets = this.fanOffsets(ref, cards);
+    if (this.across(ref)) {
+      // Centred on the slot, so a hand grows out both ways as it is dealt.
+      const spread = offsets[offsets.length - 1] ?? 0;
+      return { x: base.x - spread / 2 + offsets[index], y: base.y };
+    }
     if (!this.table.fansUp(ref)) return { x: base.x, y: base.y + offsets[index] };
     // Upward, measured from the card at the end of the pile rather than from
     // the one at the start: the newest card stays in the slot and the older
@@ -1373,7 +1394,7 @@ export class SolitaireScene {
       // as the pile is long: a run dropped anywhere down a column is meant
       // for that column, not for the felt beside it.
       const offsets = this.fanOffsets(slot.ref, pile);
-      const depth = this.table.fansUp(slot.ref) ? 0 : (offsets[offsets.length - 1] ?? 0);
+      const depth = this.table.fansUp(slot.ref) || this.across(slot.ref) ? 0 : (offsets[offsets.length - 1] ?? 0);
       zones.push({
         ref: slot.ref,
         rect: {

@@ -1,4 +1,4 @@
-import { CARD_PEEK_HEIGHT } from './config';
+import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
 import { PileRef } from './piles';
 import { Handedness } from './settings-types';
@@ -11,16 +11,19 @@ const WIDTH = 360;
 
 // The dealer across the top, below the lettering; your hand below that.
 const DEALER_Y = 230;
-const HAND_Y = 440;
-// A split hand sits to the right of the first, which stays where it was.
-const HAND_X = [WIDTH / 2, WIDTH / 2 + 110];
+const HAND_Y = 420;
+// A split hand sits under the first, which stays where it was: hands are
+// spread across the table, so side by side they would run into each other.
+const HAND_ROWS = [HAND_Y, HAND_Y + CARD_HEIGHT + 30];
+// What a card shows of the one under it, spread across: its whole corner,
+// rank and suit side by side, and a little clear felt-white past them.
+const SPREAD = Math.round(CARD_WIDTH * 0.6);
 
-// The shoe beside the dealer, where it is on a real table. The discard tray
-// low on the felt, to the left of where the hands grow down to - which is
-// also what holds the board down to its full height: a fixed layout is set
-// on the floor by its lowest slot, and the hands need the room below them.
-const SHOE = { x: WIDTH - 55, y: DEALER_Y };
-const TRAY = { x: 55, y: 650 };
+// The shoe beside the dealer, where it is on a real table, and the discard
+// tray on the other side - at the two ends of the dealer's row, clear of a
+// hand of six spread between them.
+const SHOE = { x: WIDTH - 45, y: DEALER_Y };
+const TRAY = { x: 45, y: DEALER_Y };
 
 // Blackjack, as the board sees it.
 //
@@ -47,12 +50,12 @@ export function blackjackTable(bankroll: () => number): TableGame<BlackjackState
         { ref: pileRefs.stock, column: 0, row: 'top', ...SHOE, recycle: false },
         { ref: pileRefs.waste, column: 0, row: 'top', ...TRAY },
         { ref: pileRefs.dealer, column: 0, row: 'tableau', x: WIDTH / 2, y: DEALER_Y, printed: true, target: false },
-        ...HAND_X.map((x, i) => ({
+        ...HAND_ROWS.map((y, i) => ({
           ref: pileRefs.hand(i),
           column: 0,
           row: 'tableau' as const,
-          x,
-          y: HAND_Y,
+          x: WIDTH / 2,
+          y,
           // The second only exists once a pair has been split.
           printed: i === 0,
           target: false,
@@ -60,11 +63,13 @@ export function blackjackTable(bankroll: () => number): TableGame<BlackjackState
       ];
     },
 
-    // Each card's index showing, the way a hand is spread on a table.
+    // Spread across, each card's index showing, the way a dealer lays a hand
+    // out on the felt.
     fanStep(ref: PileRef, _cards: readonly Card[], index: number): number {
-      return ref.kind === 'tableau' && index > 0 ? CARD_PEEK_HEIGHT : 0;
+      return ref.kind === 'tableau' && index > 0 ? SPREAD : 0;
     },
     fansUp: () => false,
+    fansAcross: (ref: PileRef) => ref.kind === 'tableau',
 
     deal: (random) => deal(bankroll(), random),
     dealsFaceDown: false,
@@ -74,7 +79,7 @@ export function blackjackTable(bankroll: () => number): TableGame<BlackjackState
         { ref: pileRefs.stock, cards: state.stock },
         { ref: pileRefs.waste, cards: state.waste },
         { ref: pileRefs.dealer, cards: state.dealer },
-        ...HAND_X.map((_, i) => ({ ref: pileRefs.hand(i), cards: state.hands[i]?.cards ?? [] })),
+        ...HAND_ROWS.map((_, i) => ({ ref: pileRefs.hand(i), cards: state.hands[i]?.cards ?? [] })),
       ];
     },
 

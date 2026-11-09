@@ -176,6 +176,12 @@ export interface TableGame<S> {
   fanStep(ref: PileRef, cards: readonly Card[], index: number): number;
   /** Whether a pile fans upward out of its slot rather than downward. */
   fansUp(ref: PileRef): boolean;
+  /**
+   * Whether a pile spreads sideways, centred on its slot, rather than down
+   * the board: a hand laid on the table, the way a dealer spreads one. Its
+   * fanStep is then the gap across. Absent, every pile is a column.
+   */
+  fansAcross?(ref: PileRef): boolean;
 
   // --- the rules -----------------------------------------------------------
 
