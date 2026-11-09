@@ -143,6 +143,8 @@ export interface GameView {
   // A line about the hand, under the board: Blackjack's totals and how the
   // last hand went. For the game whose cards do not say it on their own.
   status?: string;
+  // Chips bet on the hand in play, shown in their circle. See TableGame.chipSeat.
+  bet?: number;
   // What a hand that ended short of winning has to say about itself, in the
   // games played for points. See TableGame.forPoints.
   note?: string;
@@ -150,6 +152,31 @@ export interface GameView {
   // moving cards. Pressing one calls TableGame.act.
   actions?: readonly TableAction[];
 }
+
+/**
+ * Something printed on a game's own cloth, beyond its slots and its name: the
+ * rules round a blackjack table, a betting circle. Plain data - the board
+ * paints it into the felt (see table.ts's paintPrinting), so a game module
+ * describes its layout without drawing anything.
+ *
+ * x and y are in the game's own units, like a slot's, and say where the
+ * middle of the mark sits; it slides with the layout.
+ */
+export type PrintMark = (
+  | {
+      text: string;
+      // Board units. Default 14.
+      size?: number;
+      // Between letters, in ems.
+      spacing?: number;
+      // Bent round a circle this size: negative runs round its bottom, the
+      // right way up - the curve of a table's edge seen from the chair.
+      arc?: number;
+    }
+  | { shape: 'ellipse' | 'rect' | 'line'; width: number; height?: number; radius?: number; stroke?: number }
+  // SVG path data in a viewBox, drawn as a line `stroke` wide.
+  | { path: string; viewBox: readonly number[]; width: number; height: number; stroke: number }
+) & { x: number; y: number; alpha?: number };
 
 export interface TableAction {
   id: string;
@@ -249,11 +276,20 @@ export interface TableGame<S> {
   readonly scoreIsChips?: boolean;
 
   /**
-   * Where the middle of the chip stack sits, in board units, for a game that
-   * wants it somewhere other than the band beside its name - Blackjack's, in
-   * front of the player, where a bet goes on a real table.
+   * A seat played for chips, in the game's own units: where your stack sits,
+   * where the betting circle is, and where the house pays from and sweeps
+   * to. Set, the score is that stack and GameView.bet is the circle, and the
+   * board moves chips between them as the numbers change - see chip.ts's
+   * ChipTable. Unset, the score's chips sit beside the game's name.
    */
-  readonly chipsAt?: { x: number; y: number };
+  readonly chipSeat?: {
+    bank: { x: number; y: number };
+    bet: { x: number; y: number };
+    house: { x: number; y: number };
+  };
+
+  /** What else is printed on this game's cloth. See PrintMark. */
+  readonly printing?: readonly PrintMark[];
 
   /**
    * Where a move made with one of the game's buttons scores from, for the

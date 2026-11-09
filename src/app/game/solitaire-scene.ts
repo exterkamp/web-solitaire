@@ -19,7 +19,7 @@ import {
   maxBoardDrop,
 } from './config';
 import { Card } from './deck';
-import { CHIP_STACK_REACH, ScoreChips } from './chip';
+import { CHIP_DIAMETER, CHIP_STACK_REACH, ChipTable, ScoreChips } from './chip';
 import { DeckTheme } from './deck-theme';
 import { DeckStyle } from './deck-style';
 import { CardSprite, ghostSuit, renderCourtArt, setDeck } from './card-sprite';
@@ -33,7 +33,7 @@ import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
 import { GameSession, SessionSnapshot } from './session';
 import { firstBoardDealt } from './first-board';
 import {
-  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintTableBorder,
+  FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintPrinting, paintTableBorder,
 } from './table';
 
 // The board: everything you can see and everything you can do to it.
@@ -238,6 +238,9 @@ export class SolitaireScene {
   private readonly setBoardPaused: (paused: boolean) => void;
   // The score, in chips. See chip.ts.
   private chips?: ScoreChips;
+  // Or, for a seat played for chips, the stack and the circle. See
+  // TableGame.chipSeat.
+  private chipTable?: ChipTable;
   // What a move scored, rising off the card that scored it. See scored().
   private toasts?: Toaster;
   // The side each card is turning to, while it turns: flipCard only says so
@@ -306,6 +309,7 @@ export class SolitaireScene {
   destroy(): void {
     this.stopInput();
     this.chips?.destroy();
+    this.chipTable?.destroy();
     this.toasts?.destroy();
     this.board.destroy();
   }
@@ -355,12 +359,22 @@ export class SolitaireScene {
     this.toasts = toastsOf(this.board);
     // In the band between the top row and the tableau, to the right of the
     // game's name - and sliding down the board with it.
-    // Or where the game puts them: see TableGame.chipsAt.
-    const chipsAt = this.table.chipsAt;
-    this.chips = chipsAt
-      ? new ScoreChips(this.board, FRAME_PAD + chipsAt.x - CHIP_STACK_REACH / 2, chipsAt.y)
-      : new ScoreChips(this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18);
-    this.chips.setDrop(this.drop);
+    // Or, at a seat played for chips, your stack and your bet - see
+    // TableGame.chipSeat. A stack's x is the middle of its first column.
+    const seat = this.table.chipSeat;
+    if (seat) {
+      const place = (at: { x: number; y: number }, columns = 1) =>
+        ({ x: FRAME_PAD + at.x - (columns > 1 ? CHIP_STACK_REACH / 2 : 0), y: at.y });
+      this.chipTable = new ChipTable(this.board, {
+        bank: place(seat.bank, 3), bet: place(seat.bet), house: place(seat.house),
+      });
+      this.chipTable.setDrop(this.drop);
+    } else {
+      this.chips = new ScoreChips(
+        this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18,
+      );
+      this.chips.setDrop(this.drop);
+    }
 
     // The lettering is painted once, so its face has to be in first.
     await fontsReady().catch(() => undefined);
@@ -418,6 +432,9 @@ export class SolitaireScene {
   private layoutNeeds(): number {
     const bottoms = this.table.slots(this.handedness)
       .map((slot) => (slot.y ?? TABLEAU_TOP_Y + CARD_HEIGHT / 2) + CARD_HEIGHT / 2);
+    // A seat's chips are part of the layout too, and need the felt they sit on.
+    const seat = this.table.chipSeat;
+    if (seat) bottoms.push(seat.bank.y + CHIP_DIAMETER);
     return Math.max(...bottoms) + (GAME_HEIGHT - BOARD_FLOOR);
   }
 
@@ -505,6 +522,7 @@ export class SolitaireScene {
         this.drop = fixed;
         this.markings.setY(fixed);
         this.chips?.setDrop(fixed);
+        this.chipTable?.setDrop(fixed);
       }
       return;
     }
@@ -527,6 +545,7 @@ export class SolitaireScene {
       this.markings.setY(next);
     }
     this.chips?.setDrop(next, animate ? MOVE_MS : 0);
+    this.chipTable?.setDrop(next, animate ? MOVE_MS : 0);
   }
 
   // How far down its pile each card sits, squeezed to fit if the pile is
@@ -608,6 +627,8 @@ export class SolitaireScene {
     // the band between the top row and the tableau, which is the only strip
     // of felt on this board that no card ever covers.
     put(drawSectionLabel(board, this.width / 2, TABLEAU_TOP_Y - 23, this.table.label));
+    // And whatever else this game has printed on its cloth.
+    for (const mark of paintPrinting(board, this.table.printing ?? [], FRAME_PAD)) put(mark);
 
     // The highlight, kept hidden until a run is dragged over a pile that
     // would take it. Made once rather than per drag: a picture painted in the
@@ -859,6 +880,7 @@ export class SolitaireScene {
   private publish(): void {
     const view = this.table.view(this.session.state);
     this.renderChips(view.score);
+    this.chipTable?.show(view.score ?? 0, view.bet ?? 0);
     this.report.changed({
       // Whatever this game keeps: a score and a stock, or free cells.
       ...view,
