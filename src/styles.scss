@@ -207,13 +207,19 @@ h3 {
   }
 }
 
-/* Phaser builds its canvas at runtime, so it carries none of Angular's
+/* The board builds its canvas at runtime, so it carries none of Angular's
    component scoping attributes and a component-scoped rule never matches
    it. touch-action doesn't inherit either, so it has to be set here, on the
    element that actually receives the touch - otherwise a flick started near
    a screen edge reaches Chrome as swipe-to-navigate and backs out of the
-   game mid-throw. */
+   game mid-throw.
+
+   Block, because felt sizes the canvas to fit its box and watches the box
+   for changes: an inline canvas sits on a text baseline, the gap under it
+   makes the box taller, the canvas is fitted again, and the settings page's
+   deck preview went round that loop until the browser stopped it. */
 canvas {
+  display: block;
   touch-action: none;
   overscroll-behavior: none;
 }

@@ -1,10 +1,11 @@
 import { Component, computed, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ChipSelect } from '../../shared/chip-select/chip-select';
 import { DrawCount } from '../../game/klondike';
 import { GameId, asGameId } from '../../game/table-game';
-import { formatPercent } from '../../format';
+import { formatDuration, formatPercent } from '../../format';
+import { SavedGames } from '../../saved-games';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
 
@@ -300,6 +301,27 @@ export class GameSetup {
   // every game it knows is the only kind worth having.
   protected readonly game: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
   protected readonly guide = GUIDES[this.game];
+
+  private readonly savedGames = inject(SavedGames);
+  private readonly router = inject(Router);
+  // A hand left on the table, offered back before a new one is dealt over it.
+  protected readonly saved = this.savedGames.get(this.game);
+
+  protected savedLine(): string {
+    const saved = this.saved;
+    if (!saved) return '';
+    const parts = [`Move ${saved.moves}`];
+    const ms = saved.snapshot.playedMs;
+    if (ms !== undefined) parts.push(formatDuration(Math.round(ms / 1000)));
+    if (this.game === 'klondike') parts.push(saved.drawCount === 3 ? 'draw three' : 'draw one');
+    return parts.join(' · ');
+  }
+
+  /** Deals over the saved hand, which goes in the record book as a loss. */
+  protected newGame(): void {
+    this.savedGames.abandon(this.game);
+    void this.router.navigate(['/play', this.game]);
+  }
 
   constructor() {
     // The tab says which game this page introduces, not just the site name.

@@ -18,5 +18,5 @@ export {
   backColorCss,
   backColorHex,
   deckThemePath,
-} from 'phaser-card-engine';
-export type { DeckTheme } from 'phaser-card-engine';
+} from '@exterkamp/felt/core';
+export type { DeckTheme } from '@exterkamp/felt/core';

@@ -248,7 +248,7 @@ in a waiting room.
 
 ## Building it
 
-Angular for the pages, Phaser for the board, and a hard line between them. One
+Angular for the pages, [felt](https://github.com/exterkamp/felt) for the board, and a hard line between them. One
 board runs all twelve games; each game is a rules module of pure functions
 plus a description of where its piles are printed. Adding the twelfth touched
 two shared files and added three of its own.
@@ -276,6 +276,6 @@ poor way to say thank you.
 Two things in this tree are **not** covered by it, and cannot be: the fonts in
 [public/fonts](public/fonts) are third-party (three SIL OFL 1.1, one Apache
 2.0 — all fine to redistribute, none of them mine to dedicate), and `npm
-install` brings in Angular, Phaser and the rest under their own licences.
+install` brings in Angular, felt and the rest under their own licences.
 Everything else — the rules, the board, the art in
 [public/cards](public/cards), the words — is CC0.

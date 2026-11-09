@@ -12,15 +12,15 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import Phaser from 'phaser';
 import { createNertzGame } from '../../game/board';
-import { NERTZ_SCENE, NertzScene, NertzView } from '../../game/nertz-scene';
+import { NertzScene, NertzSnapshot, NertzView } from '../../game/nertz-scene';
 import { Seat } from '../../game/nertz';
 import { Settings } from '../../settings';
+import { Autosave, SavedGames } from '../../saved-games';
 
 // Two-player Nertz, and everything around the board that is not drawn on felt.
 //
-// The same split as the solitaire page: Phaser owns the cards, and the
+// The same split as the solitaire page: felt owns the cards, and the
 // numbers, buttons and panels are DOM laid over it. What is different is that
 // there are two people looking at it from opposite ends, so everything a
 // player reads or presses is made twice - once the right way up and once
@@ -34,9 +34,13 @@ import { Settings } from '../../settings';
 })
 export class NertzPlay implements AfterViewInit, OnDestroy {
   private readonly settings = inject(Settings);
+  private readonly savedGames = inject(SavedGames);
   private readonly router = inject(Router);
+  // A match left on the table, picked up rather than dealt over. The setup
+  // page is where somebody chooses to start again instead.
+  private readonly saved = this.savedGames.getNertz();
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
-  private game?: Phaser.Game;
+  private game?: NertzScene;
 
   // Top first, which is the order they are laid out in.
   protected readonly seats: readonly Seat[] = [1, 0];
@@ -84,24 +88,46 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
       deckStyle: this.settings.deckStyle(),
       target: this.settings.nertzTarget(),
       workPiles: this.settings.nertzWorkPiles(),
+      showShuffle: this.settings.showShuffle(),
+      resume: this.saved?.match as NertzSnapshot | undefined,
       events: { changed: (view) => this.onChanged(view) },
     });
     this.armBackGuard();
+    this.autosave = new Autosave(() => this.saveNow());
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.onPopState);
+    this.autosave?.dispose();
     clearTimeout(this.movedOnTimer);
-    this.game?.destroy(true);
+    this.game?.destroy();
   }
 
   private scene(): NertzScene | undefined {
-    return this.game?.scene.getScene(NERTZ_SCENE) as NertzScene | undefined;
+    return this.game;
+  }
+
+  // --- keeping the match ----------------------------------------------------
+
+  private autosave?: Autosave;
+
+  private saveNow(): void {
+    const game = this.game;
+    if (!game) return;
+    // Nothing played yet, or the match over: nothing to come back to.
+    const snapshot = game.snapshot();
+    if (!snapshot) {
+      this.savedGames.clearNertz();
+      return;
+    }
+    const view = this.view();
+    this.savedGames.saveNertz({ savedAt: Date.now(), round: view.round, totals: view.totals, match: snapshot });
   }
 
   private onChanged(view: NertzView): void {
     const before = this.view();
     this.view.set(view);
+    this.autosave?.soon();
     if (view.phase === 'match' && before.phase !== 'match') {
       this.announcement.set(`Player ${view.winner === 0 ? 'at the bottom' : 'at the top'} wins the match.`);
     } else if (view.phase === 'round' && before.phase === 'playing') {

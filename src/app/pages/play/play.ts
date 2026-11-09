@@ -12,8 +12,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import Phaser from 'phaser';
-import { BOARD_SCENE, createBoardGame } from '../../game/board';
+import { createBoardGame } from '../../game/board';
 import { BoardView, SolitaireScene, WinSummary } from '../../game/solitaire-scene';
 import { DrawCount } from '../../game/klondike';
 import { GameId, asGameId, GAME_TITLES } from '../../game/table-game';
@@ -34,11 +33,12 @@ import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
+import { Autosave, SavedGames } from '../../saved-games';
 
 // The board, and everything around it that is not drawn on felt.
 //
 // The split is worth stating because it is the whole architecture of this
-// game: Phaser owns the cards and nothing else. The score, the clock, the
+// game: felt owns the cards and nothing else. The score, the clock, the
 // buttons and the win panel are DOM, laid over the canvas, because they are
 // text and buttons - things a browser already draws better than a canvas
 // can, with focus rings and screen-reader labels that come for free.
@@ -55,10 +55,11 @@ export class Play implements AfterViewInit, OnDestroy {
   // of the chip stack on the felt. See play.html.
   protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
+  private readonly savedGames = inject(SavedGames);
   private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
 
-  private game?: Phaser.Game;
+  private game?: SolitaireScene;
   private clock?: ReturnType<typeof setInterval>;
 
   // What the scene last said about itself. One signal rather than several, so
@@ -90,10 +91,9 @@ export class Play implements AfterViewInit, OnDestroy {
 
   // The pause menu, which is also the only way off this page.
   //
-  // A hand in progress lives entirely in this component - there is no server
-  // holding it and nothing written down until it ends - so leaving the board
-  // is the one irreversible thing on it. It should take two deliberate acts,
-  // and now it does.
+  // Leaving no longer costs the hand - it is saved, see saveNow - but a
+  // stray back gesture mid-drag still should not take somebody off the
+  // board, so leaving takes two deliberate acts.
   protected readonly paused = signal(false);
   // Whether the extra history entry is still in place. See armBackGuard.
   private backGuarded = false;
@@ -120,7 +120,13 @@ export class Play implements AfterViewInit, OnDestroy {
   // app.routes.ts. A board that read a preference could be opened by a link
   // and show something else.
   private readonly gameId: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
-  private readonly drawCount = this.settings.drawCount();
+  // A hand left on the table last time, picked up rather than dealt over. The
+  // setup page is where somebody chooses to deal over it instead (see
+  // SavedGames.abandon), so by here a saved game is one to continue - and a
+  // reload lands back in it without being asked.
+  private readonly saved = this.savedGames.get(this.gameId);
+  // A saved game keeps the draw it was dealt with.
+  private readonly drawCount = this.saved?.drawCount ?? this.settings.drawCount();
   private readonly table = makeTable(this.gameId, this.drawCount);
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
@@ -173,8 +179,12 @@ export class Play implements AfterViewInit, OnDestroy {
       showShuffle: this.settings.showShuffle(),
       scoreDisplay: this.settings.scoreDisplay(),
       deckStyle: this.settings.deckStyle(),
+      resume: this.saved?.snapshot,
       events: {
-        changed: (view) => this.view.set(view),
+        changed: (view) => {
+          this.view.set(view);
+          this.autosave?.soon();
+        },
         won: (summary) => this.onWin(summary),
       },
     });
@@ -186,6 +196,10 @@ export class Play implements AfterViewInit, OnDestroy {
     this.clock = setInterval(() => this.elapsed.set(this.scene()?.elapsed() ?? 0), 500);
     this.armBackGuard();
     this.startGamepad();
+    // A beat after each change rather than on every one - an automatic
+    // finish publishes fifty times in a few seconds, and each save writes the
+    // undo history out whole - and at once when the page is hidden or left.
+    this.autosave = new Autosave(() => this.saveNow());
   }
 
   ngOnDestroy(): void {
@@ -193,15 +207,42 @@ export class Play implements AfterViewInit, OnDestroy {
     if (this.konamiTimer) clearTimeout(this.konamiTimer);
     this.stopGamepad();
     window.removeEventListener('popstate', this.onPopState);
-    // A game walked away from mid-hand is a game lost, for the same reason it
-    // is in every other solitaire: otherwise the win rate is a measure of how
-    // often you finished the ones you were winning.
-    this.recordAbandoned();
-    this.game?.destroy(true);
+    // Leaving mid-hand keeps the hand: it is saved, and offered back from
+    // the setup page. It goes in the record book as a loss only when it is
+    // dealt over - see SavedGames.abandon.
+    this.autosave?.dispose();
+    this.game?.destroy();
+  }
+
+  // --- keeping the hand -----------------------------------------------------
+
+  private autosave?: Autosave;
+  // Whether this hand's win is in the record book already. A win can be
+  // undone back into play, and a hand that has been counted as won is not
+  // counted again as lost when it is dealt over.
+  private winRecorded = this.saved?.counted ?? false;
+
+  private saveNow(): void {
+    const game = this.game;
+    if (!game) return;
+    const view = this.view();
+    // An untouched deal is not worth coming back to, and a won one is over.
+    if (view.won || view.moves === 0) {
+      this.savedGames.clear(this.gameId);
+      return;
+    }
+    this.savedGames.save({
+      game: this.gameId,
+      drawCount: this.drawCount,
+      savedAt: Date.now(),
+      moves: view.moves,
+      counted: this.winRecorded || undefined,
+      snapshot: game.snapshot(),
+    });
   }
 
   private scene(): SolitaireScene | undefined {
-    return this.game?.scene.getScene(BOARD_SCENE) as SolitaireScene | undefined;
+    return this.game;
   }
 
   // --- leaving, and not leaving by accident -------------------------------
@@ -321,11 +362,7 @@ export class Play implements AfterViewInit, OnDestroy {
     this.elapsed.set(this.scene()?.elapsed() ?? 0);
   }
 
-  /**
-   * The deliberate way out. Records the hand as abandoned on the way, which
-   * ngOnDestroy would do anyway - this only makes sure it happens before the
-   * router takes the component down.
-   */
+  /** The deliberate way out. The hand is saved on the way - see ngOnDestroy. */
   protected exitToMenu(): void {
     this.backGuarded = false;
     this.router.navigateByUrl('/');
@@ -348,6 +385,8 @@ export class Play implements AfterViewInit, OnDestroy {
     // behind the menu has to be running to be dealt onto.
     if (this.paused()) this.setPaused(false);
     this.recordAbandoned();
+    this.winRecorded = false;
+    this.savedGames.clear(this.gameId);
     this.win.set(undefined);
     this.waved.set(undefined);
     this.elapsed.set(0);
@@ -360,11 +399,12 @@ export class Play implements AfterViewInit, OnDestroy {
     // A deal nobody touched is not a loss. Dealing a game, looking at it and
     // dealing another is how a lot of solitaire is played, and a record book
     // that counts each of those as a defeat is a record book nobody looks at.
-    if (view.moves > 0 && !view.won) this.stats.recordLoss(this.variant);
+    if (view.moves > 0 && !view.won && !this.winRecorded) this.stats.recordLoss(this.variant);
   }
 
   private onWin(summary: WinSummary): void {
     this.stats.recordWin(this.variant, summary);
+    this.winRecorded = true;
     this.elapsed.set(summary.seconds);
     this.win.set(summary);
   }
@@ -373,7 +413,7 @@ export class Play implements AfterViewInit, OnDestroy {
 
   // --- Gamepad ---
 
-  // The pad polls on its own loop, outside Phaser's pause, and the DOM
+  // The pad polls on its own loop, outside the board's pause, and the DOM
   // overlays that stop a thumb do nothing to a button press. So while the
   // pause menu or the win panel is up, the game actions no-op; Start stays
   // live so the pad can bring the game back out.

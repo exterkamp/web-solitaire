@@ -15,4 +15,4 @@ export {
   DISPLAY_WEIGHT,
   TEXT_OVERSAMPLE,
   fontsReady,
-} from 'phaser-card-engine';
+} from '@exterkamp/felt/core';

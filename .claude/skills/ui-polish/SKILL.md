@@ -1,6 +1,6 @@
 ---
 name: ui-polish
-description: Apply or extend this repo's visual design conventions when touching the Angular chrome (menu, setup, settings, stats, play overlays) — colors, type, spacing, motion, depth. Use before styling a new screen or component, or when asked to make the UI feel more polished/less flat. Not for the Phaser board itself (felt, cards, table) — that's already a separate, more ornate layer; see table.ts and card-sprite.ts.
+description: Apply or extend this repo's visual design conventions when touching the Angular chrome (menu, setup, settings, stats, play overlays) — colors, type, spacing, motion, depth. Use before styling a new screen or component, or when asked to make the UI feel more polished/less flat. Not for the board itself (felt, cards, table) — that's already a separate, more ornate layer; see table.ts and card-sprite.ts.
 ---
 
 # UI polish conventions
@@ -74,7 +74,7 @@ thing on the page"). Concretely:
    `.button`/`.pill` on the near step so they read as pressable objects
    rather than flat paint.
 3. **Respect `prefers-reduced-motion`** for anything beyond a color/opacity
-   fade — the Phaser scene already checks it (`solitaire-scene.ts:607`); any
+   fade — the board already checks it (`solitaire-scene.ts:668`); any
    new CSS transform-based motion (not a simple color transition) should too.
 
 ## Before calling a screen done

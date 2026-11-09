@@ -11,8 +11,9 @@ npm run smoke      # a real browser plays a real game
 ```
 
 Node 24 — see `.nvmrc`. Angular 22 (zoneless, signals, standalone components),
-Phaser 3.90, vitest for the rules and the Chrome DevTools Protocol for
-everything that needs a screen.
+felt (a WebGL2 card engine, `github:exterkamp/felt`) for the board, vitest
+for the rules and the Chrome DevTools Protocol for everything that needs a
+screen.
 
 ## Deploying
 
@@ -117,12 +118,12 @@ at all means the installed app can be opened cold rather than merely resumed.
 
 ## How it is put together
 
-Angular for the pages, Phaser for the board, and a hard line between them.
+Angular for the pages, felt for the board, and a hard line between them.
 
 ```
 src/app/game/
   table-game.ts      the interface a game implements for the board
-  klondike.ts        the rules. no Phaser, no Angular, no DOM
+  klondike.ts        the rules. no felt, no Angular, no DOM
   klondike.spec.ts   and their tests
   freecell.ts  yukon.ts  canfield.ts  spiderette.ts        the same,
   scorpion.ts  seahaven.ts  tripeaks.ts  pyramid.ts         eleven more
@@ -136,7 +137,9 @@ src/app/game/
   solitaire-scene.ts the board: layout, gestures, animation, the cascade
   card-sprite.ts     one card, drawn
   table.ts           felt, rail, lamp, and the lettering printed on it
-  board.ts           the Phaser game the scene runs in
+  board.ts           builds the board for a page
+  felt-kit.ts        draw order, timers, pause, markings that move as one
+  chip.ts            the score as a stack of chips on the felt
   fonts.ts           the typefaces, named again for the canvas
   nertz.ts           Nertz for two: the rules, as pure as the rest
   nertz-layout.ts    where both players' piles sit, one half mirrored
@@ -206,7 +209,7 @@ Klondike for anything it does not know.
 
 The one thing a game's shape changes outside its own module is the board's
 width: eight columns of cards need a wider table than seven, so FreeCell asks
-for one and Phaser fits it to the screen. The cards come out about a tenth
+for one and felt fits it to the screen. The cards come out about a tenth
 smaller and are drawn from exactly the same textures — the alternative was a
 second set of every measurement in `card-sprite.ts`.
 
@@ -222,10 +225,10 @@ time. It has its own routes (`/setup/nertz`, `/play/nertz`, declared before the
 record book or the `Record<GameId, …>` lists. Everything a player reads or
 presses is made twice in the DOM, the top copy turned 180°.
 
-**The board is 480x720 logical units, always.** Phaser's `Scale.FIT` scales
-that to whatever the screen is, and the scene scales its root container by the
-device pixel ratio so the canvas is rasterized at real resolution while every
-coordinate in the game stays in the original units. 720 rather than a phone's
+**The board is 480x720 logical units, always.** felt fits that to whatever
+box the page gives it and draws at the device pixel ratio, so the canvas is
+rasterized at real resolution while every coordinate in the game - and every
+pointer event, which arrives in board units - stays in the original units. 720 rather than a phone's
 own proportions because seven columns of cards decide the width, the width
 decides how big a card is, and any height beyond the longest possible fan is
 felt nobody plays on — bought by making every card smaller.
@@ -239,7 +242,7 @@ index rather than following the deepest pile exactly, because a table that
 shifted on most moves would be worse than one sitting too high. See
 `MAX_BOARD_DROP` in `config.ts`.
 
-**Phaser owns the cards and nothing else.** The score, the clock, the buttons
+**felt owns the cards and nothing else.** The score, the clock, the buttons
 and the win panel are DOM laid over the canvas, because they are text and
 buttons, and a browser draws those better than a canvas can — with focus rings
 and screen-reader labels that come for free.
@@ -267,24 +270,50 @@ Two details that are load-bearing:
   trying to leave. `history.back()` in a `setTimeout` is the way out, which is
   the same shape Nertz's guard has for the same reason.
 
-Pausing stops two clocks and one scene: `GameSession.setPaused` keeps the paused
+Pausing stops two clocks: `GameSession.setPaused` keeps the paused
 interval off the elapsed time (a pause menu that ran the clock is a pause menu
 nobody can afford to open, since best time is in the record book), and the
-scene is paused so no tween finishes behind the menu. The overlay is
+board's tweens and timers are held (`pausable` in `felt-kit.ts`) so no card
+moves behind the menu. The overlay is
 full-bleed rather than a panel on the felt - while it is up, nothing a thumb
 lands on should reach a card.
 
+### Games in progress
+
+A hand is never lost by leaving it. `SavedGames` (`src/app/saved-games.ts`)
+keeps one game in progress per game, plus one Nertz match, in `localStorage`
+under `solitaire.saved.v1.<game>`. The play pages write it a beat after every
+change, and again on `pagehide` and on the way out. Writing as each move lands
+matters on a phone, where the way out is often the system killing the tab, and
+no code runs when that happens.
+
+- **What is saved:** `GameSession.snapshot()`, which is the state, the last 150
+  states of undo and the time played. Every game's state is plain data, and
+  `session-save.spec.ts` round-trips all thirteen variants through JSON to keep
+  it that way. Nertz saves the match, the round and the chips through
+  `NertzScene.snapshot()`.
+- **Coming back:** `/play/<game>` always picks up a saved game, with no riffle
+  and no deal, so a reload lands back in the hand. The setup page is where the
+  question is asked. It shows **Continue** with the move count and time, and
+  **New game**, which deals over the saved hand. The menu tile reads "In
+  progress".
+- **The record book:** a saved hand is unfinished, so it is not in the record.
+  It becomes a loss when it is dealt over, either from the setup page
+  (`SavedGames.abandon`) or with New deal on the board. An untouched deal is
+  never saved, and a won game is cleared.
+
 ### Three things this codebase keeps relearning
 
-`Scene` already has members called `game` and `events`, and a field of your own
-by either name replaces machinery Phaser needs. This file has learned that
-lesson three times; the fields are called `table` and `report` now.
+**felt holds a card back until its deck is painted.** A card appears only
+once its faces, back and courts are all in the atlas (`cardsReady`), so the
+deal waits for that rather than dealing cards nobody can see - and the smoke
+test's "art loaded" check is simply that all 52 are showing (`revealed`).
 
-A hit area is in **texture space**, not centred on the sprite — Phaser adds the
-display origin itself. `new Rectangle(0, 0, CARD_WIDTH, CARD_HEIGHT)` is right
-and `new Rectangle(-w/2, -h/2, w, h)` puts every card's grabbable area half a
-card up and to the left, which is subtle enough to ship and infuriating enough
-to report.
+**Anything sized to its box must not size the box.** felt watches the
+canvas's parent and fits the canvas to it, so a parent whose size comes from
+its content - an inline custom element, a shrink-to-fit flex item - goes
+round a ResizeObserver loop. The global `canvas { display: block }` and the
+deck preview's `:host { display: block; width: 100% }` are both that.
 
 A game laid out by hand has to start **below `TABLEAU_TOP_Y - 23`**, which is
 where the board prints the game's name across the felt. Pyramid was given an
@@ -335,7 +364,7 @@ because none of it draws anything.
 
 ```bash
 npx ng build
-(cd dist/web-solitaire/browser && python3 -m http.server 4380) &
+node tools/serve-dist.mjs &   # nginx's fallback to index.html, so a reload works
 npm run smoke -- --host=http://localhost:4380
 ```
 

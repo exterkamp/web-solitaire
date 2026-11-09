@@ -1,6 +1,26 @@
 import { Move } from './piles';
 import { TableGame, TableMoveResult } from './table-game';
 
+/**
+ * A game in progress, as plain data: what it takes to put it back on the
+ * table after a reload or a trip to the menu. The states are the rules'
+ * own, which are plain objects all the way down, so this goes through JSON
+ * untouched.
+ */
+export interface SessionSnapshot<S> {
+  state: S;
+  // Oldest first. Possibly cut short - see snapshot().
+  history: S[];
+  undos: number;
+  // Time played so far, or undefined before the first move.
+  playedMs?: number;
+}
+
+// How many steps of undo a saved game keeps. Each one is a whole state, and
+// localStorage is a few megabytes shared by everything here; this many is
+// more than anybody undoes in one go and a few hundred kilobytes at most.
+const SAVED_UNDO_DEPTH = 150;
+
 // One game in progress, and everything that has happened in it.
 //
 // Generic over which game, because none of what is here is about the rules:
@@ -42,6 +62,37 @@ export class GameSession<S> {
     private readonly now: () => number = () => Date.now(),
   ) {
     this.current = game.deal(random);
+  }
+
+  /** The game as plain data, to be put back with `restore`. */
+  snapshot(): SessionSnapshot<S> {
+    const played = this.startedAt === undefined
+      ? undefined
+      : (this.stoppedAt ?? this.pausedAt ?? this.now()) - this.startedAt - this.pausedFor;
+    return {
+      state: this.current,
+      history: this.history.slice(-SAVED_UNDO_DEPTH),
+      undos: this.undos,
+      playedMs: played === undefined ? undefined : Math.max(0, played),
+    };
+  }
+
+  /**
+   * A game picked up where it was left. The clock carries on from the time
+   * it had played - the time spent away from it is not part of the hand.
+   */
+  static restore<S>(
+    game: TableGame<S>,
+    saved: SessionSnapshot<S>,
+    now: () => number = () => Date.now(),
+  ): GameSession<S> {
+    const session = new GameSession(game, Math.random, now);
+    session.current = saved.state;
+    session.history = [...saved.history];
+    session.undos = saved.undos;
+    if (saved.playedMs !== undefined) session.startedAt = now() - saved.playedMs;
+    if (session.won) session.stoppedAt = now();
+    return session;
   }
 
   get state(): S {

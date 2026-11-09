@@ -1,11 +1,10 @@
 import {
   AfterViewInit, Component, ElementRef, OnDestroy, effect, inject, viewChild,
 } from '@angular/core';
-import Phaser from 'phaser';
-import { DeckTheme } from 'phaser-card-engine';
-import { boardRoot, createBoard } from 'phaser-card-engine/phaser';
+import { Board, createBoard } from '@exterkamp/felt';
 import { Card } from '../../game/deck';
-import { CardSprite, preloadCardArt, renderCourtArt, setDeck } from '../../game/card-sprite';
+import { CardSprite, currentCardStyle, renderCourtArt, setDeck } from '../../game/card-sprite';
+import { DeckTheme } from '../../game/deck-theme';
 import { DeckStyle } from '../../game/deck-style';
 import { FELT_CLEAR_COLOR } from '../../game/table';
 import { Settings } from '../../settings';
@@ -35,72 +34,48 @@ const FACES: Card[] = [
 // between a preview that follows the thumb and a page that stops answering.
 const SETTLE_MS = 110;
 
-class DeckPreviewScene extends Phaser.Scene {
-  /** Set by the component before the scene starts. */
-  init(data: { theme: DeckTheme }): void {
-    this.theme = data.theme;
-  }
-
-  private theme!: DeckTheme;
-  private root!: Phaser.GameObjects.Container;
-  private cards: CardSprite[] = [];
+class DeckPreviewBoard {
+  private readonly cards: CardSprite[];
   private settle = 0;
-  private live = false;
 
-  preload(): void {
-    preloadCardArt(this, this.theme);
+  constructor(readonly board: Board) {
+    void renderCourtArt(board);
+    this.cards = FACES.map((card, i) => new CardSprite(board, WIDTH / 2 + PLACES[i], HEIGHT / 2, { ...card }));
   }
 
-  create(): void {
-    this.root = boardRoot(this);
-    this.live = true;
-    this.events.once(Phaser.Scenes.Events.DESTROY, () => {
-      window.clearTimeout(this.settle);
-      this.live = false;
-    });
-    void renderCourtArt(this);
-    this.lay();
-  }
-
-  /** Draw the deck again, once the hand has come off the colour wheel. */
+  /**
+   * Draw the deck again, once the hand has come off the colour wheel. felt
+   * keeps showing the old deck until the new one is painted, so the preview
+   * never blinks out between the two.
+   */
   restyle(theme: DeckTheme, backColor: number, style: DeckStyle): void {
-    if (!this.live) return;
+    if (this.board.isDestroyed) return;
     window.clearTimeout(this.settle);
     this.settle = window.setTimeout(() => {
+      if (this.board.isDestroyed) return;
       setDeck(theme, backColor, style);
-      void renderCourtArt(this);
-      // Only one theme's back is loaded at a time - the whole point of not
-      // preloading all seven - so switching deck means fetching one image
-      // before there is anything to draw.
-      this.withArt(theme, () => this.lay());
+      void renderCourtArt(this.board);
+      for (const card of this.cards) card.restyle(currentCardStyle());
     }, SETTLE_MS);
   }
 
-  private withArt(theme: DeckTheme, then: () => void): void {
-    preloadCardArt(this, theme);
-    if (this.load.list.size === 0) {
-      then();
-      return;
-    }
-    this.load.once(Phaser.Loader.Events.COMPLETE, then);
-    this.load.start();
+  destroy(): void {
+    window.clearTimeout(this.settle);
+    this.board.destroy();
   }
-
-  private lay(): void {
-    for (const card of this.cards) card.destroy();
-    this.cards = FACES.map((card, i) => {
-      const sprite = new CardSprite(this, WIDTH / 2 + PLACES[i], HEIGHT / 2, card);
-      this.root.add(sprite);
-      return sprite;
-    });
-  }
-
 }
 
 @Component({
   selector: 'app-deck-preview',
   template: '<div class="deck-preview" #host aria-hidden="true"></div>',
   styles: `
+    /* As wide as the column it is in. A custom element is inline, and in a
+       centred column it shrinks to its content - the canvas - which felt
+       then fits to the box it is in: a loop the browser has to break. */
+    :host {
+      display: block;
+      width: 100%;
+    }
     .deck-preview {
       width: 100%;
       max-width: 17rem;
@@ -114,7 +89,7 @@ class DeckPreviewScene extends Phaser.Scene {
 export class DeckPreview implements AfterViewInit, OnDestroy {
   private readonly settings = inject(Settings);
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
-  private game?: Phaser.Game;
+  private game?: DeckPreviewBoard;
 
   constructor() {
     // Every dial a deck has, read in one place: any of them moving redraws
@@ -128,24 +103,23 @@ export class DeckPreview implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    const theme = this.settings.deckTheme();
-    setDeck(theme, this.settings.backColor(), this.settings.deckStyle());
-    this.game = createBoard({
+    setDeck(this.settings.deckTheme(), this.settings.backColor(), this.settings.deckStyle());
+    this.game = new DeckPreviewBoard(createBoard({
       parent: this.host().nativeElement,
       width: WIDTH,
       height: HEIGHT,
       backgroundColor: FELT_CLEAR_COLOR,
-    });
-    this.game.scene.add('deck-preview', DeckPreviewScene, true, { theme });
+      pickUp: false,
+    }));
   }
 
   ngOnDestroy(): void {
-    // A second Phaser game, on a page that is not the board. It has to go
-    // when the page does, or leaving settings leaves a canvas running.
-    this.game?.destroy(true);
+    // A second board, on a page that is not the board. It has to go when
+    // the page does, or leaving settings leaves a canvas running.
+    this.game?.destroy();
   }
 
-  private scene(): DeckPreviewScene | undefined {
-    return this.game?.scene.getScene('deck-preview') as DeckPreviewScene | undefined;
+  private scene(): DeckPreviewBoard | undefined {
+    return this.game;
   }
 }

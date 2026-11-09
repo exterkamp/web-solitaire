@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COURT_PALETTES, DECK_STOCK, DECK_THEMES } from 'phaser-card-engine';
+import { COURT_PALETTES, DECK_STOCK, DECK_THEMES } from '@exterkamp/felt/core';
 import {
   DEFAULT_EDGE, DEFAULT_HIGHLIGHT, DEFAULT_PAPER, colorCss, courtStart, cssColor, customStyle,
   themeStyle,

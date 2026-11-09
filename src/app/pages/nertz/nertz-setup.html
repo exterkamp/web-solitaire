@@ -1,6 +1,14 @@
 <div class="menu">
   <h1>Nertz for two</h1>
 
+  @if (saved) {
+    <!-- A match left on the table last time, continued as it was dealt:
+         the choices below apply to the next new match. -->
+    <a class="button" routerLink="/play/nertz">Continue</a>
+    <p class="setup__detail setup__detail--tight">{{ savedLine() }}</p>
+    <button type="button" class="button button--quiet" (click)="newMatch()">New match</button>
+  }
+
   <p class="setup__summary">
     Two players, one phone, laid down between you. Everybody plays at once,
     and the foundations in the middle are a race.
@@ -22,7 +30,10 @@
       <p class="rules__text">
         No turns: play as fast as you can. Aces open a foundation, and each
         foundation builds up in its own suit. Your work piles build down in
-        alternating colours, and a run moves as a unit. Play from the top of
+        alternating colours, and a run moves as a unit. While one of your work
+        piles is empty, a card can also go behind another pile, under its
+        first card: a red four dropped on a black three and red two makes
+        four, three, two. Play from the top of
         your Nertz pile first. Turn your stock three at a time, and when it
         runs out, turn the waste back over. Both of you may play to the same
         foundation, and whoever gets there first lands it.
@@ -62,6 +73,8 @@
     (picked)="settings.nertzWorkPiles.set($event)"
   />
 
-  <a class="button" routerLink="/play/nertz">Deal</a>
+  @if (!saved) {
+    <a class="button" routerLink="/play/nertz">Deal</a>
+  }
   <a class="button button--quiet" routerLink="/">Back</a>
 </div>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CARD_WIDTH } from './config';
 import {
-  NERTZ_HEIGHT, NERTZ_WIDTH, cardSpot, foundationZone, handSpot, overlap, workBase, workColumns, workIndices,
-  workZone,
+  NERTZ_HEIGHT, NERTZ_MAX_HEIGHT, NERTZ_MIN_HEIGHT, NERTZ_WIDTH, NertzLayout, nertzHeightFor, overlap, workColumns,
+  workIndices,
 } from './nertz-layout';
 import { SEATS } from './nertz';
 
@@ -13,7 +13,28 @@ describe('four work piles', () => {
   });
 });
 
-describe.each([4, 5, 6])('layout with %i work piles', (n) => {
+describe('the table\'s height', () => {
+  it('fills the box it is shown in, within limits', () => {
+    expect(nertzHeightFor(undefined)).toBe(NERTZ_HEIGHT);
+    expect(nertzHeightFor(2)).toBe(960);
+    expect(nertzHeightFor(1)).toBe(NERTZ_MIN_HEIGHT);
+    expect(nertzHeightFor(3)).toBe(NERTZ_MAX_HEIGHT);
+  });
+
+  it('gives a taller table\'s length to the work piles', () => {
+    const short = new NertzLayout(NERTZ_MIN_HEIGHT);
+    const tall = new NertzLayout(NERTZ_MAX_HEIGHT);
+    expect(tall.workStep(12)).toBeGreaterThan(short.workStep(12));
+  });
+});
+
+describe.each([4, 5, 6].flatMap((n) => [NERTZ_MIN_HEIGHT, NERTZ_HEIGHT, NERTZ_MAX_HEIGHT].map((h) => [n, h])))(
+  'layout with %i work piles, %i tall', (n, height) => {
+  const layout = new NertzLayout(height);
+  const { cardSpot, foundationZone, handSpot, workBase, workZone } = {
+    cardSpot: layout.cardSpot.bind(layout), foundationZone: layout.foundationZone.bind(layout),
+    handSpot: layout.handSpot.bind(layout), workBase: layout.workBase.bind(layout), workZone: layout.workZone.bind(layout),
+  };
   const zones = (seat: 0 | 1, count = 1) => workIndices(n).map((i) => workZone(seat, i, count, n));
 
   it('keeps every column on the board', () => {
@@ -45,11 +66,11 @@ describe.each([4, 5, 6])('layout with %i work piles', (n) => {
       const a = workBase(0, i, n);
       const b = workBase(1, i, n);
       expect(b.x).toBeCloseTo(NERTZ_WIDTH - a.x);
-      expect(b.y).toBeCloseTo(NERTZ_HEIGHT - a.y);
+      expect(b.y).toBeCloseTo(height - a.y);
       const c = cardSpot(0, { kind: 'work', index: i }, 3, 5, n);
       const d = cardSpot(1, { kind: 'work', index: i }, 3, 5, n);
       expect(d.x).toBeCloseTo(NERTZ_WIDTH - c.x);
-      expect(d.y).toBeCloseTo(NERTZ_HEIGHT - c.y);
+      expect(d.y).toBeCloseTo(height - c.y);
     }
   });
 });

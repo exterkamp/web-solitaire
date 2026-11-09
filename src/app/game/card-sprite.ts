@@ -1,21 +1,20 @@
-import Phaser from 'phaser';
 import {
+  Board,
+  CardSprite as EngineCardSprite,
+  CardStyle,
   DEFAULT_BACK_COLOR,
   DEFAULT_DECK_THEME,
   DeckTheme,
+  Region,
   Suit,
-} from 'phaser-card-engine';
-import {
-  CardSprite as EngineCardSprite,
-  preloadCardArt as preloadEngineCardArt,
   renderCourts,
   suitTexture,
-} from 'phaser-card-engine/phaser';
+} from '@exterkamp/felt';
 import { CARD_WIDTH } from './config';
 import { DeckStyle, themeStyle } from './deck-style';
 import { Card } from './deck';
 
-// How a card is drawn, which is phaser-card-engine's job now.
+// How a card is drawn, which is felt's job now.
 //
 // What was here was 496 lines that the package has, to the decimal: the same
 // large index with its suit beside it, the same single big pip instead of a
@@ -51,29 +50,18 @@ export function setDeck(theme: DeckTheme, backColor: number, style?: DeckStyle):
 }
 
 /**
- * Loads the suit glyphs and the card back; call from a scene's preload().
- *
- * One theme, not seven - the back is a bitmap per deck and loading all of
- * them to show one would be most of a megabyte for a game that is otherwise
- * small enough to open on a train.
- */
-export function preloadCardArt(scene: Phaser.Scene, theme: DeckTheme): void {
-  preloadEngineCardArt(scene, { themes: [theme] });
-}
-
-/**
  * Draws the twelve court cards, and resolves when they are all in hand.
  *
  * They are rendered from SVG rather than loaded as pictures, which is what
  * lets a deck be a palette instead of a directory: switching themes is a
  * recolour now rather than another 700kB down the wire.
  *
- * Not awaited by the scene. A card built before its portrait is ready draws
- * its centre pip and takes the portrait when it lands, so the board can deal
- * immediately and the courts catch up.
+ * Not awaited by the board. felt holds a card back until its face is painted
+ * (see cardsReady), so nothing is ever seen half-drawn; this only starts the
+ * portraits early, at the size these cards are played at.
  */
-export function renderCourtArt(scene: Phaser.Scene): Promise<void> {
-  return renderCourts(scene, currentStyle.court, { width: COURT_RASTER });
+export function renderCourtArt(board: Board): Promise<void> {
+  return renderCourts(board, currentStyle.court, { width: COURT_RASTER });
 }
 
 /**
@@ -81,23 +69,28 @@ export function renderCourtArt(scene: Phaser.Scene): Promise<void> {
  * in an empty foundation, which is the felt's own marking rather than a card
  * and so is neither red nor black.
  */
-export function ghostSuitKey(scene: Phaser.Scene, suit: Suit): string {
-  return suitTexture(scene, suit, 0xffffff);
+export function ghostSuit(board: Board, suit: Suit, size: number): Region {
+  return suitTexture(board, suit, 0xffffff, size);
+}
+
+/** How every card built now is drawn: the deck, its back, its palette. */
+export function currentCardStyle(): CardStyle {
+  return {
+    width: CARD_WIDTH,
+    theme: currentTheme,
+    backColor: currentBackColor,
+    edge: currentStyle.edge,
+    courtWidth: COURT_RASTER,
+    paper: currentStyle.paper,
+    ink: currentStyle.ink,
+    courtPalette: currentStyle.court,
+  };
 }
 
 /** A card, at a place on the board. */
 export class CardSprite extends EngineCardSprite {
-  constructor(scene: Phaser.Scene, x: number, y: number, card: Card) {
-    super(scene, card, {
-      width: CARD_WIDTH,
-      theme: currentTheme,
-      backColor: currentBackColor,
-      edge: currentStyle.edge,
-      courtWidth: COURT_RASTER,
-      paper: currentStyle.paper,
-      ink: currentStyle.ink,
-      courtPalette: currentStyle.court,
-    });
+  constructor(board: Board, x: number, y: number, card: Card) {
+    super(board, card, currentCardStyle());
     this.setPosition(x, y);
   }
 }

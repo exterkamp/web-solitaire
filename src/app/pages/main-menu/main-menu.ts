@@ -1,9 +1,10 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { animate, stagger, steps, type JSAnimation } from 'animejs';
-import { GameId } from '../../game/table-game';
+import { GAME_IDS, GameId } from '../../game/table-game';
 import { formatPercent } from '../../format';
 import { Stats } from '../../stats';
+import { SavedGames, SavedSummary } from '../../saved-games';
 
 // One bulb, sampled from a letter's outline or walked round the plaque's
 // frame. Both end up rendered by the same helper (appendBulb) so a frame
@@ -103,6 +104,14 @@ const FRAME_FLOOR = 0.08;
 })
 export class MainMenu implements AfterViewInit, OnDestroy {
   private readonly stats = inject(Stats);
+  private readonly savedGames = inject(SavedGames);
+  // Read once, when the menu opens: the template asks for these on every
+  // change detection, and the menu is rebuilt each time it is visited, so
+  // nothing here can go stale while it is up.
+  private readonly inProgressAt = Object.fromEntries(
+    GAME_IDS.map((game) => [game, this.savedGames.summary(game)]),
+  ) as Record<GameId, SavedSummary | undefined>;
+  private readonly nertzSave = this.savedGames.getNertz();
   private readonly letters = viewChild.required<ElementRef<HTMLDivElement>>('letters');
   private readonly frame = viewChild.required<ElementRef<HTMLDivElement>>('frame');
   private letterAnimation?: JSAnimation;
@@ -126,9 +135,27 @@ export class MainMenu implements AfterViewInit, OnDestroy {
   };
 
   protected line(game: GameId): string {
+    // A hand left on the table says so first: that is the one thing on this
+    // screen somebody might be coming back for.
+    const saved = this.inProgressAt[game];
+    if (saved) return `In progress · move ${saved.moves}`;
     const record = this.stats.game(game);
     if (!record.played) return this.blurbs[game];
     return `${record.won} of ${record.played} won · ${formatPercent(record.won / record.played)}`;
+  }
+
+  // The badge on the picture: there is a hand here to pick up.
+  protected inProgress(game: GameId): boolean {
+    return !!this.inProgressAt[game];
+  }
+
+  protected nertzSaved(): boolean {
+    return !!this.nertzSave;
+  }
+
+  protected nertzLine(): string {
+    const saved = this.nertzSave;
+    return saved ? `In progress · round ${saved.round}` : 'Two players, one phone · a race to the middle';
   }
 
   ngAfterViewInit(): void {

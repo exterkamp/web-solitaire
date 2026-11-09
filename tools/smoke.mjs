@@ -9,7 +9,7 @@
 // nothing, a win that never reaches the page.
 //
 //   npx ng build
-//   (cd dist/web-solitaire/browser && python3 -m http.server 4380) &
+//   node tools/serve-dist.mjs &    # the build, with nginx's fallback to index.html
 //   node tools/smoke.mjs --host=http://localhost:4380
 //
 // Exits non-zero on the first thing it doesn't like, and writes a screenshot
@@ -162,7 +162,7 @@ class Browser {
   // gesture aimed at a freshly turned card a coin toss.
   async settle(scene) {
     await this.until(
-      `!${scene}.drag && ${scene}.tweens.getTweens().length === 0`,
+      `!${scene}.drag && ${scene}.board.tweens.count === 0`,
       'the board to come to rest',
       30000,
     );
@@ -328,24 +328,22 @@ class Browser {
 // are private in TypeScript and perfectly ordinary at runtime, which is what
 // makes this possible at all - and is a deliberate liberty: a test tool is
 // allowed to know more than a caller.
-const SCENE = `window.__game.scene.getScene('solitaire')`;
+const SCENE = `window.__game`;
 const STATE = `${SCENE}.session.state`;
 
 // A point on the board, in page coordinates.
 //
-// Three transforms deep, and every one of them has to be right for a tap to
-// land: board units to canvas pixels (the scene scales its root container by
-// the device pixel ratio), canvas pixels to CSS pixels (Phaser's Scale.FIT
-// fits the canvas into whatever box the page gave it), and CSS pixels to the
-// page (where that box is). Getting this wrong is a test that misses the
-// card and reports that the board ignored it.
+// Two transforms deep, and both have to be right for a tap to land: board
+// units to CSS pixels (felt fits the canvas into whatever box the page gave
+// it, at any density), and CSS pixels to the page (where that box is).
+// Getting this wrong is a test that misses the card and reports that the
+// board ignored it.
 const onPage = (expression) => `(() => {
   const at = ${expression};
-  const canvas = document.querySelector('canvas');
+  const canvas = ${SCENE}.board.canvas;
   const box = canvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const scale = box.width / canvas.width;
-  return { x: box.left + at.x * ratio * scale, y: box.top + at.y * ratio * scale };
+  const scale = box.width / ${SCENE}.board.width;
+  return { x: box.left + at.x * scale, y: box.top + at.y * scale };
 })()`;
 
 // A position dealt by hand.
@@ -363,7 +361,7 @@ const onPage = (expression) => `(() => {
 // place it still belongs; only a test that moves cards without telling the
 // board can.
 const rig = (body) => `(() => {
-  ${SCENE}.tweens.killAll();
+  ${SCENE}.board.tweens.flush();
   const state = ${STATE};
   const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   const suits = ['spades','hearts','diamonds','clubs'];
@@ -417,7 +415,7 @@ async function main() {
   // without touching a single duration in the game itself. What is being
   // tested is what the board does, not how long it takes to look good doing
   // it.
-  await browser.evaluate(`(${SCENE}.tweens.timeScale = 20, ${SCENE}.time.timeScale = 20, true)`);
+  await browser.evaluate(`(${SCENE}.timeScale = 20, true)`);
 
   // The deal has to land before anything is asked about positions, and it is
   // waited on rather than slept through - a frame rate this variable makes a
@@ -437,12 +435,14 @@ async function main() {
   check(dealt.stock === 24, 'twenty-four cards left in the stock');
   check(dealt.sprites === 52, 'fifty-two cards drawn');
 
-  // Every piece of art the deck asked for arrived. A missing court is a card
-  // with a blank face, which nothing else here would notice.
-  const missing = await browser.evaluate(
-    `Object.keys(${SCENE}.textures.list).filter((k) => k.startsWith('face-') || k.startsWith('suit-')).length`,
+  // Every piece of art the deck asked for arrived. felt draws a card only
+  // once its deck's faces, backs and courts are all painted, so a card that
+  // is showing is a deck that loaded - and a missing court is a deck of cards
+  // that never appear.
+  const shown = await browser.evaluate(
+    `[...${SCENE}.sprites.values()].filter((s) => s.revealed).length`,
   );
-  check(missing >= 16, `the deck's art loaded (${missing} textures)`);
+  check(shown === 52, `the deck's art loaded (${shown} of 52 cards drawn)`);
 
   // A real tap on the stock, at the coordinates the board says it is at.
   const stock = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
@@ -639,12 +639,19 @@ async function main() {
   // presses were handled by card sprites, an empty pile has none, and the
   // slot with the recycle arrow printed on it was doing nothing but
   // promising.
+  //
+  // An ace on top of the waste, so the position has a move in it. Five cards
+  // picked at random could have none, and then the page rightly says "No
+  // moves" - in a panel over the board, which takes the press meant for the
+  // stock.
   await browser.evaluate(rig(`
-    const waste = all.slice(0, 5).map((c) => ((c.faceUp = true), c));
+    const ace = pick('A', 'spades');
+    const rest = all.filter((c) => c !== ace);
+    const waste = [...rest.slice(0, 4), ace].map((c) => ((c.faceUp = true), c));
     state.stock = [];
     state.waste = waste;
     state.foundations = [[], [], [], []];
-    state.tableau = [all.slice(5).map((c) => ((c.faceUp = false), c)), [], [], [], [], [], []];
+    state.tableau = [rest.slice(4).map((c) => ((c.faceUp = false), c)), [], [], [], [], [], []];
   `));
   await browser.settle(SCENE);
   const stockAt = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
@@ -669,7 +676,16 @@ async function main() {
   // matters: each covered card's top edge is clear of the card in front of
   // it by enough to read an index off, and the playable card is still in the
   // slot beside the stock.
-  await browser.evaluate(`(${SCENE}.newGame(3), true)`);
+  // A board's draw is the table it was built with, so draw three is a board
+  // of its own: opened the way a player gets one, from the setting. The hand
+  // on the table is saved on the way out, and would be resumed at draw one,
+  // so it is dealt over first.
+  await browser.go(`${host}/setup/klondike`);
+  await browser.until(`!!document.querySelector('.menu h1')`, 'the setup page');
+  await browser.evaluate(`(localStorage.removeItem('solitaire.saved.v1.klondike'), localStorage.removeItem('solitaire.saved.v1.klondike.summary'), localStorage.setItem('solitaire.drawCount', '3'), true)`);
+  await browser.go(`${host}/play/klondike`);
+  await browser.until(`!!${SCENE}?.session && !${SCENE}.busy`, 'a draw-three board');
+  await browser.evaluate(`(${SCENE}.timeScale = 20, true)`);
   await browser.settle(SCENE);
   const stockNow = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
   await browser.tap(stockNow.x, stockNow.y);
@@ -726,8 +742,10 @@ async function main() {
   await sleep(300);
   check(await browser.evaluate(`${SCENE}.session.canFinish`), 'the finish is offered once nothing is hidden');
 
+  // The hand on the table is the draw-three one opened above, so its win goes
+  // in draw three's column of the record book.
   const winsBefore = await browser.evaluate(
-    `(JSON.parse(localStorage.getItem('solitaire.stats.v1') || '{}').byDraw?.['1']?.won) ?? 0`,
+    `(JSON.parse(localStorage.getItem('solitaire.stats.v2') || '{}').byVariant?.['klondike-3']?.won) ?? 0`,
   );
 
   if (!await browser.until(`!!document.querySelector('.action--go')`, 'the finish button')) {
@@ -748,10 +766,10 @@ async function main() {
   }
   const won = await browser.evaluate(`({
     total: document.querySelector('.win__line--total dd').textContent.trim(),
-    stats: JSON.parse(localStorage.getItem('solitaire.stats.v1') || 'null'),
+    stats: JSON.parse(localStorage.getItem('solitaire.stats.v2') || 'null'),
   })`);
   check(!!won.total, `the win panel says what it was worth (${won.total})`);
-  const mode = won.stats?.byDraw?.['1'];
+  const mode = won.stats?.byVariant?.['klondike-3'];
   check(
     mode?.won === winsBefore + 1 && mode?.played === mode?.won,
     `the record book counts the win (${JSON.stringify(mode)})`,
@@ -801,20 +819,21 @@ async function main() {
   if (!await browser.until(`!!window.__game && !!${SCENE} && !!${SCENE}.session`, 'the board, offline', 60000)) {
     return finish(browser);
   }
-  await browser.evaluate(`(${SCENE}.tweens.timeScale = 20, ${SCENE}.time.timeScale = 20, true)`);
+  await browser.evaluate(`(${SCENE}.timeScale = 20, true)`);
   await browser.until(`${SCENE}.busy === false`, 'the offline deal to land', 60000);
   const offlineDeal = await browser.evaluate(`({
     sprites: ${SCENE}.sprites.size,
     tableau: ${STATE}.tableau.map((p) => p.length),
-    courts: Object.keys(${SCENE}.textures.list).filter((k) => k.startsWith('face-')).length,
+    shown: [...${SCENE}.sprites.values()].filter((s) => s.revealed).length,
   })`);
   check(offlineDeal.sprites === 52, `a whole deck deals offline (${offlineDeal.sprites})`);
   check(
     JSON.stringify(offlineDeal.tableau) === '[1,2,3,4,5,6,7]',
     'into the seven piles it should',
   );
-  // Twelve court cards and a back, from the cache rather than from anywhere.
-  check(offlineDeal.courts === 12, `with its court cards (${offlineDeal.courts} of 12)`);
+  // Its art - courts, suits, the back - from the cache rather than from
+  // anywhere: a card is not drawn until all of it is in.
+  check(offlineDeal.shown === 52, `with all its art (${offlineDeal.shown} of 52 drawn)`);
 
   return finish(browser);
 }

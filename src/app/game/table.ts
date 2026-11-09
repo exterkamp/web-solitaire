@@ -1,6 +1,6 @@
-import Phaser from 'phaser';
+import { Board, BorderPattern, FeltPaint, Sprite, paintFelt as paintOnFelt, paintFeltFrame } from '@exterkamp/felt';
+import type { GameId } from './table-game';
 import { DISPLAY_FONT, DISPLAY_WEIGHT } from './fonts';
-import { textOversample } from './lite';
 
 // The table the game is played on: felt, the pool of light falling on it,
 // and the rail around the edge. Modelled on a casino craps table, which is
@@ -18,11 +18,8 @@ import { textOversample } from './lite';
 // gradients and a noise tile, which costs less than the download would and
 // scales to whatever resolution the device canvas happens to be.
 
-const FELT_TEXTURE = 'table-felt';
-const NOISE_TEXTURE = 'table-felt-nap';
-
-// Used as the Phaser canvas clear colour so the corners match the felt
-// before anything is drawn over them.
+// Used as the canvas clear colour so the corners match the felt before
+// anything is drawn over them.
 export const FELT_CLEAR_COLOR = '#07241f';
 
 // Felt, from the middle of the lit area out to the unlit corners.
@@ -46,15 +43,24 @@ const NOISE_ALPHA = 0.11;
 // Polished mahogany, in logical units of rail width.
 const RAIL_WIDTH = 14;
 
+// The largest picture one atlas page holds, less its gutters. The surface is
+// the one picture on the board the size of the board, and on a dense phone
+// the board is bigger than a page: it is painted at whatever density fits
+// and drawn stretched. Gradients and grain survive that; nothing else on the
+// board is painted this way.
+const SURFACE_MAX_PX = 2040;
+
+type Pen = CanvasRenderingContext2D;
+
 function rgba(c: { r: number; g: number; b: number }, a: number): string {
   return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
 }
 
-function ensureNoiseTexture(scene: Phaser.Scene): void {
-  if (scene.textures.exists(NOISE_TEXTURE)) return;
-  const texture = scene.textures.createCanvas(NOISE_TEXTURE, NOISE_TILE, NOISE_TILE);
-  if (!texture) return;
-  const ctx = texture.getContext();
+function noiseTile(): HTMLCanvasElement {
+  const tile = document.createElement('canvas');
+  tile.width = NOISE_TILE;
+  tile.height = NOISE_TILE;
+  const ctx = tile.getContext('2d')!;
   const image = ctx.createImageData(NOISE_TILE, NOISE_TILE);
   for (let i = 0; i < image.data.length; i += 4) {
     // Monochrome speckle. The alpha of the whole layer does the dimming, so
@@ -66,15 +72,11 @@ function ensureNoiseTexture(scene: Phaser.Scene): void {
     image.data[i + 3] = 255;
   }
   ctx.putImageData(image, 0, 0);
-  texture.refresh();
+  return tile;
 }
 
-function ensureFeltTexture(scene: Phaser.Scene, w: number, h: number, scale: number): void {
-  if (scene.textures.exists(FELT_TEXTURE)) scene.textures.remove(FELT_TEXTURE);
-  const texture = scene.textures.createCanvas(FELT_TEXTURE, w, h);
-  if (!texture) return;
-  const ctx = texture.getContext();
-
+// The felt itself, in board units: base, the pool of light, the vignette.
+function paintFelt(ctx: Pen, w: number, h: number): void {
   ctx.fillStyle = rgba(FELT_BASE, 1);
   ctx.fillRect(0, 0, w, h);
 
@@ -99,15 +101,12 @@ function ensureFeltTexture(scene: Phaser.Scene, w: number, h: number, scale: num
   vignette.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, w, h);
-
-  drawRail(ctx, w, h, RAIL_WIDTH * scale);
-  texture.refresh();
 }
 
 // A polished rail around the edge: a dark outer lip, the wood itself shaded
 // so it reads as rounded, and a specular line along the top where the lamp
 // catches it.
-function drawRail(ctx: CanvasRenderingContext2D, w: number, h: number, width: number): void {
+function drawRail(ctx: Pen, w: number, h: number, width: number): void {
   // Cross-section of a rounded rail, outer lip inward: shadowed edge, the
   // bulk of the wood, the crown catching the lamp, then falling back into
   // shadow where it meets the felt.
@@ -143,27 +142,41 @@ function drawRail(ctx: CanvasRenderingContext2D, w: number, h: number, width: nu
   ctx.fillRect(w - inner - t, inner, t, h - 2 * inner);
 }
 
-// Lays the table down behind everything else. Call first in create(), before
-// anything is added to the scene, so it sits at the bottom of the display
-// list. Works in canvas pixels rather than board units: the felt grain is
-// the one thing in the game that should be drawn at the device's real
-// resolution instead of being scaled up with the rest of the board.
-export function drawTableSurface(scene: Phaser.Scene, pixelRatio: number): void {
-  const w = scene.scale.width;
-  const h = scene.scale.height;
+// Lays the table down behind everything else: one picture the size of the
+// board, at the bottom of the draw order. The grain is laid in device pixels
+// rather than board units - it is the one thing on the table that should be
+// as fine as the screen, not scaled up with the rest of the board.
+export function drawTableSurface(board: Board): Sprite {
+  const w = board.width;
+  const h = board.height;
+  const density = Math.min(board.pixelRatio, SURFACE_MAX_PX / w, SURFACE_MAX_PX / h);
+  const pw = Math.floor(w * density);
+  const ph = Math.floor(h * density);
+  const region = board.atlas.obtain(`table-surface-${w}x${h}@${pw}`, pw, ph, (pen) => {
+    const ctx = pen as Pen;
+    ctx.save();
+    ctx.scale(pw / w, ph / h);
+    paintFelt(ctx, w, h);
+    ctx.restore();
 
-  ensureNoiseTexture(scene);
-  ensureFeltTexture(scene, w, h, pixelRatio);
+    // The nap sits over the felt but inside the rail, so the wood stays
+    // polished rather than picking up cloth grain.
+    const inset = RAIL_WIDTH * density;
+    const nap = ctx.createPattern(noiseTile(), 'repeat');
+    if (nap) {
+      ctx.save();
+      ctx.globalAlpha = NOISE_ALPHA;
+      ctx.fillStyle = nap;
+      ctx.fillRect(inset, inset, pw - 2 * inset, ph - 2 * inset);
+      ctx.restore();
+    }
 
-  scene.add.image(0, 0, FELT_TEXTURE).setOrigin(0, 0);
-
-  // The nap sits over the felt but inside the rail, so the wood stays
-  // polished rather than picking up cloth grain.
-  const inset = RAIL_WIDTH * pixelRatio;
-  scene.add
-    .tileSprite(inset, inset, w - 2 * inset, h - 2 * inset, NOISE_TEXTURE)
-    .setOrigin(0, 0)
-    .setAlpha(NOISE_ALPHA);
+    ctx.save();
+    ctx.scale(pw / w, ph / h);
+    drawRail(ctx, w, h, RAIL_WIDTH);
+    ctx.restore();
+  });
+  return board.image(region, { x: w / 2, y: h / 2, width: w, height: h, depth: -1_000_000 });
 }
 
 
@@ -172,9 +185,13 @@ export function drawTableSurface(scene: Phaser.Scene, pixelRatio: number): void 
 // The lettering on a casino layout is condensed serif, all caps, widely
 // letter-spaced, and flanked by engraved scrollwork. That's what makes the
 // felt read as a printed layout rather than as a label floating over a
-// background, and it costs nothing but a Text style and a few strokes.
-const LABEL_GOLD = 0xd8b471;
+// background.
+const LABEL_GOLD = 'rgba(216, 180, 113, 1)';
 const LABEL_GOLD_CSS = '#e3c489';
+const LABEL_SIZE = 15;
+const LABEL_SPACING = 4;
+// The room one flourish takes beside the text: the gap, the stroke, the curl.
+const FLOURISH_ROOM = 12 + 34 + 12;
 
 // A scroll curl, generated as a polyline rather than from arcs so the
 // spiral actually tightens instead of stepping between fixed radii.
@@ -195,13 +212,14 @@ function spiralPoints(
 // One flourish: a tapered engraved stroke running away from the text, a
 // lozenge where it meets it, and a curl at the far end. `dir` is -1 for the
 // flourish left of the label, +1 for the one on the right.
-function drawFlourish(g: Phaser.GameObjects.Graphics, x: number, y: number, dir: number): void {
+function drawFlourish(g: Pen, x: number, y: number, dir: number): void {
   const length = 34;
   const tip = x + dir * length;
 
   // Tapered stroke, drawn as a filled lens so it thins toward the curl the
   // way an engraved line does. A constant-width line just reads as a rule.
-  g.fillStyle(LABEL_GOLD, 0.9);
+  g.fillStyle = LABEL_GOLD;
+  g.globalAlpha = 0.9;
   g.beginPath();
   g.moveTo(x, y);
   g.lineTo(x + dir * length * 0.55, y - 1.5);
@@ -209,56 +227,62 @@ function drawFlourish(g: Phaser.GameObjects.Graphics, x: number, y: number, dir:
   g.lineTo(tip, y + 0.4);
   g.lineTo(x + dir * length * 0.55, y + 1.5);
   g.closePath();
-  g.fillPath();
+  g.fill();
 
   // Lozenge at the inner end, next to the text.
-  g.fillStyle(LABEL_GOLD, 0.95);
+  g.globalAlpha = 0.95;
   g.beginPath();
   g.moveTo(x, y - 3);
   g.lineTo(x + dir * 4.5, y);
   g.lineTo(x, y + 3);
   g.lineTo(x - dir * 4.5, y);
   g.closePath();
-  g.fillPath();
+  g.fill();
 
   // Curl at the outer end, turning back on itself.
-  g.lineStyle(1.4, LABEL_GOLD, 0.9);
+  g.globalAlpha = 0.9;
+  g.strokeStyle = LABEL_GOLD;
+  g.lineWidth = 1.4;
   const curl = spiralPoints(tip + dir * 4.5, y - 2.5, 5.2, 0.85, dir);
   g.beginPath();
   g.moveTo(curl[0][0], curl[0][1]);
   for (const [px, py] of curl.slice(1)) g.lineTo(px, py);
-  g.strokePath();
+  g.stroke();
+  g.globalAlpha = 1;
 }
 
-// A section heading in the style of a printed layout. Returns the objects so
-// the caller can put them in whichever container it keeps its board in.
-export function drawSectionLabel(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  label: string,
-  resolution: number,
-): Phaser.GameObjects.GameObject[] {
-  const text = scene.add.text(x, y, label.toUpperCase(), {
-    fontFamily: DISPLAY_FONT,
-    fontSize: '15px',
-    fontStyle: DISPLAY_WEIGHT,
-    color: LABEL_GOLD_CSS,
-    resolution: resolution * textOversample(),
-  }).setOrigin(0.5);
-  // Letter spacing is what sells it - casino lettering is set wide. Phaser
-  // counts the trailing gap in the width too, so nudge back by half of it
-  // to keep the text optically centred on x.
-  const spacing = 4;
-  text.setLetterSpacing(spacing);
-  text.setX(x - spacing / 2);
-
-  const g = scene.add.graphics();
-  const gap = text.width / 2 + 12;
-  drawFlourish(g, x - gap, y, -1);
-  drawFlourish(g, x + gap, y, 1);
-
-  return [g, text];
+/**
+ * A section heading in the style of a printed layout, centred on x, y.
+ *
+ * Painted once, so the display face has to be loaded first - see fontsReady.
+ * Letter-spaced by hand, a letter at a time, because canvas letterSpacing is
+ * not in every Safari this game still runs on.
+ */
+export function drawSectionLabel(board: Board, x: number, y: number, label: string): Sprite {
+  const text = label.toUpperCase();
+  const font = `${DISPLAY_WEIGHT} ${LABEL_SIZE}px ${DISPLAY_FONT}`;
+  const measure = document.createElement('canvas').getContext('2d')!;
+  measure.font = font;
+  const advances = [...text].map((ch) => measure.measureText(ch).width);
+  const textWidth = advances.reduce((a, b) => a + b, 0) + LABEL_SPACING * Math.max(0, advances.length - 1);
+  const width = Math.ceil(textWidth + 2 * FLOURISH_ROOM);
+  const height = 30;
+  return board.graphic(width, height, (g, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    g.font = font;
+    g.fillStyle = LABEL_GOLD_CSS;
+    g.textBaseline = 'middle';
+    g.textAlign = 'left';
+    let at = cx - textWidth / 2;
+    [...text].forEach((ch, i) => {
+      g.fillText(ch, at, cy);
+      at += advances[i] + LABEL_SPACING;
+    });
+    const gap = textWidth / 2 + 12;
+    drawFlourish(g, cx - gap, cy, -1);
+    drawFlourish(g, cx + gap, cy, 1);
+  }, { key: `section-label-${text}`, x, y });
 }
 
 
@@ -270,42 +294,135 @@ export function drawSectionLabel(
 //
 // Faint, and stroked rather than filled: a filled rectangle at any alpha
 // reads as a card face-down, and the board already has plenty of those.
-const SLOT_LINE = 0xfdfdfd;
-const SLOT_ALPHA = 0.18;
+const SLOT_LINE = 'rgba(253, 253, 253, 0.18)';
 const SLOT_RADIUS = 6;
 
-export function drawSlot(
-  scene: Phaser.Scene, x: number, y: number, width: number, height: number,
-): Phaser.GameObjects.Graphics {
-  const g = scene.add.graphics();
-  g.lineStyle(1.5, SLOT_LINE, SLOT_ALPHA);
-  g.strokeRoundedRect(x - width / 2, y - height / 2, width, height, SLOT_RADIUS);
-  return g;
+function outline(
+  board: Board, key: string, x: number, y: number, width: number, height: number,
+  line: number, color: string,
+): Sprite {
+  const pad = Math.ceil(line);
+  return board.graphic(width + pad * 2, height + pad * 2, (g) => {
+    g.strokeStyle = color;
+    g.lineWidth = line;
+    g.beginPath();
+    g.roundRect(pad, pad, width, height, SLOT_RADIUS);
+    g.stroke();
+  }, { key: `${key}-${width}x${height}`, x, y, depth: -1000 });
+}
+
+export function drawSlot(board: Board, x: number, y: number, width: number, height: number): Sprite {
+  return outline(board, 'slot', x, y, width, height, 1.5, SLOT_LINE);
+}
+
+/** The gold a pile lights up in when a dragged run would be taken by it. Starts hidden. */
+export function drawHighlight(board: Board, x: number, y: number, width: number, height: number): Sprite {
+  const sprite = outline(board, 'slot-highlight', x, y, width, height, 2.5, 'rgba(255, 209, 102, 0.95)');
+  sprite.depth = -900;
+  sprite.visible = false;
+  return sprite;
 }
 
 // The arrow on the empty stock: the one slot whose meaning is not "put a
 // card here" but "press to turn the deck over". Drawn as a ring with a break
 // and an arrowhead, which is the shape everything else in the world uses for
 // this and so needs no label.
-export function drawRecycleMark(
-  scene: Phaser.Scene, x: number, y: number, radius: number,
-): Phaser.GameObjects.Graphics {
-  const g = scene.add.graphics();
-  g.lineStyle(2, SLOT_LINE, 0.32);
-  g.beginPath();
-  g.arc(x, y, radius, Phaser.Math.DegToRad(40), Phaser.Math.DegToRad(320), false);
-  g.strokePath();
+export function drawRecycleMark(board: Board, x: number, y: number, radius: number): Sprite {
+  const size = radius * 2 + 12;
+  return board.graphic(size, size, (g, w, h) => {
+    const cx = w / 2;
+    const cy = h / 2;
+    const color = 'rgba(253, 253, 253, 0.32)';
+    g.strokeStyle = color;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.arc(cx, cy, radius, (40 * Math.PI) / 180, (320 * Math.PI) / 180, false);
+    g.stroke();
 
-  // The head sits at the open end of the ring, pointing the way round it.
-  const tipAngle = Phaser.Math.DegToRad(320);
-  const tx = x + Math.cos(tipAngle) * radius;
-  const ty = y + Math.sin(tipAngle) * radius;
-  g.fillStyle(SLOT_LINE, 0.32);
-  g.beginPath();
-  g.moveTo(tx + 5, ty - 1);
-  g.lineTo(tx - 4, ty - 4);
-  g.lineTo(tx - 1, ty + 5);
-  g.closePath();
-  g.fillPath();
-  return g;
+    // The head sits at the open end of the ring, pointing the way round it.
+    const tipAngle = (320 * Math.PI) / 180;
+    const tx = cx + Math.cos(tipAngle) * radius;
+    const ty = cy + Math.sin(tipAngle) * radius;
+    g.fillStyle = color;
+    g.beginPath();
+    g.moveTo(tx + 5, ty - 1);
+    g.lineTo(tx - 4, ty - 4);
+    g.lineTo(tx - 1, ty + 5);
+    g.closePath();
+    g.fill();
+  }, { key: `recycle-${radius}`, x, y, depth: -1000 });
+}
+
+
+// --- the printed border ----------------------------------------------------
+
+// Each game's felt is printed with its own running border just inside the
+// rail - one of felt's band ornaments, in the label's gold and worn into the
+// nap - so the twelve tables read as twelve layouts rather than one cloth
+// with different cards on it. Picked to suit the game where one suits:
+// peaks for Tri Peaks, waves for Seahaven, the stepped dentil for Pyramid.
+export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
+  klondike: 'greek-key',
+  freecell: 'interlace',
+  yukon: 'rope',
+  canfield: 'bead-and-reel',
+  spiderette: 'guilloche',
+  scorpion: 'running-dog',
+  seahaven: 'scallop',
+  tripeaks: 'chevron',
+  pyramid: 'dentil',
+  golf: 'rope',
+  blackhole: 'guilloche',
+  acesup: 'greek-key',
+};
+
+// Faint: it is printing on the cloth, under the slots and the cards, and has
+// to lose to both of them.
+const BORDER_ALPHA = 0.42;
+const BORDER_DEPTH = -1100;
+const BORDER_BAND = 8;
+const BORDER_GAP = 4;
+const ROSETTE_SIZE = 150;
+
+/**
+ * Prints the game's border round the felt, inside the rail, and a rosette
+ * at the head of the table - the felt a tall screen leaves bare above the
+ * layout, which slides up over it as the tableau needs the room. Left off
+ * (`rosette: false`) where the layout's own lettering would sit on it.
+ * Fixed to the table, not the layout: it does not slide with the markings.
+ */
+export function paintTableBorder(board: Board, game: GameId, rosette = true): FeltPaint[] {
+  const inset = RAIL_WIDTH + BORDER_GAP;
+  const paint = { color: LABEL_GOLD_CSS, wear: 0.35, alpha: BORDER_ALPHA };
+  // A frame's `depth` is its band's, across; where it sorts is set after.
+  const marks = paintFeltFrame(board, TABLE_PATTERNS[game], {
+    ...paint,
+    x: board.width / 2, y: board.height / 2,
+    width: board.width - inset * 2, height: board.height - inset * 2,
+    depth: BORDER_BAND, stroke: 1.1,
+  });
+  if (rosette) marks.push(paintOnFelt(board, { path: rosettePath(), viewBox: [200, 200], width: ROSETTE_SIZE, stroke: 0.9 },
+    { ...paint, alpha: 0.2, x: board.width / 2, y: inset + BORDER_BAND + 24 + ROSETTE_SIZE / 2 }));
+  for (const mark of marks) mark.depth = BORDER_DEPTH;
+  return marks;
+}
+
+/**
+ * A guilloché rosette in a 200 x 200 box, generated rather than drawn:
+ * strands of one wave round a circle, each a little out of phase with the
+ * last, weaving a net between two plain rings.
+ */
+function rosettePath(): string[] {
+  const c = 100;
+  const curve = (r: (t: number) => number) => {
+    let d = '';
+    for (let i = 0; i <= 240; i++) {
+      const t = (i / 240) * Math.PI * 2;
+      d += `${i ? 'L' : 'M'}${(c + r(t) * Math.cos(t)).toFixed(2)} ${(c + r(t) * Math.sin(t)).toFixed(2)}`;
+    }
+    return `${d}Z`;
+  };
+  const strands = Array.from({ length: 6 }, (_, k) => curve((t) => 72 + 14 * Math.sin(12 * t + (k * Math.PI) / 3)));
+  const heart = Array.from({ length: 4 }, (_, k) => curve((t) => 30 + 12 * Math.sin(8 * t + (k * Math.PI) / 2)));
+  return [curve(() => 92), curve(() => 52), ...strands, ...heart];
 }
