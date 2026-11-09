@@ -30,6 +30,7 @@ import { acesUpTable } from '../../game/acesup-table';
 import { canfieldTable } from '../../game/canfield-table';
 import { seahavenTable } from '../../game/seahaven-table';
 import { calculationTable } from '../../game/calculation-table';
+import { lucieTable } from '../../game/lucie-table';
 import { blackHoleTable } from '../../game/blackhole-table';
 import { pokerSquaresTable } from '../../game/pokersquares-table';
 import { formatDuration } from '../../format';
@@ -610,7 +611,7 @@ export class Play implements AfterViewInit, OnDestroy {
 // The games whose foundations, or discard heap, never give a card back - so
 // the stuck panel does not suggest taking one down.
 const NO_TAKING_BACK: readonly GameId[] = [
-  'spider', 'spiderette', 'scorpion', 'calculation', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
+  'spider', 'spiderette', 'scorpion', 'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
 // Which game the board is handed. One place that knows all of them, so adding
@@ -632,6 +633,8 @@ function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
       return seahavenTable();
     case 'calculation':
       return calculationTable();
+    case 'lucie':
+      return lucieTable();
     case 'scorpion':
       return scorpionTable();
     case 'tripeaks':

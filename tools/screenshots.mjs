@@ -295,7 +295,7 @@ if (!thumbsOnly && wanted('setup-klondike')) {
 // be dragged. Its picture is a pyramid, which is what it should be.
 for (const [game, rounds] of [
   ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spider', 3], ['spiderette', 3],
-  ['scorpion', 3], ['seahaven', 0], ['calculation', 4],
+  ['scorpion', 3], ['seahaven', 0], ['calculation', 4], ['lucie', 3],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
   ['pokersquares', 1],
 ]) {

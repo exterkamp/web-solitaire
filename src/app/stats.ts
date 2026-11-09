@@ -33,6 +33,7 @@ export type Variant =
   | 'scorpion'
   | 'seahaven'
   | 'calculation'
+  | 'lucie'
   | 'tripeaks'
   | 'pyramid'
   | 'golf'
@@ -63,6 +64,7 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
   calculation: 'Calculation',
+  lucie: 'La Belle Lucie',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
@@ -73,7 +75,7 @@ export const VARIANT_LABELS: Record<Variant, string> = {
 
 const VARIANTS: Variant[] = [
   'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spider-1', 'spider-2', 'spider-4', 'spiderette', 'scorpion',
-  'seahaven', 'calculation', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
+  'seahaven', 'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
 ];
 
 /**
@@ -105,6 +107,7 @@ export const VARIANT_GROUPS: readonly VariantGroup[] = [
   { title: 'Scorpion', variants: ['scorpion'], scored: false },
   { title: 'Seahaven Towers', variants: ['seahaven'], scored: false },
   { title: 'Calculation', variants: ['calculation'], scored: false },
+  { title: 'La Belle Lucie', variants: ['lucie'], scored: false },
   { title: 'Tri Peaks', variants: ['tripeaks'], scored: true },
   { title: 'Pyramid', variants: ['pyramid'], scored: false },
   { title: 'Golf', variants: ['golf'], scored: false },

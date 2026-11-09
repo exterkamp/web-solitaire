@@ -128,7 +128,7 @@ src/app/game/
   freecell.ts  yukon.ts  canfield.ts  spider.ts            the same,
   spiderette.ts  scorpion.ts  seahaven.ts  calculation.ts   thirteen
   tripeaks.ts  pyramid.ts  golf.ts  blackhole.ts  acesup.ts more times
-  pokersquares.ts
+  lucie.ts  pokersquares.ts
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock

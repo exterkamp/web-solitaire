@@ -27,6 +27,7 @@ export type GameId =
   | 'scorpion'
   | 'seahaven'
   | 'calculation'
+  | 'lucie'
   // Match what you can see and clear it away.
   | 'tripeaks'
   | 'pyramid'
@@ -37,7 +38,7 @@ export type GameId =
   | 'pokersquares';
 
 export const GAME_IDS: readonly GameId[] = [
-  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation',
+  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation', 'lucie',
   'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
 ];
 
@@ -56,6 +57,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
   calculation: 'Calculation',
+  lucie: 'La Belle Lucie',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
@@ -129,6 +131,11 @@ export interface GameView {
   // playing for and the second is how far there is to go.
   run?: number;
   left?: number;
+  // La Belle Lucie's two fallbacks, in the order they arrive: the redeals
+  // still to come, and then - on the last deal - whether the one merci is
+  // still to be had. Shown one after the other, never both.
+  redeals?: number;
+  merci?: number;
 }
 
 export interface TableGame<S> {

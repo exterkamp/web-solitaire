@@ -76,6 +76,20 @@
           <span class="hud__value">{{ view().run }}</span>
         </div>
       }
+      <!-- La Belle Lucie's two fallbacks, one after the other: the redeals,
+           and then the merci on the last deal. -->
+      @if (view().redeals !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Redeals</span>
+          <span class="hud__value">{{ view().redeals }}</span>
+        </div>
+      }
+      @if (view().merci !== undefined) {
+        <div class="hud__stat">
+          <span class="hud__label">Merci</span>
+          <span class="hud__value">{{ view().merci }}</span>
+        </div>
+      }
       @if (view().left !== undefined) {
         <div class="hud__stat">
           <span class="hud__label">Left</span>

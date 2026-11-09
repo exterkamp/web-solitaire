@@ -231,6 +231,25 @@ const GUIDES: Record<GameId, Guide> = {
       'player who keeps each pile in some order - kings on one, say, so they ' +
       'never bury anything - can win most hands.',
   },
+  lucie: {
+    title: 'La Belle Lucie',
+    summary: 'Eighteen fans of cards, all face up, two redeals and one merci.',
+    setup:
+      'Seventeen fans of three cards and one of a single card, every card ' +
+      'face up, and four empty foundations.',
+    play:
+      'Only the top card of a fan moves: home to its foundation, built up in ' +
+      'suit from the ace, or onto the top card of another fan, one rank ' +
+      'lower in the same suit. A fan that empties stays empty - not even a ' +
+      'king may start one. When you are stuck, press the arrow to gather the ' +
+      'fans, shuffle them and deal them out again in threes; you may do that ' +
+      'twice. On the last deal you have one merci: tap any card buried in a ' +
+      'fan and it comes up to the top, to be played like any other.',
+    winning:
+      'All fifty-two home. A king buried above a lower card of its own suit ' +
+      'can only be freed by a redeal or the merci, and that is most of what ' +
+      'makes the game hard: watch where the kings land after each shuffle.',
+  },
   tripeaks: {
     title: 'Tri Peaks',
     summary: 'Three peaks of cards, one card face up beside the deck, and two minutes.',

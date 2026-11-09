@@ -27,7 +27,7 @@ describe('the record book', () => {
   it('files every game under a variant it keeps', () => {
     const games: GameId[] = [
       'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
-      'calculation', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares',
+      'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'acesup', 'pokersquares',
     ];
     for (const game of games) {
       expect(ALL_VARIANTS).toContain(variantOf(game, 1));

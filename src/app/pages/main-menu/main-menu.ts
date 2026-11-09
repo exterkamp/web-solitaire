@@ -129,6 +129,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     scorpion: 'One suit only · the hardest here',
     seahaven: 'Ten columns, four cells · kings only in a gap',
     calculation: 'Count by ones, twos, threes and fours · all skill',
+    lucie: 'Eighteen fans · two redeals and a merci',
     tripeaks: 'Quick · clear the peaks a card at a time',
     pyramid: 'Pairs that add to thirteen',
     golf: 'One rank up or down · ninety seconds',
