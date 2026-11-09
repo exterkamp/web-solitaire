@@ -29,6 +29,7 @@ import { golfTable } from '../../game/golf-table';
 import { acesUpTable } from '../../game/acesup-table';
 import { canfieldTable } from '../../game/canfield-table';
 import { seahavenTable } from '../../game/seahaven-table';
+import { calculationTable } from '../../game/calculation-table';
 import { blackHoleTable } from '../../game/blackhole-table';
 import { formatDuration } from '../../format';
 import { GamepadController, GamepadDirection } from '../../game/gamepad';
@@ -129,6 +130,9 @@ export class Play implements AfterViewInit, OnDestroy {
   private readonly saved = this.savedGames.get(this.gameId);
   // A saved game keeps the draw it was dealt with.
   private readonly drawCount = this.saved?.drawCount ?? this.settings.drawCount();
+  // Whether the stuck panel can suggest taking a card back down. Not in a
+  // game whose foundations, or discard heap, never give a card back.
+  protected readonly takesBack = !NO_TAKING_BACK.includes(this.gameId);
   // And a saved Spider keeps its suits.
   private readonly suits: SuitCount = this.saved ? asSuitCount(this.saved.suits) : this.settings.spiderSuits();
   private readonly table = makeTable(this.gameId, this.drawCount, this.suits);
@@ -581,6 +585,10 @@ export class Play implements AfterViewInit, OnDestroy {
 // adding a thirteenth is one line here rather than a conditional that grows a limb
 // each time - and the switch is exhaustive over GameId, so leaving a game out
 // is a compile error rather than a board that quietly deals Klondike.
+const NO_TAKING_BACK: readonly GameId[] = [
+  'spider', 'spiderette', 'scorpion', 'calculation', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
+];
+
 function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
   switch (game) {
     case 'freecell':
@@ -595,6 +603,8 @@ function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
       return spideretteTable();
     case 'seahaven':
       return seahavenTable();
+    case 'calculation':
+      return calculationTable();
     case 'scorpion':
       return scorpionTable();
     case 'tripeaks':

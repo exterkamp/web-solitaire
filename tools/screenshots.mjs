@@ -131,7 +131,38 @@ async function tap(at) {
 // the game's own terms. A fresh deal is the picture every solitaire README
 // already has; the reason to look at this one is what the game looks like
 // once it is under way.
-async function playAWhile(rounds) {
+// Calculation is played by dragging - every card nothing wants is put on a
+// discard pile the player chooses, and a tap never does that - so a tapper
+// would photograph a deal with one card turned. It plays through the session
+// instead, putting each card up if it can and otherwise on the shortest pile,
+// and the board is drawn from the result as if it had been played by hand.
+const DISCARD_SOME = `(() => {
+  const g = ${SCENE};
+  for (let i = 0; i < 40; i++) {
+    const s = g.session.state;
+    // Anything that can go up from a discard pile, first.
+    const up = g.table.autoFinishMove(s);
+    if (up && up.from.kind === 'tableau') {
+      g.session.play(up);
+    } else if (s.waste.length) {
+      const from = { kind: 'waste', index: 0 };
+      const up = g.table.autoTarget(s, from, 1);
+      const short = [0, 1, 2, 3].sort((a, b) => s.tableau[a].length - s.tableau[b].length)[0];
+      g.session.play({ kind: 'play', from, to: up ?? { kind: 'tableau', index: short }, count: 1 });
+    } else {
+      g.session.play({ kind: 'draw' });
+    }
+  }
+  g.renderBoard(false);
+  g.publish();
+  return true;
+})()`;
+
+async function playAWhile(rounds, game) {
+  if (game === 'calculation') {
+    await evaluate(DISCARD_SOME);
+    return;
+  }
   for (let round = 0; round < rounds; round++) {
     const faces = await evaluate(onPage(FACES));
     for (const at of faces ?? []) await tap(at);
@@ -191,7 +222,7 @@ async function board(game, rounds, name = game, thumb = false) {
   // Long enough for the last frame of the deal to be on the canvas rather
   // than merely scheduled.
   await sleep(600);
-  await playAWhile(rounds);
+  await playAWhile(rounds, game);
   // Long enough for the last frame to be on the canvas rather than merely
   // scheduled - headless Chrome draws this board about once a second.
   await sleep(1500);
@@ -239,7 +270,7 @@ if (!thumbsOnly && wanted('setup-klondike')) {
 // be dragged. Its picture is a pyramid, which is what it should be.
 for (const [game, rounds] of [
   ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spider', 3], ['spiderette', 3],
-  ['scorpion', 3], ['seahaven', 0],
+  ['scorpion', 3], ['seahaven', 0], ['calculation', 4],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
 ]) {
   if (!wanted(game)) continue;

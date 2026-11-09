@@ -370,6 +370,7 @@ export const TABLE_PATTERNS: Record<GameId, BorderPattern> = {
   spiderette: 'guilloche',
   scorpion: 'running-dog',
   seahaven: 'scallop',
+  calculation: 'bead-and-reel',
   tripeaks: 'chevron',
   pyramid: 'dentil',
   golf: 'rope',

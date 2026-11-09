@@ -26,6 +26,7 @@ export type GameId =
   | 'spiderette'
   | 'scorpion'
   | 'seahaven'
+  | 'calculation'
   // Match what you can see and clear it away.
   | 'tripeaks'
   | 'pyramid'
@@ -34,7 +35,7 @@ export type GameId =
   | 'acesup';
 
 export const GAME_IDS: readonly GameId[] = [
-  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven',
+  'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation',
   'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup',
 ];
 
@@ -52,6 +53,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   spiderette: 'Spiderette',
   scorpion: 'Scorpion',
   seahaven: 'Seahaven Towers',
+  calculation: 'Calculation',
   tripeaks: 'Tri Peaks',
   pyramid: 'Pyramid',
   golf: 'Golf',
@@ -167,8 +169,12 @@ export interface TableGame<S> {
    * only pile TriPeaks could send a card to is the discard, and a flick that
    * meant the same as a tap would fire on every card somebody lifted to look
    * at.
+   *
+   * Given the state for the one game whose answer depends on it: in
+   * Calculation a card belongs to whichever foundation is counting to its
+   * rank right now, not to a suit.
    */
-  homeFor?(card: Card): PileRef;
+  homeFor?(card: Card, state: S): PileRef;
   view(state: S): GameView;
 
   // --- how a hand arrives --------------------------------------------------

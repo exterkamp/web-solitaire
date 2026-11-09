@@ -113,6 +113,16 @@
       </a>
       <p class="menu__note">{{ line('seahaven') }}</p>
     </div>
+
+    <div class="game">
+      <a class="button" style="background-image: url('/game-thumbs/calculation.webp')" routerLink="/setup/calculation">
+        <span>Calculation</span>
+        @if (inProgress('calculation')) {
+          <b class="game__badge">In progress</b>
+        }
+      </a>
+      <p class="menu__note">{{ line('calculation') }}</p>
+    </div>
   </div>
 
   <h2 class="menu__family">Match and clear</h2>

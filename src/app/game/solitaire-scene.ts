@@ -1030,7 +1030,7 @@ export class SolitaireScene {
     if (!this.table.homeFor) return undefined;
     const cards = this.table.liftable(this.session.state, drag.from, 1);
     if (!cards) return undefined;
-    const home = this.table.homeFor(cards[0]);
+    const home = this.table.homeFor(cards[0], this.session.state);
     return this.table.canDrop(this.session.state, cards, home) ? home : undefined;
   }
 
@@ -1307,9 +1307,15 @@ export class SolitaireScene {
     // sixty units wide and printed in an order that mirrors with handedness,
     // and a card has exactly one home - so asking the player to hit the right
     // one is asking them to aim at something the rules already know.
+    //
+    // Unless the slot it landed on will take it: in Calculation two
+    // foundations can want the same rank at once, and a card put on one of
+    // them on purpose stays there. Every other game's foundation refuses a
+    // card that is not its own, so for them this changes nothing.
+    const state = this.session.state;
     const to: PileRef =
-      best.ref.kind === 'foundation' && this.table.homeFor
-        ? this.table.homeFor(cards[0])
+      best.ref.kind === 'foundation' && this.table.homeFor && !this.table.canDrop(state, cards, best.ref)
+        ? this.table.homeFor(cards[0], state)
         : best.ref;
 
     // Legality is settled here rather than left to the move, because this

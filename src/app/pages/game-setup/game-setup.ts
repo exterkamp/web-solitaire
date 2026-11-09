@@ -205,6 +205,32 @@ const GUIDES: Record<GameId, Guide> = {
       'hands. Ten columns across a phone means smaller cards, which is the ' +
       'price of seeing all fifty-two at once.',
   },
+  calculation: {
+    title: 'Calculation',
+    summary: 'Four foundations counting by ones, twos, threes and fours - and four piles to wait on.',
+    setup:
+      'An ace, a two, a three and a four, of any suits, start the four ' +
+      'foundations, left to right. The other forty-eight cards are the ' +
+      'deck, and the four discard piles below start empty.',
+    play:
+      'Each foundation counts up in its own step and ignores suit: the first ' +
+      'by ones (A, 2, 3 … K), the second by twos (2, 4, 6, 8, 10, Q, A, 3, ' +
+      '5, 7, 9, J, K), the third by threes (3, 6, 9, Q, 2, 5, 8, J, A, 4, 7, ' +
+      '10, K) and the fourth by fours (4, 8, Q, 3, 7, J, 2, 6, 10, A, 5, 9, ' +
+      'K). Turn the deck one card at a time, and put each card on a ' +
+      'foundation that wants it or on any of the four discard piles before ' +
+      'turning the next. The top card of a discard pile may go up to a ' +
+      'foundation; nothing moves from one discard pile to another, and the ' +
+      'deck is gone through only once. Drag a card to the discard pile you ' +
+      'mean - which pile is the decision the game is made of, so a tap only ' +
+      'ever sends a card up.',
+    winning:
+      'All four foundations at their king, fifty-two cards up. Every card is ' +
+      'seen as it is turned and nothing is hidden after that, so this is ' +
+      'skill nearly all the way down: a beginner rarely gets out, and a ' +
+      'player who keeps each pile in some order - kings on one, say, so they ' +
+      'never bury anything - can win most hands.',
+  },
   tripeaks: {
     title: 'Tri Peaks',
     summary: 'Three peaks of cards, one card face up beside the deck, and two minutes.',

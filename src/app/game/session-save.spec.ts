@@ -5,6 +5,7 @@ import { GameSession } from './session';
 import { TableGame } from './table-game';
 import { acesUpTable } from './acesup-table';
 import { blackHoleTable } from './blackhole-table';
+import { calculationTable } from './calculation-table';
 import { canfieldTable } from './canfield-table';
 import { freecellTable } from './freecell-table';
 import { golfTable } from './golf-table';
@@ -25,7 +26,7 @@ import { yukonTable } from './yukon-table';
 
 const TABLES: TableGame<any>[] = [
   klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spiderTable(1), spiderTable(4), spideretteTable(),
-  scorpionTable(), seahavenTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(),
+  scorpionTable(), seahavenTable(), calculationTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(),
 ];
 
 /** The first thing the board would do with a tap on any pile, or a draw. */

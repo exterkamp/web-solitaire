@@ -157,8 +157,11 @@
       <h2 class="stuck__title">No moves</h2>
       <p class="stuck__note">
         Nothing on the table can be played, and turning the deck over will not
-        change that. Taking a card back off a foundation is still allowed, if
-        you can see something in it.
+        change that.
+        @if (takesBack) {
+          Taking a card back off a foundation is still allowed, if you can see
+          something in it.
+        }
       </p>
       <button type="button" class="button" (click)="newGame()">New deal</button>
       <button type="button" class="button button--quiet" (click)="keepLooking()">

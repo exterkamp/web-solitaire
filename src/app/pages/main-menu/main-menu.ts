@@ -128,6 +128,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     spiderette: 'Build down by rank · carry a suit at a time',
     scorpion: 'One suit only · the hardest here',
     seahaven: 'Ten columns, four cells · kings only in a gap',
+    calculation: 'Count by ones, twos, threes and fours · all skill',
     tripeaks: 'Quick · clear the peaks a card at a time',
     pyramid: 'Pairs that add to thirteen',
     golf: 'One rank up or down · ninety seconds',

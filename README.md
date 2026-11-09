@@ -21,6 +21,12 @@ about you is in your browser's own storage.
 <td align="center"><img src="docs/screenshots/scorpion.webp" alt="Scorpion, part way through a hand"><br><b>Scorpion</b></td>
 <td align="center"><img src="docs/screenshots/seahaven.webp" alt="Seahaven Towers, freshly dealt"><br><b>Seahaven Towers</b></td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screenshots/calculation.webp" alt="Calculation, part way through a hand"><br><b>Calculation</b></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
 </table>
 
 **Match and clear** — two minutes, standing up.
