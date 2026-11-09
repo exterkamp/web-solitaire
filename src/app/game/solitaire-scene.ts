@@ -1133,6 +1133,18 @@ export class SolitaireScene {
     return this.play({ kind: 'play', from: ref, to, count: liftable.length });
   }
 
+  /** One of the game's own buttons, pressed. See GameView.actions. */
+  act(action: string): boolean {
+    if (this.locked) return false;
+    const before = this.scoreNow();
+    if (!this.session.act(action)) return false;
+    this.renderBoard(true);
+    if (this.table.actAnchor) this.scored(before, this.table.actAnchor);
+    this.publish();
+    if (this.session.won) this.onWin();
+    return true;
+  }
+
   /** The board's own dimensions, for placing DOM over it. */
   gameSize(): { width: number; height: number } {
     return { width: this.width, height: this.height };
@@ -1269,7 +1281,7 @@ export class SolitaireScene {
     const session = this.session;
     const seconds = session.elapsed();
     // Not for a game played to a target: there the points are the game.
-    const bonus = this.table.target === undefined ? timeBonus(seconds) : 0;
+    const bonus = this.table.forPoints ? 0 : timeBonus(seconds);
     const score = this.table.view(session.state).score ?? 0;
     // Let the cards fall for a moment before the page says anything. The
     // cascade *is* the reward; a panel over it half a second in is a

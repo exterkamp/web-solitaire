@@ -23,7 +23,7 @@
              here rather than moved into the board's own aria-label, which
              describes the game once rather than on every score change. -->
         <div class="hud__stat" [class.visually-hidden]="settings.scoreDisplay() === 'chips'">
-          <span class="hud__label">Score</span>
+          <span class="hud__label">{{ forPoints?.unit === 'chips' ? 'Chips' : 'Score' }}</span>
           <span class="hud__value">{{ view().score }}</span>
         </div>
       }
@@ -189,17 +189,28 @@
          is nothing left to look for, so nothing to keep looking at - only
          how far short it fell. -->
     <div class="stuck" role="dialog" aria-label="Hand over">
-      <h2 class="stuck__title">{{ view().score ?? 0 }} points</h2>
-      <p class="stuck__note">
-        The grid is full, {{ (target ?? 0) - (view().score ?? 0) }} short of
-        the {{ target }} that wins a hand.
-      </p>
+      <h2 class="stuck__title">{{ view().score ?? 0 }} {{ forPoints?.unit }}</h2>
+      @if (view().note; as note) {
+        <p class="stuck__note">{{ note }}</p>
+      }
       <button type="button" class="button" (click)="newGame()">Deal again</button>
       <a class="button button--quiet" routerLink="/stats">Record</a>
     </div>
   }
 
+  @if (view().status; as status) {
+    <!-- What the cards do not say on their own: Blackjack's totals, and how
+         the last hand went. -->
+    <p class="status" aria-live="polite">{{ status }}</p>
+  }
+
   <footer class="hud hud--actions">
+    <!-- The game's own buttons, for the one played by deciding. -->
+    @for (action of view().actions ?? []; track action.id) {
+      <button type="button" class="action" [disabled]="!action.enabled" (click)="act(action.id)">
+        {{ action.label }}
+      </button>
+    }
     <!-- Not in the game where a move turns a card nobody has seen: there it
          would never be allowed, and a button that is always grey is clutter. -->
     @if (undoable) {
@@ -220,9 +231,9 @@
     <div class="win" role="dialog" aria-label="Game won">
       <!-- "Out" is getting every card out, which is not what the game played
            for points is won by. -->
-      <h2 class="win__title">{{ target === undefined ? 'Out' : summary.score + ' points' }}</h2>
+      <h2 class="win__title">{{ forPoints ? summary.score + ' ' + forPoints.unit : 'Out' }}</h2>
       <dl class="win__lines">
-        @if (summary.total && target === undefined) {
+        @if (summary.total && !forPoints) {
           <div class="win__line">
             <dt>Score</dt>
             <dd>{{ summary.score.toLocaleString() }}</dd>

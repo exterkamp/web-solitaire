@@ -30,6 +30,7 @@ export interface SquaresRules<S extends SquaresState> {
   label: string;
   // Cells along a side.
   size: number;
+  // The score a hand is won at.
   target: number;
   deal(random?: () => number): S;
   liftable(state: S, from: PileRef, count: number): readonly Card[] | undefined;
@@ -76,7 +77,7 @@ export function squaresTable<S extends SquaresState>(rules: SquaresRules<S>): Ta
     drops: false,
     // The same number every hand. Not a number anybody plays against.
     showsMoves: false,
-    target: rules.target,
+    forPoints: { unit: 'points' },
     undoable: false,
 
     slots(handedness: Handedness): PileSlot[] {
@@ -131,7 +132,14 @@ export function squaresTable<S extends SquaresState>(rules: SquaresRules<S>): Ta
 
     // The score so far, and how many cells are still to fill.
     view(state: S): GameView {
-      return { score: rules.score(state), left: state.tableau.filter((cell) => !cell.length).length };
+      const score = rules.score(state);
+      return {
+        score,
+        left: state.tableau.filter((cell) => !cell.length).length,
+        note: rules.isDeadEnd(state)
+          ? `The grid is full, ${rules.target - score} short of the ${rules.target} that wins a hand.`
+          : undefined,
+      };
     },
 
     dealOrigin: (handedness: Handedness) => ({ x: stockX(handedness), y: handY }),

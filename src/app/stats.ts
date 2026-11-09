@@ -40,7 +40,8 @@ export type Variant =
   | 'blackhole'
   | 'acesup'
   | 'pokersquares'
-  | 'cribbagesquares';
+  | 'cribbagesquares'
+  | 'blackjack';
 
 export function variantOf(game: GameId, drawCount: DrawCount, suits: SuitCount = 1): Variant {
   // Klondike is the only game here that is two games. Everything else is
@@ -73,11 +74,12 @@ export const VARIANT_LABELS: Record<Variant, string> = {
   acesup: 'Aces Up',
   pokersquares: 'Poker Squares',
   cribbagesquares: 'Cribbage Squares',
+  blackjack: 'Blackjack',
 };
 
 const VARIANTS: Variant[] = [
   'klondike-1', 'klondike-3', 'freecell', 'yukon', 'canfield', 'spider-1', 'spider-2', 'spider-4', 'spiderette', 'scorpion',
-  'seahaven', 'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares', 'cribbagesquares',
+  'seahaven', 'calculation', 'lucie', 'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares', 'cribbagesquares', 'blackjack',
 ];
 
 /**
@@ -117,6 +119,7 @@ export const VARIANT_GROUPS: readonly VariantGroup[] = [
   { title: 'Aces Up', variants: ['acesup'], scored: false },
   { title: 'Poker Squares', variants: ['pokersquares'], scored: true },
   { title: 'Cribbage Squares', variants: ['cribbagesquares'], scored: true },
+  { title: 'Blackjack', variants: ['blackjack'], scored: true },
 ];
 
 /** Every variant the book keeps, in order. For the spec, and for `game`. */

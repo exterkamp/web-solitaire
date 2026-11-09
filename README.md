@@ -47,7 +47,7 @@ about you is in your browser's own storage.
 <tr>
 <td width="20%" align="center"><img src="docs/screenshots/pokersquares.webp" alt="Poker Squares, part way through a hand"><br><b>Poker Squares</b></td>
 <td width="20%" align="center"><img src="docs/screenshots/cribbagesquares.webp" alt="Cribbage Squares, part way through a hand"><br><b>Cribbage Squares</b></td>
-<td width="20%"></td>
+<td width="20%" align="center"><img src="docs/screenshots/blackjack.webp" alt="Blackjack, a hand being played"><br><b>Blackjack</b></td>
 <td width="20%"></td>
 <td width="20%"></td>
 </tr>
@@ -181,6 +181,12 @@ a four-by-four grid, each touching one already down, and then a starter turned
 that belongs to all eight rows and columns at once. Fifteens, pairs, runs,
 flushes and his nobs, as cribbage counts them; sixty-one, once round the board,
 wins.
+
+**Blackjack** is you against the dealer through a two-deck shoe, with the
+common casino rules: the dealer stands on every seventeen, a blackjack pays
+three to two, double on any two cards, split a pair once, no insurance. A shoe
+is won by leaving it with more chips than you sat down with, and the chips
+come with you to the next one.
 
 </td>
 <td width="50%" valign="top">

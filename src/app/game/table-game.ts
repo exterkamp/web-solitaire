@@ -36,11 +36,12 @@ export type GameId =
   | 'acesup'
   // Play for points.
   | 'pokersquares'
-  | 'cribbagesquares';
+  | 'cribbagesquares'
+  | 'blackjack';
 
 export const GAME_IDS: readonly GameId[] = [
   'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation', 'lucie',
-  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares', 'cribbagesquares',
+  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares', 'cribbagesquares', 'blackjack',
 ];
 
 /**
@@ -66,6 +67,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   acesup: 'Aces Up',
   pokersquares: 'Poker Squares',
   cribbagesquares: 'Cribbage Squares',
+  blackjack: 'Blackjack',
 };
 
 /** One pile, and what is in it. The board draws piles in the order given. */
@@ -138,6 +140,21 @@ export interface GameView {
   // still to be had. Shown one after the other, never both.
   redeals?: number;
   merci?: number;
+  // A line about the hand, under the board: Blackjack's totals and how the
+  // last hand went. For the game whose cards do not say it on their own.
+  status?: string;
+  // What a hand that ended short of winning has to say about itself, in the
+  // games played for points. See TableGame.forPoints.
+  note?: string;
+  // The game's own buttons, for the game played by deciding rather than by
+  // moving cards. Pressing one calls TableGame.act.
+  actions?: readonly TableAction[];
+}
+
+export interface TableAction {
+  id: string;
+  label: string;
+  enabled: boolean;
 }
 
 export interface TableGame<S> {
@@ -196,22 +213,33 @@ export interface TableGame<S> {
    * everything a drag would, in one touch.
    */
   placeAt?(state: S, at: PileRef): Move | undefined;
+  /**
+   * One of the game's own buttons, pressed - see GameView.actions. Absent in
+   * every game whose moves are cards picked up and put down.
+   */
+  act?(state: S, action: string): TableMoveResult<S> | undefined;
   view(state: S): GameView;
 
   // --- how a hand ends -----------------------------------------------------
 
   /**
-   * The score a hand is won at, for a game played for points rather than to
-   * clear the table.
+   * Set for a game played for points rather than to clear the table, with
+   * what its points are called: points, or chips.
    *
-   * Set, it changes three things. A hand that ends short of it is over
-   * rather than stuck - there is nothing to look for, only a score - and goes
-   * in the record book at the moment it ends, with that score. A hand that
-   * reaches it earns no time bonus, because the points are the game and
-   * placing twenty-five cards quickly is not. And the best score is the best
-   * of every hand, not only the ones that were won.
+   * It changes three things. A hand that ends without winning is over rather
+   * than stuck - there is nothing to look for, only a score - and goes in the
+   * record book at the moment it ends, with that score and the note the game
+   * gives in its view. A hand that wins earns no time bonus, because the
+   * points are the game and playing quickly is not. And the best score is
+   * the best of every hand, not only the ones that were won.
    */
-  readonly target?: number;
+  readonly forPoints?: { unit: string };
+
+  /**
+   * Where a move made with one of the game's buttons scores from, for the
+   * "+20" that rises off the table. See GameView.actions.
+   */
+  readonly actAnchor?: PileRef;
 
   /**
    * Whether a move can be taken back. True unless said otherwise.

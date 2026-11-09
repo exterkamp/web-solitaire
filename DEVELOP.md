@@ -130,6 +130,7 @@ src/app/game/
   tripeaks.ts  pyramid.ts  golf.ts  blackhole.ts  acesup.ts more times
   lucie.ts  pokersquares.ts  cribbagesquares.ts
   squares-table.ts   the board both squares games share
+  blackjack.ts       the one played with buttons: see TableGame.act
   klondike-table.ts  where Klondike's piles go, and what the board shows
   card-rules.ts      the rules more than one game needs
   session.ts         one game in progress: history, undo, the clock

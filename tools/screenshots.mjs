@@ -180,9 +180,25 @@ const PLACE_SOME = `(() => {
   return true;
 })()`;
 
+// Blackjack is played with its own buttons. A bet and a hit, so the picture
+// is a hand being played: the dealer's hole card down, three cards up.
+const BET_AND_HIT = `(() => {
+  const g = ${SCENE};
+  g.session.act('bet-20');
+  if (g.session.state.phase === 'play') g.session.act('hit');
+  if (g.session.state.phase !== 'play') g.session.act('bet-20');
+  g.renderBoard(false);
+  g.publish();
+  return true;
+})()`;
+
 async function playAWhile(rounds, game) {
   if (game === 'calculation') {
     await evaluate(DISCARD_SOME);
+    return;
+  }
+  if (game === 'blackjack') {
+    await evaluate(BET_AND_HIT);
     return;
   }
   if (game === 'pokersquares' || game === 'cribbagesquares') {
@@ -298,7 +314,7 @@ for (const [game, rounds] of [
   ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spider', 3], ['spiderette', 3],
   ['scorpion', 3], ['seahaven', 0], ['calculation', 4], ['lucie', 3],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
-  ['pokersquares', 1], ['cribbagesquares', 1],
+  ['pokersquares', 1], ['cribbagesquares', 1], ['blackjack', 1],
 ]) {
   if (!wanted(game)) continue;
   // Spider in two suits, black and red: one suit is a picture of nothing

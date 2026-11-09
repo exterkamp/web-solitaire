@@ -396,6 +396,30 @@ const GUIDES: Record<GameId, Guide> = {
       'book keeps your best. Fives and tens are the cards to plan around: ' +
       'each pair of them is a fifteen.',
   },
+  blackjack: {
+    title: 'Blackjack',
+    summary: 'You against the dealer, for chips, through a two-deck shoe.',
+    setup:
+      'Two decks shuffled into a shoe, and the chips you finished your last ' +
+      'shoe with - or a hundred, the first time and whenever you run out.',
+    play:
+      'Bet 10, 20 or 50. You get two cards face up and the dealer one up and ' +
+      'one down. Get closer to 21 than the dealer without going over: court ' +
+      'cards count ten and an ace one or eleven. Hit for another card or ' +
+      'stand; double on your first two cards to double the bet and take ' +
+      'exactly one more; split a pair once into two hands, each with its own ' +
+      'bet (split aces get one card each). The dealer peeks for blackjack ' +
+      'under an ace or a ten, then draws to 17 and stands on every 17, soft ' +
+      'ones included. A win pays even money and a blackjack three to two. No ' +
+      'insurance, and no undo - the next card is already decided.',
+    winning:
+      'A shoe ends at the cut card, a quarter of the way from the bottom, or ' +
+      'when you cannot cover a bet. Leave with more chips than you sat down ' +
+      'with and the shoe is a win; the record book keeps your biggest ' +
+      'bankroll. Basic strategy - stand on 12 to 16 against a dealer\'s 2 to ' +
+      '6, hit them against a 7 or higher, always split aces and eights - ' +
+      'keeps the house edge under one percent, and nothing keeps it at zero.',
+  },
 };
 
 const SUIT_LABELS: Record<SuitCount, string> = { 1: 'One', 2: 'Two', 4: 'Four' };

@@ -137,6 +137,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     acesup: 'Four piles · the aces cannot be beaten',
     pokersquares: 'Twenty-five cards, ten poker hands · make two hundred',
     cribbagesquares: 'Sixteen cards and a starter, eight hands · make sixty-one',
+    blackjack: 'You against the dealer · leave the shoe ahead',
   };
 
   protected line(game: GameId): string {

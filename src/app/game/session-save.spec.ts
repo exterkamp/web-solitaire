@@ -6,6 +6,7 @@ import { TableGame } from './table-game';
 import { acesUpTable } from './acesup-table';
 import { pokerSquaresTable } from './pokersquares-table';
 import { cribbageSquaresTable } from './cribbagesquares-table';
+import { blackjackTable } from './blackjack-table';
 import { blackHoleTable } from './blackhole-table';
 import { calculationTable } from './calculation-table';
 import { lucieTable } from './lucie-table';
@@ -29,11 +30,16 @@ import { yukonTable } from './yukon-table';
 
 const TABLES: TableGame<any>[] = [
   klondikeTable(1), klondikeTable(3), freecellTable(), yukonTable(), canfieldTable(), spiderTable(1), spiderTable(4), spideretteTable(),
-  scorpionTable(), seahavenTable(), calculationTable(), lucieTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(), pokerSquaresTable(), cribbageSquaresTable(),
+  scorpionTable(), seahavenTable(), calculationTable(), lucieTable(), tripeaksTable(), pyramidTable(), golfTable(), blackHoleTable(), acesUpTable(), pokerSquaresTable(), cribbageSquaresTable(), blackjackTable(() => 100),
 ];
 
 /** The first thing the board would do with a tap on any pile, or a draw. */
-function someMove<S>(table: TableGame<S>, state: S): Move | undefined {
+// A move, or one of a game's own buttons for the game played with them.
+type Step = Move | { kind: 'act'; action: string };
+
+function someMove<S>(table: TableGame<S>, state: S): Step | undefined {
+  const button = table.view(state).actions?.find((action) => action.enabled);
+  if (button) return { kind: 'act', action: button.id };
   for (const pile of table.piles(state)) {
     const placed = pile.cards.length ? undefined : table.placeAt?.(state, pile.ref);
     if (placed) return placed;
@@ -45,11 +51,15 @@ function someMove<S>(table: TableGame<S>, state: S): Move | undefined {
   return table.apply(state, draw) ? draw : undefined;
 }
 
+function take<S>(session: GameSession<S>, step: Step) {
+  return step.kind === 'act' ? session.act(step.action) : session.play(step);
+}
+
 function playSome<S>(session: GameSession<S>, table: TableGame<S>, count: number): number {
   let played = 0;
   for (let i = 0; i < count; i++) {
     const move = someMove(table, session.state);
-    if (!move || !session.play(move)) break;
+    if (!move || !take(session, move)) break;
     played++;
   }
   return played;
@@ -77,7 +87,7 @@ describe('a saved game', () => {
       // And it is still a game: the same next move is legal on both, and
       // undo walks back through the same positions.
       const next = someMove(table, session.state);
-      if (next) expect(back.play(next)?.state).toEqual(session.play(next)?.state);
+      if (next) expect(take(back, next)?.state).toEqual(take(session, next)?.state);
       while (session.undo()) {
         expect(back.undo()).toBe(true);
         expect(back.state).toEqual(session.state);
