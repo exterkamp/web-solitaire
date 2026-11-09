@@ -97,7 +97,6 @@ export function blackjackTable(bankroll: () => number): TableGame<BlackjackState
     // Every hit turns a card nobody has seen. An undo would be a look at
     // the next one.
     undoable: false,
-    actAnchor: pileRefs.hand(0),
 
     slots(_handedness: Handedness): PileSlot[] {
       return [

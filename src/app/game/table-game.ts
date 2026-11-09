@@ -292,12 +292,6 @@ export interface TableGame<S> {
   readonly printing?: readonly PrintMark[];
 
   /**
-   * Where a move made with one of the game's buttons scores from, for the
-   * "+20" that rises off the table. See GameView.actions.
-   */
-  readonly actAnchor?: PileRef;
-
-  /**
    * Whether a move can be taken back. True unless said otherwise.
    *
    * False for the game where each move turns a card nobody has seen yet. An

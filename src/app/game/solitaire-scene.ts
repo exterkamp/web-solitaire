@@ -1181,10 +1181,10 @@ export class SolitaireScene {
   /** One of the game's own buttons, pressed. See GameView.actions. */
   act(action: string): boolean {
     if (this.locked) return false;
-    const before = this.scoreNow();
+    // No "+20" rising off the table: the game played with buttons is played
+    // for chips, and the chips themselves fly to say what a hand paid.
     if (!this.session.act(action)) return false;
     this.renderBoard(true);
-    if (this.table.actAnchor) this.scored(before, this.table.actAnchor);
     this.publish();
     if (this.session.won) this.onWin();
     return true;
