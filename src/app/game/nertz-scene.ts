@@ -1,4 +1,7 @@
-import { Board, BoardPointer, Sprite, cardsReady, createBoard, defineStack, flipCard, riffleShuffle } from '@exterkamp/felt';
+import {
+  Board, BoardPointer, Piece, PieceArt, Sprite, animatorOf, cardsReady, createBoard, defineStack, flipCard, riffleShuffle,
+  tossPiece,
+} from '@exterkamp/felt';
 import { markBooted, renderScale } from './lite';
 import { CARD_HEIGHT, CARD_WIDTH } from './config';
 import { Card } from './deck';
@@ -111,6 +114,16 @@ const CHIP_INK = '#8c1d24';
 // The chips are drawn over every card.
 const CHIP_DEPTH = 1_000_000;
 
+/** The Stuck chip, taken by a press a little off its rim - Phaser's circle had four units of slack. */
+class StuckChip extends Piece {
+  override hitTest(x: number, y: number): boolean {
+    if (super.hitTest(x, y)) return true;
+    if (!this.visible || this.isDestroyed) return false;
+    const local = this.localPoint(x, y);
+    return !!local && Math.hypot(local.x, local.y) <= this.radius + 4;
+  }
+}
+
 function css(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
@@ -191,7 +204,9 @@ export class NertzScene {
   // The Stuck chips. See nertz.ts's Chips.
   private chips: Chips = noChips();
   private unstuck = 0;
-  private chipSprites: Sprite[] = [];
+  private chipSprites: Piece[] = [];
+  // A chip on its way into the middle off the thumb, until it is down.
+  private readonly tossing = new Map<Seat, Promise<void>>();
   private chipDrags = new Map<number, ChipDrag>();
 
   private readonly markings: Markings;
@@ -552,7 +567,7 @@ export class NertzScene {
   private onDown(pointer: BoardPointer): void {
     if (!this.live || this.drags.has(pointer.id) || this.chipDrags.has(pointer.id)) return;
     const object = pointer.node;
-    const chip = object instanceof Sprite ? this.chipSprites.indexOf(object) : -1;
+    const chip = object instanceof Piece ? this.chipSprites.indexOf(object) : -1;
     if (chip >= 0) {
       // One finger to a chip: a second would only fight the first for it.
       if (!this.chipHeld(chip as Seat)) this.pickUpChip(pointer, chip as Seat);
@@ -742,40 +757,39 @@ export class NertzScene {
   // --- the Stuck chips ------------------------------------------------------
 
   private makeChips(): void {
-    const reach = CHIP_RADIUS + 4;
-    for (const seat of SEATS) {
-      // Drawn round its middle, in a box a little bigger than the chip so a
-      // press just off its rim still takes it - Phaser's circle had the same
-      // four units of slack.
-      const chip = this.board.graphic(reach * 2, reach * 2, (g, w, h) => {
-        const cx = w / 2;
-        const cy = h / 2;
-        const disc = (x: number, y: number, r: number) => {
-          g.beginPath();
-          g.arc(x, y, r, 0, Math.PI * 2);
-          g.fill();
-        };
-        g.fillStyle = 'rgba(0, 0, 0, 0.28)';
-        disc(cx + 1.5, cy + 2.5, CHIP_RADIUS);
-        g.fillStyle = css(CHIP_FACE);
-        disc(cx, cy, CHIP_RADIUS);
-        g.strokeStyle = css(CHIP_EDGE);
-        g.lineWidth = 4;
+    // A felt piece rather than a picture of one: round, with its own shadow
+    // on the felt and a back, so it can be flipped off the thumb end over end
+    // (see dropChip) and look like a chip all the way over.
+    const size = CHIP_RADIUS * 2;
+    const face = PieceArt.of(this.board).region('nertz-stuck-chip', size, size, (g, w, h) => {
+      const cx = w / 2;
+      const cy = h / 2;
+      const disc = (x: number, y: number, r: number) => {
         g.beginPath();
-        g.arc(cx, cy, CHIP_RADIUS - 2, 0, Math.PI * 2);
-        g.stroke();
-        // The notches round a poker chip's rim, so it reads as a chip at a glance.
-        g.fillStyle = css(CHIP_FACE);
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          disc(cx + Math.cos(a) * (CHIP_RADIUS - 2), cy + Math.sin(a) * (CHIP_RADIUS - 2), 2.2);
-        }
-        g.fillStyle = CHIP_INK;
-        g.font = `${DISPLAY_WEIGHT} 9px ${DISPLAY_FONT}`;
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.fillText('STUCK', cx, cy);
-      }, { key: 'nertz-stuck-chip' });
+        g.arc(x, y, r, 0, Math.PI * 2);
+        g.fill();
+      };
+      g.fillStyle = css(CHIP_FACE);
+      disc(cx, cy, CHIP_RADIUS);
+      g.strokeStyle = css(CHIP_EDGE);
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(cx, cy, CHIP_RADIUS - 2, 0, Math.PI * 2);
+      g.stroke();
+      // The notches round a poker chip's rim, so it reads as a chip at a glance.
+      g.fillStyle = css(CHIP_FACE);
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        disc(cx + Math.cos(a) * (CHIP_RADIUS - 2), cy + Math.sin(a) * (CHIP_RADIUS - 2), 2.2);
+      }
+      g.fillStyle = CHIP_INK;
+      g.font = `${DISPLAY_WEIGHT} 9px ${DISPLAY_FONT}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('STUCK', cx, cy);
+    }, `${DISPLAY_WEIGHT} 9px ${DISPLAY_FONT}`);
+    for (const seat of SEATS) {
+      const chip = new StuckChip(this.board, { face, width: size, height: size, edge: CHIP_EDGE, shadow: 0.9 });
       chip.interactive = true;
       chip.setAngle(seat === 1 ? 180 : 0);
       this.chipStacking.bringToTop(chip);
@@ -800,6 +814,8 @@ export class NertzScene {
     if (!chip || this.chipHeld(seat)) return;
     const to = this.chipSpot(seat);
     this.board.tweens.killTweensOf(chip);
+    animatorOf(this.board).stop(chip, 'move');
+    this.tossing.delete(seat);
     chip.setScale(1);
     if (animate) {
       this.board.tweens.add({ targets: chip, x: to.x, y: to.y, duration: MOVE_MS * 1.4, delay, ease: 'Cubic.easeOut' });
@@ -816,6 +832,9 @@ export class NertzScene {
     const chip = this.chipSprites[seat];
     const board = this.toBoard(pointer);
     this.board.tweens.killTweensOf(chip);
+    // Caught in the air, it is in the hand where it was caught.
+    animatorOf(this.board).stop(chip, 'move');
+    this.tossing.delete(seat);
     this.chipDrags.set(pointer.id, {
       seat,
       startX: board.x,
@@ -870,11 +889,25 @@ export class NertzScene {
       // Carried out of the middle, or never got there: it is not in.
       this.chips = takeBackChip(this.chips, seat);
     }
-    this.placeChip(seat, true);
+    // Flicked in, it is flipped there off the thumb, end over end; set down
+    // in the middle, or anywhere else, it slides.
+    if (thrown && this.chips[seat]) this.tossChip(seat);
+    else this.placeChip(seat, true);
     // A chip under the other player's finger is on its way somewhere, not in.
     const other: Seat = seat === 0 ? 1 : 0;
     if (bothStuck(this.chips) && !this.chipHeld(other)) this.moveHandsOn();
     else this.publish();
+  }
+
+  /** A chip flipped into the middle, over and over in the air, landing flat. */
+  private tossChip(seat: Seat): void {
+    const chip = this.chipSprites[seat];
+    const to = this.layout.chipMiddle(seat);
+    this.board.tweens.killTweensOf(chip);
+    chip.setScale(1);
+    const done = tossPiece(this.board, chip, to, { angle: seat === 1 ? 180 : 0 });
+    this.tossing.set(seat, done);
+    void done.then(() => { if (this.tossing.get(seat) === done) this.tossing.delete(seat); });
   }
 
   /** Both chips are in: every hand moves on a card, and the chips come home. */
@@ -894,7 +927,11 @@ export class NertzScene {
     // The last chip is still on its way in: let it land, let both sit there a
     // moment, then send them home. Read from the rules when it fires, so a
     // chip thrown again in the meantime stays where it was thrown.
-    after(this.board, MOVE_MS * 1.4 + CHIP_SETTLE_MS, () => this.placeChips(true));
+    // A chip still turning over in the air is let come down first.
+    const landing = [...this.tossing.values()];
+    const home = () => after(this.board, MOVE_MS * 1.4 + CHIP_SETTLE_MS, () => this.placeChips(true));
+    if (landing.length) void Promise.all(landing).then(() => { if (!this.board.isDestroyed) home(); });
+    else home();
     this.publish();
   }
 
