@@ -73,7 +73,16 @@
       </dl>
       <p class="panel__note">First to {{ view().target }}</p>
     }
-    <button type="button" class="button" [attr.data-next]="seat" (click)="nextRound()">Next round</button>
+    <!-- Both players say they have read it, each from their own end: one
+         thumb on the table is not the other player having finished. -->
+    @if (ready()[seat]) {
+      <button type="button" class="button" [attr.data-next]="seat" disabled>Waiting for them…</button>
+    } @else {
+      @if (ready()[other(seat)]) {
+        <p class="panel__note">They're ready</p>
+      }
+      <button type="button" class="button" [attr.data-next]="seat" (click)="nextRound(seat)">Next round</button>
+    }
   </ng-template>
 
   <ng-template #matchPanel let-seat>
