@@ -8,7 +8,7 @@
 //   devrun up --name sol-felt --port-env PORT -- node tools/serve-dist.mjs
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist/web-solitaire/browser');
@@ -32,9 +32,19 @@ function send(res, file, status = 200) {
 }
 
 createServer((req, res) => {
-  const path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+  let path;
+  try {
+    path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+  } catch {
+    // A malformed escape (/%E0%A4%A) is the client's mistake, not a reason
+    // for the server to fall over.
+    res.writeHead(400, { 'Content-Type': 'text/plain' }).end('bad request');
+    return;
+  }
   const file = normalize(join(root, path));
-  if (!file.startsWith(root)) {
+  // Inside the build, exactly: a plain prefix check would let
+  // /../browser-old/ through, since that path starts with the root's name too.
+  if (file !== root && !file.startsWith(root + sep)) {
     res.writeHead(403).end();
     return;
   }
