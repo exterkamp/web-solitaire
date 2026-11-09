@@ -676,7 +676,16 @@ async function main() {
   // matters: each covered card's top edge is clear of the card in front of
   // it by enough to read an index off, and the playable card is still in the
   // slot beside the stock.
-  await browser.evaluate(`(${SCENE}.newGame(3), true)`);
+  // A board's draw is the table it was built with, so draw three is a board
+  // of its own: opened the way a player gets one, from the setting. The hand
+  // on the table is saved on the way out, and would be resumed at draw one,
+  // so it is dealt over first.
+  await browser.go(`${host}/setup/klondike`);
+  await browser.until(`!!document.querySelector('.menu h1')`, 'the setup page');
+  await browser.evaluate(`(localStorage.removeItem('solitaire.saved.v1.klondike'), localStorage.removeItem('solitaire.saved.v1.klondike.summary'), localStorage.setItem('solitaire.drawCount', '3'), true)`);
+  await browser.go(`${host}/play/klondike`);
+  await browser.until(`!!${SCENE}?.session && !${SCENE}.busy`, 'a draw-three board');
+  await browser.evaluate(`(${SCENE}.timeScale = 20, true)`);
   await browser.settle(SCENE);
   const stockNow = await browser.evaluate(onPage(`${SCENE}.pileBase({ kind: 'stock', index: 0 })`));
   await browser.tap(stockNow.x, stockNow.y);
@@ -733,8 +742,10 @@ async function main() {
   await sleep(300);
   check(await browser.evaluate(`${SCENE}.session.canFinish`), 'the finish is offered once nothing is hidden');
 
+  // The hand on the table is the draw-three one opened above, so its win goes
+  // in draw three's column of the record book.
   const winsBefore = await browser.evaluate(
-    `(JSON.parse(localStorage.getItem('solitaire.stats.v2') || '{}').byVariant?.['klondike-1']?.won) ?? 0`,
+    `(JSON.parse(localStorage.getItem('solitaire.stats.v2') || '{}').byVariant?.['klondike-3']?.won) ?? 0`,
   );
 
   if (!await browser.until(`!!document.querySelector('.action--go')`, 'the finish button')) {
@@ -758,7 +769,7 @@ async function main() {
     stats: JSON.parse(localStorage.getItem('solitaire.stats.v2') || 'null'),
   })`);
   check(!!won.total, `the win panel says what it was worth (${won.total})`);
-  const mode = won.stats?.byVariant?.['klondike-1'];
+  const mode = won.stats?.byVariant?.['klondike-3'];
   check(
     mode?.won === winsBefore + 1 && mode?.played === mode?.won,
     `the record book counts the win (${JSON.stringify(mode)})`,
