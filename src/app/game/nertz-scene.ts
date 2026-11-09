@@ -57,7 +57,20 @@ export interface NertzEvents {
   changed(view: NertzView): void;
 }
 
+/** A match in progress, as plain data - see SavedGames. */
+export interface NertzSnapshot {
+  workPiles: number;
+  match: Match;
+  phase: NertzPhase;
+  state: NertzState;
+  chips: Chips;
+  unstuck: number;
+  last?: RoundResult;
+}
+
 export interface NertzInit {
+  /** A match to pick up where it was left, rather than a new one. */
+  resume?: NertzSnapshot;
   theme: DeckTheme;
   backColor: number;
   deckStyle?: DeckStyle;
@@ -170,6 +183,10 @@ export class NertzScene {
   private deals = 0;
   private showShuffle = true;
   private last: RoundResult | undefined;
+  private resume?: NertzSnapshot;
+  // Whether anybody has done anything this match, so a deal looked at and
+  // left is not kept as a match in progress.
+  private touched = false;
 
   // The Stuck chips. See nertz.ts's Chips.
   private chips: Chips = noChips();
@@ -227,7 +244,9 @@ export class NertzScene {
     this.backColor = data.backColor;
     this.deckStyle = data.deckStyle;
     this.target = data.target;
-    this.workPiles = data.workPiles ?? DEFAULT_WORK_PILES;
+    this.workPiles = data.resume?.workPiles ?? data.workPiles ?? DEFAULT_WORK_PILES;
+    this.resume = data.resume;
+    if (data.resume) this.target = data.resume.match.target;
     this.showShuffle = data.showShuffle ?? true;
     this.report = data.events;
   }
@@ -250,8 +269,13 @@ export class NertzScene {
       this.board.off('pointerdown', down).off('pointermove', move).off('pointerup', up);
     };
 
-    this.match = newMatch(this.target);
-    this.startRound();
+    if (this.resume) {
+      this.restore(this.resume);
+      this.resume = undefined;
+    } else {
+      this.match = newMatch(this.target);
+      this.startRound();
+    }
     // The first frame is queued: the survival window starts here, not at
     // construction (see markBooted).
     markBooted();
@@ -284,6 +308,43 @@ export class NertzScene {
   }
 
   // --- rounds ---------------------------------------------------------------
+
+  /** The match as plain data, or nothing if it has not been played yet. */
+  snapshot(): NertzSnapshot | undefined {
+    if (!this.state || !this.touched || this.phase === 'match') return undefined;
+    return {
+      workPiles: this.workPiles,
+      match: this.match,
+      phase: this.phase,
+      state: this.state,
+      chips: this.chips,
+      unstuck: this.unstuck,
+      last: this.last,
+    };
+  }
+
+  /**
+   * A saved match back on the table, every card where it was left: no
+   * riffle and no deal, because this round was dealt already.
+   */
+  private restore(saved: NertzSnapshot): void {
+    this.match = saved.match;
+    this.state = saved.state;
+    this.phase = saved.phase;
+    this.chips = saved.chips;
+    this.unstuck = saved.unstuck;
+    this.last = saved.last;
+    this.touched = true;
+    for (const { seat, pile, cards } of this.everyPile()) {
+      cards.forEach((card, index) => {
+        const at = this.position(seat, pile, index, cards.length, card);
+        this.makeSprite(card, at.x, at.y);
+      });
+    }
+    this.placeChips(false);
+    this.renderBoard(false);
+    this.publish();
+  }
 
   private startRound(random: () => number = Math.random): void {
     this.releaseAll();
@@ -660,6 +721,7 @@ export class NertzScene {
     const result = apply(this.state, move);
     if (!result) return false;
     this.state = result.state;
+    this.touched = true;
     // Playing a card is not being stuck, so it takes that player's chip back.
     // Turning the stock is not a play: it is what somebody waiting on the
     // other player's chip does with their hands.
@@ -859,6 +921,7 @@ export class NertzScene {
 
   rematch(): void {
     this.match = newMatch(this.target);
+    this.touched = false;
     this.startRound();
   }
 

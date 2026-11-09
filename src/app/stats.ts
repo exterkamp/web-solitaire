@@ -334,7 +334,9 @@ export class Stats {
   /**
    * A game given up on.
    *
-   * Only called for a deal that was actually played - see the play page. A
+   * Only called for a deal that was actually played and then dealt over -
+   * see the play page and SavedGames.abandon. Leaving the board does not
+   * call it: the hand is saved and can be continued. A
    * game dealt, looked at and abandoned without a move is not a loss, because
    * counting it as one would make the record book punish curiosity.
    */

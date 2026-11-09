@@ -1,6 +1,16 @@
 <div class="menu">
   <h1>{{ guide.title }}</h1>
 
+  @if (saved) {
+    <!-- A hand left on the table last time. Continuing is the obvious
+         thing, so it is the button that looks like one; dealing over it
+         counts the old hand as lost, and says so. -->
+    <a class="button" [routerLink]="['/play', game]">Continue</a>
+    <p class="setup__detail setup__detail--tight">{{ savedLine() }}</p>
+    <button type="button" class="button button--quiet" (click)="newGame()">New game</button>
+    <p class="setup__detail setup__detail--tight">Dealing again counts the hand in progress as a loss.</p>
+  }
+
   <!-- The board itself, before any of the rules - the same photograph the
        README uses, cropped wider by CSS rather than shot again. Answers
        "what does this look like" before asking anyone to read three
@@ -47,7 +57,9 @@
     <p class="setup__detail setup__detail--tight">{{ drawNote() }}</p>
   }
 
-  <a class="button" [routerLink]="['/play', game]">Deal</a>
+  @if (!saved) {
+    <a class="button" [routerLink]="['/play', game]">Deal</a>
+  }
 
   @if (record(); as line) {
     <p class="menu__note">{{ line }}</p>

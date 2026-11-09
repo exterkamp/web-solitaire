@@ -4,6 +4,7 @@ import { animate, stagger, steps, type JSAnimation } from 'animejs';
 import { GameId } from '../../game/table-game';
 import { formatPercent } from '../../format';
 import { Stats } from '../../stats';
+import { SavedGames } from '../../saved-games';
 
 // One bulb, sampled from a letter's outline or walked round the plaque's
 // frame. Both end up rendered by the same helper (appendBulb) so a frame
@@ -103,6 +104,7 @@ const FRAME_FLOOR = 0.08;
 })
 export class MainMenu implements AfterViewInit, OnDestroy {
   private readonly stats = inject(Stats);
+  private readonly savedGames = inject(SavedGames);
   private readonly letters = viewChild.required<ElementRef<HTMLDivElement>>('letters');
   private readonly frame = viewChild.required<ElementRef<HTMLDivElement>>('frame');
   private letterAnimation?: JSAnimation;
@@ -126,9 +128,18 @@ export class MainMenu implements AfterViewInit, OnDestroy {
   };
 
   protected line(game: GameId): string {
+    // A hand left on the table says so first: that is the one thing on this
+    // screen somebody might be coming back for.
+    const saved = this.savedGames.get(game);
+    if (saved) return `In progress · move ${saved.moves}`;
     const record = this.stats.game(game);
     if (!record.played) return this.blurbs[game];
     return `${record.won} of ${record.played} won · ${formatPercent(record.won / record.played)}`;
+  }
+
+  protected nertzLine(): string {
+    const saved = this.savedGames.getNertz();
+    return saved ? `In progress · round ${saved.round}` : 'Two players, one phone · a race to the middle';
   }
 
   ngAfterViewInit(): void {

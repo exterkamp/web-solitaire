@@ -33,6 +33,7 @@ import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
 import { Settings } from '../../settings';
 import { Stats, variantOf } from '../../stats';
+import { SavedGames } from '../../saved-games';
 
 // The board, and everything around it that is not drawn on felt.
 //
@@ -54,6 +55,7 @@ export class Play implements AfterViewInit, OnDestroy {
   // of the chip stack on the felt. See play.html.
   protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
+  private readonly savedGames = inject(SavedGames);
   private readonly router = inject(Router);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
 
@@ -89,10 +91,9 @@ export class Play implements AfterViewInit, OnDestroy {
 
   // The pause menu, which is also the only way off this page.
   //
-  // A hand in progress lives entirely in this component - there is no server
-  // holding it and nothing written down until it ends - so leaving the board
-  // is the one irreversible thing on it. It should take two deliberate acts,
-  // and now it does.
+  // Leaving no longer costs the hand - it is saved, see saveNow - but a
+  // stray back gesture mid-drag still should not take somebody off the
+  // board, so leaving takes two deliberate acts.
   protected readonly paused = signal(false);
   // Whether the extra history entry is still in place. See armBackGuard.
   private backGuarded = false;
@@ -119,7 +120,13 @@ export class Play implements AfterViewInit, OnDestroy {
   // app.routes.ts. A board that read a preference could be opened by a link
   // and show something else.
   private readonly gameId: GameId = asGameId(inject(ActivatedRoute).snapshot.paramMap.get('game'));
-  private readonly drawCount = this.settings.drawCount();
+  // A hand left on the table last time, picked up rather than dealt over. The
+  // setup page is where somebody chooses to deal over it instead (see
+  // SavedGames.abandon), so by here a saved game is one to continue - and a
+  // reload lands back in it without being asked.
+  private readonly saved = this.savedGames.get(this.gameId);
+  // A saved game keeps the draw it was dealt with.
+  private readonly drawCount = this.saved?.drawCount ?? this.settings.drawCount();
   private readonly table = makeTable(this.gameId, this.drawCount);
   // Which column of the record book this hand is going into.
   private readonly variant = variantOf(this.gameId, this.drawCount);
@@ -172,8 +179,12 @@ export class Play implements AfterViewInit, OnDestroy {
       showShuffle: this.settings.showShuffle(),
       scoreDisplay: this.settings.scoreDisplay(),
       deckStyle: this.settings.deckStyle(),
+      resume: this.saved?.snapshot,
       events: {
-        changed: (view) => this.view.set(view),
+        changed: (view) => {
+          this.view.set(view);
+          this.saveSoon();
+        },
         won: (summary) => this.onWin(summary),
       },
     });
@@ -185,6 +196,9 @@ export class Play implements AfterViewInit, OnDestroy {
     this.clock = setInterval(() => this.elapsed.set(this.scene()?.elapsed() ?? 0), 500);
     this.armBackGuard();
     this.startGamepad();
+    // The last chance a phone gives before it may kill the tab: the clock
+    // has moved on since the last move was saved.
+    window.addEventListener('pagehide', this.saveNow);
   }
 
   ngOnDestroy(): void {
@@ -192,12 +206,46 @@ export class Play implements AfterViewInit, OnDestroy {
     if (this.konamiTimer) clearTimeout(this.konamiTimer);
     this.stopGamepad();
     window.removeEventListener('popstate', this.onPopState);
-    // A game walked away from mid-hand is a game lost, for the same reason it
-    // is in every other solitaire: otherwise the win rate is a measure of how
-    // often you finished the ones you were winning.
-    this.recordAbandoned();
+    window.removeEventListener('pagehide', this.saveNow);
+    // Leaving mid-hand keeps the hand: it is saved, and offered back from
+    // the setup page. It goes in the record book as a loss only when it is
+    // dealt over - see SavedGames.abandon.
+    this.saveNow();
     this.game?.destroy();
   }
+
+  // --- keeping the hand -----------------------------------------------------
+
+  private saveTimer?: ReturnType<typeof setTimeout>;
+
+  // A beat after the last change rather than on every one: an automatic
+  // finish publishes fifty times in a few seconds, and each save writes the
+  // undo history out whole.
+  private saveSoon(): void {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(this.saveNow, 250);
+  }
+
+  // An arrow property, so it can be handed to addEventListener as it is.
+  private readonly saveNow = (): void => {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = undefined;
+    const game = this.game;
+    if (!game) return;
+    const view = this.view();
+    // An untouched deal is not worth coming back to, and a won one is over.
+    if (view.won || view.moves === 0) {
+      this.savedGames.clear(this.gameId);
+      return;
+    }
+    this.savedGames.save({
+      game: this.gameId,
+      drawCount: this.drawCount,
+      savedAt: Date.now(),
+      moves: view.moves,
+      snapshot: game.snapshot(),
+    });
+  };
 
   private scene(): SolitaireScene | undefined {
     return this.game;
@@ -320,11 +368,7 @@ export class Play implements AfterViewInit, OnDestroy {
     this.elapsed.set(this.scene()?.elapsed() ?? 0);
   }
 
-  /**
-   * The deliberate way out. Records the hand as abandoned on the way, which
-   * ngOnDestroy would do anyway - this only makes sure it happens before the
-   * router takes the component down.
-   */
+  /** The deliberate way out. The hand is saved on the way - see ngOnDestroy. */
   protected exitToMenu(): void {
     this.backGuarded = false;
     this.router.navigateByUrl('/');
@@ -347,6 +391,7 @@ export class Play implements AfterViewInit, OnDestroy {
     // behind the menu has to be running to be dealt onto.
     if (this.paused()) this.setPaused(false);
     this.recordAbandoned();
+    this.savedGames.clear(this.gameId);
     this.win.set(undefined);
     this.waved.set(undefined);
     this.elapsed.set(0);

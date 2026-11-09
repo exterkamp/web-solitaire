@@ -278,6 +278,30 @@ moves behind the menu. The overlay is
 full-bleed rather than a panel on the felt - while it is up, nothing a thumb
 lands on should reach a card.
 
+### Games in progress
+
+A hand is never lost by leaving it. `SavedGames` (`src/app/saved-games.ts`)
+keeps one game in progress per game, plus one Nertz match, in `localStorage`
+under `solitaire.saved.v1.<game>`. The play pages write it a beat after every
+change, and again on `pagehide` and on the way out. Writing as each move lands
+matters on a phone, where the way out is often the system killing the tab, and
+no code runs when that happens.
+
+- **What is saved:** `GameSession.snapshot()`, which is the state, the last 150
+  states of undo and the time played. Every game's state is plain data, and
+  `session-save.spec.ts` round-trips all thirteen variants through JSON to keep
+  it that way. Nertz saves the match, the round and the chips through
+  `NertzScene.snapshot()`.
+- **Coming back:** `/play/<game>` always picks up a saved game, with no riffle
+  and no deal, so a reload lands back in the hand. The setup page is where the
+  question is asked. It shows **Continue** with the move count and time, and
+  **New game**, which deals over the saved hand. The menu tile reads "In
+  progress".
+- **The record book:** a saved hand is unfinished, so it is not in the record.
+  It becomes a loss when it is dealt over, either from the setup page
+  (`SavedGames.abandon`) or with New deal on the board. An untouched deal is
+  never saved, and a won game is cleared.
+
 ### Three things this codebase keeps relearning
 
 **felt holds a card back until its deck is painted.** A card appears only

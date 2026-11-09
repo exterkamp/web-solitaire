@@ -13,9 +13,10 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { createNertzGame } from '../../game/board';
-import { NertzScene, NertzView } from '../../game/nertz-scene';
+import { NertzScene, NertzSnapshot, NertzView } from '../../game/nertz-scene';
 import { Seat } from '../../game/nertz';
 import { Settings } from '../../settings';
+import { SavedGames } from '../../saved-games';
 
 // Two-player Nertz, and everything around the board that is not drawn on felt.
 //
@@ -33,7 +34,11 @@ import { Settings } from '../../settings';
 })
 export class NertzPlay implements AfterViewInit, OnDestroy {
   private readonly settings = inject(Settings);
+  private readonly savedGames = inject(SavedGames);
   private readonly router = inject(Router);
+  // A match left on the table, picked up rather than dealt over. The setup
+  // page is where somebody chooses to start again instead.
+  private readonly saved = this.savedGames.getNertz();
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('board');
   private game?: NertzScene;
 
@@ -84,13 +89,18 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
       target: this.settings.nertzTarget(),
       workPiles: this.settings.nertzWorkPiles(),
       showShuffle: this.settings.showShuffle(),
+      resume: this.saved?.match as NertzSnapshot | undefined,
       events: { changed: (view) => this.onChanged(view) },
     });
     this.armBackGuard();
+    window.addEventListener('pagehide', this.saveNow);
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.onPopState);
+    window.removeEventListener('pagehide', this.saveNow);
+    this.saveNow();
+    clearTimeout(this.saveTimer);
     clearTimeout(this.movedOnTimer);
     this.game?.destroy();
   }
@@ -99,9 +109,29 @@ export class NertzPlay implements AfterViewInit, OnDestroy {
     return this.game;
   }
 
+  // --- keeping the match ----------------------------------------------------
+
+  private saveTimer?: ReturnType<typeof setTimeout>;
+
+  private readonly saveNow = (): void => {
+    clearTimeout(this.saveTimer);
+    const game = this.game;
+    if (!game) return;
+    // Nothing played yet, or the match over: nothing to come back to.
+    const snapshot = game.snapshot();
+    if (!snapshot) {
+      this.savedGames.clearNertz();
+      return;
+    }
+    const view = this.view();
+    this.savedGames.saveNertz({ savedAt: Date.now(), round: view.round, totals: view.totals, match: snapshot });
+  };
+
   private onChanged(view: NertzView): void {
     const before = this.view();
     this.view.set(view);
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(this.saveNow, 250);
     if (view.phase === 'match' && before.phase !== 'match') {
       this.announcement.set(`Player ${view.winner === 0 ? 'at the bottom' : 'at the top'} wins the match.`);
     } else if (view.phase === 'round' && before.phase === 'playing') {

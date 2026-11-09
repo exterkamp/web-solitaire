@@ -1,6 +1,14 @@
 <div class="menu">
   <h1>Nertz for two</h1>
 
+  @if (saved) {
+    <!-- A match left on the table last time, continued as it was dealt:
+         the choices below apply to the next new match. -->
+    <a class="button" routerLink="/play/nertz">Continue</a>
+    <p class="setup__detail setup__detail--tight">{{ savedLine() }}</p>
+    <button type="button" class="button button--quiet" (click)="newMatch()">New match</button>
+  }
+
   <p class="setup__summary">
     Two players, one phone, laid down between you. Everybody plays at once,
     and the foundations in the middle are a race.
@@ -65,6 +73,8 @@
     (picked)="settings.nertzWorkPiles.set($event)"
   />
 
-  <a class="button" routerLink="/play/nertz">Deal</a>
+  @if (!saved) {
+    <a class="button" routerLink="/play/nertz">Deal</a>
+  }
   <a class="button button--quiet" routerLink="/">Back</a>
 </div>

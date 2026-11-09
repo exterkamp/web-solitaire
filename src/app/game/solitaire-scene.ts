@@ -30,7 +30,7 @@ import { GameView, PileSlot, TableGame } from './table-game';
 import { Handedness, ScoreDisplay } from './settings-types';
 import { timeBonus } from './klondike';
 import { PointerSample, isUpwardFlick, pointerVelocity } from './gesture';
-import { GameSession } from './session';
+import { GameSession, SessionSnapshot } from './session';
 import { firstBoardDealt } from './first-board';
 import {
   FELT_CLEAR_COLOR, drawHighlight, drawRecycleMark, drawSectionLabel, drawSlot, drawTableSurface, paintTableBorder,
@@ -98,6 +98,8 @@ export interface BoardInit {
   scoreDisplay: ScoreDisplay;
   /** The deck the player drew, if they drew one. */
   deckStyle?: DeckStyle;
+  /** A game to pick up where it was left, rather than a new deal. */
+  resume?: SessionSnapshot<unknown>;
   events: BoardEvents;
 }
 
@@ -226,6 +228,7 @@ export class SolitaireScene {
   private slotMap = new Map<string, { slot: PileSlot; x: number; y: number }>();
   private report!: BoardEvents;
   private session!: GameSession<any>;
+  private resume?: SessionSnapshot<unknown>;
 
   // The layout printed on the felt, which slides with the board (see
   // updateDrop), and the order the cards are drawn in. felt works in board
@@ -325,6 +328,7 @@ export class SolitaireScene {
     this.scoreDisplay = data.scoreDisplay;
     this.deckStyle = data.deckStyle;
     this.report = data.events;
+    this.resume = data.resume;
     this.drop = this.table.drops ? maxBoardDrop(this.floorY) : this.fixedDrop;
     this.slotMap.clear();
     for (const slot of this.table.slots(this.handedness)) {
@@ -371,7 +375,9 @@ export class SolitaireScene {
       this.board.off('pointerdown', down).off('pointermove', move).off('pointerup', up);
     };
 
-    this.newGame();
+    if (this.resume) this.resumeGame(this.resume);
+    else this.newGame();
+    this.resume = undefined;
     // The art is in and there are cards on the table. Nothing in the game
     // waits on this; the service worker does. See first-board.ts.
     firstBoardDealt();
@@ -589,6 +595,30 @@ export class SolitaireScene {
   }
 
   // --- starting and re-starting -------------------------------------------
+
+  /** The game on the table as plain data, for SavedGames. */
+  snapshot(): SessionSnapshot<unknown> {
+    return this.session.snapshot();
+  }
+
+  /**
+   * Puts a saved game back on the table, every card where it was left. No
+   * shuffle and no deal: this hand was dealt already, and the riffle in front
+   * of a game you are coming back to would say it was a new one.
+   */
+  private resumeGame(saved: SessionSnapshot<unknown>): void {
+    this.session = GameSession.restore(this.table, saved);
+    this.updateDrop(false);
+    for (const pile of this.table.piles(this.session.state)) {
+      pile.cards.forEach((card, index) => {
+        const to = this.cardPosition(pile.ref, index, pile.cards);
+        this.makeSprite({ ...card }, to.x, to.y);
+      });
+    }
+    this.busy = false;
+    this.renderBoard(false);
+    this.publish();
+  }
 
   /** Deals a new game of whatever game this board is showing. */
   newGame(): void {
