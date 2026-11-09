@@ -242,6 +242,20 @@ export interface TableGame<S> {
   readonly forPoints?: { unit: string };
 
   /**
+   * Whether the score is shown as a stack of chips on the felt whatever the
+   * score-display setting says. For the game where the score is chips: a
+   * bankroll as a number in the bar is a spreadsheet, not a table.
+   */
+  readonly scoreIsChips?: boolean;
+
+  /**
+   * Where the middle of the chip stack sits, in board units, for a game that
+   * wants it somewhere other than the band beside its name - Blackjack's, in
+   * front of the player, where a bet goes on a real table.
+   */
+  readonly chipsAt?: { x: number; y: number };
+
+  /**
    * Where a move made with one of the game's buttons scores from, for the
    * "+20" that rises off the table. See GameView.actions.
    */

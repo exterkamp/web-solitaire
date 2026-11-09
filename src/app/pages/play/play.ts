@@ -58,9 +58,10 @@ import { Autosave, SavedGames } from '../../saved-games';
   templateUrl: './play.html',
 })
 export class Play implements AfterViewInit, OnDestroy {
-  // Protected rather than private: the template reads scoreDisplay() to
-  // decide whether the numeric score is shown or visually hidden in favour
-  // of the chip stack on the felt. See play.html.
+  // Protected rather than private: the template reads it, and scoreDisplay
+  // below is the setting as this game applies it - whether the numeric score
+  // is shown or visually hidden in favour of the chip stack on the felt. See
+  // play.html.
   protected readonly settings = inject(Settings);
   private readonly stats = inject(Stats);
   private readonly savedGames = inject(SavedGames);
@@ -145,6 +146,11 @@ export class Play implements AfterViewInit, OnDestroy {
   // What a game played for points calls its points. See TableGame.forPoints.
   protected readonly forPoints = this.table.forPoints;
   protected readonly undoable = this.table.undoable !== false;
+  // Chips on the felt or a number in the bar - the setting's choice, except
+  // in the game whose score is chips, where it is always chips.
+  protected readonly scoreDisplay = computed(() =>
+    this.table.scoreIsChips ? 'chips' : this.settings.scoreDisplay(),
+  );
   // A hand of that game that ended short of it. Not stuck - there is nothing
   // to look for - but over, with a score, and shown whatever the "warn when
   // stuck" setting says, because it is the end of the game rather than a
@@ -219,7 +225,7 @@ export class Play implements AfterViewInit, OnDestroy {
       backColor: this.settings.backColor(),
       handedness: this.settings.handedness(),
       showShuffle: this.settings.showShuffle(),
-      scoreDisplay: this.settings.scoreDisplay(),
+      scoreDisplay: this.scoreDisplay(),
       deckStyle: this.settings.deckStyle(),
       resume: this.saved?.snapshot,
       events: {

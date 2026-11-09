@@ -22,7 +22,7 @@
              screen reader a stack of images can't carry. The reading kept
              here rather than moved into the board's own aria-label, which
              describes the game once rather than on every score change. -->
-        <div class="hud__stat" [class.visually-hidden]="settings.scoreDisplay() === 'chips'">
+        <div class="hud__stat" [class.visually-hidden]="scoreDisplay() === 'chips'">
           <span class="hud__label">{{ forPoints?.unit === 'chips' ? 'Chips' : 'Score' }}</span>
           <span class="hud__value">{{ view().score }}</span>
         </div>

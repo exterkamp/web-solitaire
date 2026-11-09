@@ -40,6 +40,10 @@ export function blackjackTable(bankroll: () => number): TableGame<BlackjackState
     // A move is a button. How many of them a shoe took says nothing.
     showsMoves: false,
     forPoints: { unit: 'chips' },
+    // On the felt, always: see TableGame.scoreIsChips.
+    scoreIsChips: true,
+    // Between the dealer and your hand, where a bet sits on a real table.
+    chipsAt: { x: WIDTH / 2, y: (DEALER_Y + HAND_Y) / 2 + 16 },
     // Every hit turns a card nobody has seen. An undo would be a look at
     // the next one.
     undoable: false,

@@ -355,9 +355,11 @@ export class SolitaireScene {
     this.toasts = toastsOf(this.board);
     // In the band between the top row and the tableau, to the right of the
     // game's name - and sliding down the board with it.
-    this.chips = new ScoreChips(
-      this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18,
-    );
+    // Or where the game puts them: see TableGame.chipsAt.
+    const chipsAt = this.table.chipsAt;
+    this.chips = chipsAt
+      ? new ScoreChips(this.board, FRAME_PAD + chipsAt.x - CHIP_STACK_REACH / 2, chipsAt.y)
+      : new ScoreChips(this.board, this.width - CHIP_RAIL_CLEARANCE - CHIP_STACK_REACH, TABLEAU_TOP_Y - 18);
     this.chips.setDrop(this.drop);
 
     // The lettering is painted once, so its face has to be in first.
