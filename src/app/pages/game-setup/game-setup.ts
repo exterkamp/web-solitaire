@@ -373,6 +373,29 @@ const GUIDES: Record<GameId, Guide> = {
       'and fours are worth building toward; flushes are easiest kept to the ' +
       'columns and straights to the rows, so that a card can help both.',
   },
+  cribbagesquares: {
+    title: 'Cribbage Squares',
+    summary: 'Sixteen cards into a four-by-four grid and a starter, scored as eight cribbage hands.',
+    setup:
+      'An empty grid of sixteen places, and the deck. The top card is turned ' +
+      'to start.',
+    play:
+      'Put the turned card in any empty place that touches a card already ' +
+      'down - across, down or corner to corner; the first card may go ' +
+      'anywhere. Once a card is down it stays down, and nothing can be taken ' +
+      'back. When the grid is full a seventeenth card is turned: the starter, ' +
+      'which counts in every row and every column. Each of the eight is a ' +
+      'cribbage hand: fifteens 2 each, pairs 2 each, runs of three or more a ' +
+      'point a card, a four-card flush 4 (5 if the starter matches), and his ' +
+      'nobs 1 for the jack of the starter\'s suit. A jack turned as the ' +
+      'starter is his heels, 2 points once.',
+    winning:
+      'The grid full and sixty-one points, once round a cribbage board - the ' +
+      'target The Complete Book of Solitaire and Patience Games sets. Every ' +
+      'hand ends with a score whether it gets there or not, and the record ' +
+      'book keeps your best. Fives and tens are the cards to plan around: ' +
+      'each pair of them is a fifteen.',
+  },
 };
 
 const SUIT_LABELS: Record<SuitCount, string> = { 1: 'One', 2: 'Two', 4: 'Four' };

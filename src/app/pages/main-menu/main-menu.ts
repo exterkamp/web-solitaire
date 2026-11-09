@@ -136,6 +136,7 @@ export class MainMenu implements AfterViewInit, OnDestroy {
     blackhole: 'Nothing hidden, no deck · every move a choice',
     acesup: 'Four piles · the aces cannot be beaten',
     pokersquares: 'Twenty-five cards, ten poker hands · make two hundred',
+    cribbagesquares: 'Sixteen cards and a starter, eight hands · make sixty-one',
   };
 
   protected line(game: GameId): string {

@@ -35,11 +35,12 @@ export type GameId =
   | 'blackhole'
   | 'acesup'
   // Play for points.
-  | 'pokersquares';
+  | 'pokersquares'
+  | 'cribbagesquares';
 
 export const GAME_IDS: readonly GameId[] = [
   'klondike', 'freecell', 'yukon', 'canfield', 'spider', 'spiderette', 'scorpion', 'seahaven', 'calculation', 'lucie',
-  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares',
+  'tripeaks', 'pyramid', 'golf', 'blackhole', 'acesup', 'pokersquares', 'cribbagesquares',
 ];
 
 /**
@@ -64,6 +65,7 @@ export const GAME_TITLES: Record<GameId, string> = {
   blackhole: 'Black Hole',
   acesup: 'Aces Up',
   pokersquares: 'Poker Squares',
+  cribbagesquares: 'Cribbage Squares',
 };
 
 /** One pile, and what is in it. The board draws piles in the order given. */

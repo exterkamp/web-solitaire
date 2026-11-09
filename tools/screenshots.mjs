@@ -158,17 +158,18 @@ const DISCARD_SOME = `(() => {
   return true;
 })()`;
 
-// Poker Squares is played by pressing empty cells, which the tapper never
-// does. Two-thirds of a grid, each card where it scores most, so the picture
-// is a hand under way with some pairs in it.
+// The squares games are played by pressing empty cells, which the tapper
+// never does. Two-thirds of a grid, each card where it scores most, so the
+// picture is a hand under way with some pairs in it.
 const PLACE_SOME = `(() => {
   const g = ${SCENE}; const t = g.table;
-  for (let i = 0; i < 16; i++) {
+  const cells = g.session.state.tableau.length;
+  for (let i = 0; i < Math.round(cells * 0.64); i++) {
     const s = g.session.state;
     let best = -1, move;
     s.tableau.forEach((cell, at) => {
-      if (cell.length) return;
-      const m = t.placeAt(s, { kind: 'tableau', index: at });
+      const m = cell.length ? undefined : t.placeAt(s, { kind: 'tableau', index: at });
+      if (!m) return;
       const v = t.view(t.apply(s, m).state).score;
       if (v > best) { best = v; move = m; }
     });
@@ -184,7 +185,7 @@ async function playAWhile(rounds, game) {
     await evaluate(DISCARD_SOME);
     return;
   }
-  if (game === 'pokersquares') {
+  if (game === 'pokersquares' || game === 'cribbagesquares') {
     await evaluate(PLACE_SOME);
     return;
   }
@@ -297,7 +298,7 @@ for (const [game, rounds] of [
   ['klondike', 4], ['freecell', 0], ['yukon', 3], ['canfield', 3], ['spider', 3], ['spiderette', 3],
   ['scorpion', 3], ['seahaven', 0], ['calculation', 4], ['lucie', 3],
   ['tripeaks', 3], ['pyramid', 2], ['golf', 3], ['blackhole', 4], ['acesup', 3],
-  ['pokersquares', 1],
+  ['pokersquares', 1], ['cribbagesquares', 1],
 ]) {
   if (!wanted(game)) continue;
   // Spider in two suits, black and red: one suit is a picture of nothing

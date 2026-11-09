@@ -46,7 +46,7 @@ about you is in your browser's own storage.
 <table>
 <tr>
 <td width="20%" align="center"><img src="docs/screenshots/pokersquares.webp" alt="Poker Squares, part way through a hand"><br><b>Poker Squares</b></td>
-<td width="20%"></td>
+<td width="20%" align="center"><img src="docs/screenshots/cribbagesquares.webp" alt="Cribbage Squares, part way through a hand"><br><b>Cribbage Squares</b></td>
 <td width="20%"></td>
 <td width="20%"></td>
 <td width="20%"></td>
@@ -175,6 +175,12 @@ five columns are ten poker hands, scored on the American table as they fill:
 a pair is two, a royal flush a hundred. Two hundred wins, and every hand ends
 on a score either way, so the record book keeps your best. There is no undo:
 the next card is already showing.
+
+**Cribbage Squares** is the same idea at the cribbage board: sixteen cards into
+a four-by-four grid, each touching one already down, and then a starter turned
+that belongs to all eight rows and columns at once. Fifteens, pairs, runs,
+flushes and his nobs, as cribbage counts them; sixty-one, once round the board,
+wins.
 
 </td>
 <td width="50%" valign="top">

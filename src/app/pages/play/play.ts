@@ -33,6 +33,7 @@ import { calculationTable } from '../../game/calculation-table';
 import { lucieTable } from '../../game/lucie-table';
 import { blackHoleTable } from '../../game/blackhole-table';
 import { pokerSquaresTable } from '../../game/pokersquares-table';
+import { cribbageSquaresTable } from '../../game/cribbagesquares-table';
 import { formatDuration } from '../../format';
 import { GamepadController, GamepadDirection } from '../../game/gamepad';
 import { PileRef } from '../../game/piles';
@@ -649,6 +650,8 @@ function makeTable(game: GameId, drawCount: DrawCount, suits: SuitCount) {
       return acesUpTable();
     case 'pokersquares':
       return pokerSquaresTable();
+    case 'cribbagesquares':
+      return cribbageSquaresTable();
     default:
       return klondikeTable(drawCount);
   }
